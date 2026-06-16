@@ -4,7 +4,9 @@ import { ScheduleAt, Timestamp } from "spacetimedb";
 // ──────────────────────────────────────────────────────────────────────────
 // Durations (microseconds)
 // ──────────────────────────────────────────────────────────────────────────
-const MINUTE = 60_000_000n;
+const MINUTE = 60_000_000n; // a literal minute (engine default fallback)
+const REST = 60_000_000n; // You resting to generate one Health
+const LUMBERJACK = 60_000_000n; // Lumberjack chopping one Wood in the Forest
 const CHOP = 5_000_000n; // Forest chopping one Health
 const MARKET = 3_000_000n; // Market selling one Wood
 const HIRE = 8_000_000n; // Agency processing a hire
@@ -181,20 +183,20 @@ const RESOLVERS: Record<
 > = {
   // You: no inputs, emits one Health per minute (capped on the card_def).
   you: {
-    duration: () => MINUTE,
-    resolve: () => ({ consume: [], produce: ["health"], again: MINUTE }),
+    duration: () => REST,
+    resolve: () => ({ consume: [], produce: ["health"], again: REST }),
   },
 
   // Forest: dual-mode.
   //  - fed a Lumberjack: produce Wood every minute, keep the Lumberjack.
   //  - fed Health: chop once (consuming it), 10% chance of a Lumberjack too.
   forest: {
-    duration: (holes) => (holes[0]?.defId === "lumberjack" ? MINUTE : CHOP),
+    duration: (holes) => (holes[0]?.defId === "lumberjack" ? LUMBERJACK : CHOP),
     resolve: (ctx, holes) => {
       const input = holes[0];
       if (!input) return { consume: [], produce: [], again: null };
       if (input.defId === "lumberjack") {
-        return { consume: [], produce: ["wood"], again: MINUTE };
+        return { consume: [], produce: ["wood"], again: LUMBERJACK };
       }
       const produce = ["wood"];
       if (ctx.random() < 0.1) produce.push("lumberjack");
