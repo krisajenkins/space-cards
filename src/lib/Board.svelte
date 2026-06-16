@@ -112,13 +112,12 @@ type Drag = {
   card: Card;
   def: CardDef | undefined;
   place: string;
-  w: number; // original card size, used to centre the dropped card on the cursor
-  h: number;
-  px: number;
+  px: number; // current pointer position
   py: number;
 };
 let drag = $state<Drag | null>(null);
 let boardEl: HTMLDivElement;
+let ghostEl = $state<HTMLDivElement>();
 // The card most recently bounced off an invalid target — flashed for feedback.
 let rejecting = $state<bigint | null>(null);
 let rejectTimer: ReturnType<typeof setTimeout> | undefined;
@@ -135,14 +134,10 @@ const dragCategory = $derived(
 function startDrag(e: PointerEvent, card: Card) {
   if (e.button !== 0) return;
   e.preventDefault();
-  const el = e.currentTarget as HTMLElement;
-  const r = el.getBoundingClientRect();
   drag = {
     card,
     def: defsById.get(card.defId),
     place: placeOf(card),
-    w: r.width,
-    h: r.height,
     px: e.clientX,
     py: e.clientY,
   };
@@ -184,14 +179,16 @@ function firstValidSlot(verbId: bigint, card: Card): number | null {
   return null;
 }
 
-// Board-space coords for the dropped card's top-left, centring the card on the
-// final pointer position (matching the cursor-centred drag ghost) and
-// accounting for the board's own scroll.
-function dropCoords(d: Drag): { x: number; y: number } {
+// Board-space coords for the dropped card's top-left. The drag ghost is centred
+// on the cursor, so its visual top-left is the cursor minus half the ghost's
+// rendered size — and that top-left is exactly where the card lands. This way
+// the small ghost's corner predictably marks the corner of even a large card,
+// rather than the card growing out from an unpredictable point.
+function dropCoords(d: Drag, ghostW: number, ghostH: number): { x: number; y: number } {
   const r = boardEl.getBoundingClientRect();
   return {
-    x: Math.max(0, d.px - r.left + boardEl.scrollLeft - PAD - d.w / 2),
-    y: Math.max(0, d.py - r.top + boardEl.scrollTop - PAD - d.h / 2),
+    x: Math.max(0, d.px - ghostW / 2 - r.left + boardEl.scrollLeft - PAD),
+    y: Math.max(0, d.py - ghostH / 2 - r.top + boardEl.scrollTop - PAD),
   };
 }
 
@@ -218,6 +215,10 @@ function flashReject(cardId: bigint) {
 function onUp(e: PointerEvent) {
   window.removeEventListener("pointermove", onMove);
   window.removeEventListener("pointerup", onUp);
+  // Capture the ghost's rendered size before it unmounts (offset* ignores the
+  // cosmetic rotate/scale, giving the token's true box).
+  const ghostW = ghostEl?.offsetWidth ?? 0;
+  const ghostH = ghostEl?.offsetHeight ?? 0;
   const d = drag;
   drag = null;
   if (!d) return;
@@ -248,7 +249,7 @@ function onUp(e: PointerEvent) {
   }
 
   // Free drop on the table (reposition / unslot / collect).
-  const { x, y } = dropCoords(d);
+  const { x, y } = dropCoords(d, ghostW, ghostH);
   moveCard({ cardId: d.card.id, x, y });
 }
 </script>
@@ -317,7 +318,11 @@ function onUp(e: PointerEvent) {
 
   <!-- Drag ghost -->
   {#if drag && drag.def}
-    <div class="ghost" style="left: {drag.px}px; top: {drag.py}px">
+    <div
+      class="ghost"
+      bind:this={ghostEl}
+      style="left: {drag.px}px; top: {drag.py}px"
+    >
       <CardToken
         defId={drag.card.defId}
         name={drag.def.name}

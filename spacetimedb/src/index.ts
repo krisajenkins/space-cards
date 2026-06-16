@@ -591,13 +591,17 @@ export const newGame = spacetimedb.reducer((ctx) => {
     userId: me.id,
     role: "player",
   });
-  spawnCard(ctx, b.id, "you", 0, 0);
-  spawnCard(ctx, b.id, "forest", 200, 0);
-  spawnCard(ctx, b.id, "market", 400, 0);
-  spawnCard(ctx, b.id, "agency", 40, 380);
-  spawnCard(ctx, b.id, "health", 0, 150);
-  spawnCard(ctx, b.id, "health", 80, 150);
-  spawnCard(ctx, b.id, "health", 160, 150);
+  // Lay the opening table out with room to breathe — the verb cards are wide
+  // (trays, sockets), so these are spaced for their real footprints: the three
+  // machines along the top, the starting Health beneath You (its source), and
+  // the broad Agency in the bottom-left.
+  spawnCard(ctx, b.id, "you", 40, 40);
+  spawnCard(ctx, b.id, "forest", 360, 40);
+  spawnCard(ctx, b.id, "market", 660, 40);
+  spawnCard(ctx, b.id, "agency", 40, 480);
+  spawnCard(ctx, b.id, "health", 40, 300);
+  spawnCard(ctx, b.id, "health", 150, 300);
+  spawnCard(ctx, b.id, "health", 260, 300);
 });
 
 // Shared gate for slotting card `c` into verb `verb`'s hole `slotIndex`: the
