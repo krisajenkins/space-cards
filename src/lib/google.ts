@@ -12,6 +12,12 @@
 // stored token; sign-in and sign-out here persist the token and reload.
 
 import { writable, get, type Writable } from "svelte/store";
+// The Google OAuth client id and trusted issuers are public, shared config. The
+// server module is their single source of truth — it validates ID tokens
+// against this same audience and issuer set — so import them rather than
+// duplicating (here or in env). See spacetimedb/src/constants.ts.
+import { GOOGLE_CLIENT_ID, GOOGLE_ISSUERS } from "../../spacetimedb/src/constants";
+export { GOOGLE_CLIENT_ID };
 
 const HOST = import.meta.env.VITE_SPACETIMEDB_HOST ?? "ws://localhost:3000";
 const DB_NAME = import.meta.env.VITE_SPACETIMEDB_DB_NAME ?? "spacecards";
@@ -20,10 +26,6 @@ const TOKEN_KEY = `${HOST}/${DB_NAME}/google_id_token`;
 // Cleared on sign-out so we drop back to a fresh anonymous identity rather than
 // reconnecting as the just-signed-out user.
 const STDB_TOKEN_KEY = `${HOST}/${DB_NAME}/auth_token`;
-
-export const GOOGLE_CLIENT_ID: string =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
-const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
 
 // `undefined` = not signed in with Google (connect anonymously / fall back).
 export const googleToken: Writable<string | undefined> =
