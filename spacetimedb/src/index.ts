@@ -215,13 +215,15 @@ const RESOLVERS: Record<
     },
   },
 
-  // Market: sell one Wood for one Coin.
+  // Market: an inbox queue. Sells the wood at the head of the queue (lowest
+  // slot) for a Coin each cycle, then re-fires to work through whatever else is
+  // waiting — `again` drains the queue while `verbReady` stops it when empty.
   market: {
     duration: () => MARKET,
     resolve: (_ctx, holes) => {
       const input = holes[0];
       if (!input) return { consume: [], produce: [], again: null };
-      return { consume: [input.id], produce: ["coin"], again: null };
+      return { consume: [input.id], produce: ["coin"], again: MARKET };
     },
   },
 
@@ -279,16 +281,24 @@ function outputCount(ctx: any, verbCardId: bigint): number {
   ).length;
 }
 
-function requiredHolesFilled(ctx: any, verbCardId: bigint): boolean {
+// A verb is ready to run when every required hole is filled AND — if it has any
+// holes at all — at least one of them is filled. The second clause is what lets
+// a hole-less verb (You, Seed) fire while self-contained, yet stops a verb with
+// optional holes from firing on nothing: the Market's five wood holes are all
+// optional, so it fires whenever any wood is waiting and drains the queue one
+// per cycle, but sits idle when empty.
+function verbReady(ctx: any, verbCardId: bigint): boolean {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb) return false;
-  const required = [...ctx.db.slotDef.defId.filter(verb.defId)].filter(
-    (s: any) => s.required,
-  );
+  const slots = [...ctx.db.slotDef.defId.filter(verb.defId)];
   const holes = holeCards(ctx, verbCardId);
-  return required.every((s: any) =>
-    holes.some((h: any) => h.location.value.slotIndex === s.slotIndex),
-  );
+  const filled = new Set(holes.map((h: any) => h.location.value.slotIndex));
+  const requiredFilled = slots
+    .filter((s: any) => s.required)
+    .every((s: any) => filled.has(s.slotIndex));
+  if (!requiredFilled) return false;
+  if (slots.length > 0 && holes.length === 0) return false; // has holes, none filled
+  return true;
 }
 
 // Begin (or re-begin) a run, unless the output tray is full → then stall.
@@ -330,7 +340,7 @@ function maybeAutostart(ctx: any, verbCardId: bigint): void {
   if (!verb || verb.location.tag !== "tabletop") return;
   const s = ctx.db.situation.cardId.find(verbCardId);
   if (!s || s.state !== "assembling") return;
-  if (requiredHolesFilled(ctx, verbCardId)) tryBeginRun(ctx, verbCardId);
+  if (verbReady(ctx, verbCardId)) tryBeginRun(ctx, verbCardId);
 }
 
 function spawnCard(
@@ -491,13 +501,18 @@ export const init = spacetimedb.init((ctx) => {
     accepts: ["health", "lumberjack"],
     required: true,
   });
-  ctx.db.slotDef.insert({
-    id: 0n,
-    defId: "market",
-    slotIndex: 0,
-    accepts: ["wood"],
-    required: true,
-  });
+  // Market: a five-deep inbox queue for wood. None required — it sells whatever
+  // is waiting, one per cycle (see the market resolver + verbReady), so a single
+  // wood fires it and you can keep topping up the queue while it runs.
+  for (let i = 0; i < 5; i++) {
+    ctx.db.slotDef.insert({
+      id: 0n,
+      defId: "market",
+      slotIndex: i,
+      accepts: ["wood"],
+      required: false,
+    });
+  }
 
   // Agency: ten Coin holes (no quantity in the model — multiplicity is multiple
   // holes; see DATA_MODEL §3.1). All required, so the hire fires only once paid.
@@ -664,17 +679,22 @@ export const newGame = spacetimedb.reducer((ctx) => {
 });
 
 // Shared gate for slotting card `c` into verb `verb`'s hole `slotIndex`: the
-// verb must be an assembling verb, the hole must exist, accept the card, and be
-// empty. Throws a SenderError on any failure. Source-location rules are the
-// caller's to enforce (slotCard wants a tabletop card; collectAndSlot allows
-// any source).
+// verb must exist, the hole must exist, accept the card, and be empty. Throws a
+// SenderError on any failure. Source-location rules are the caller's to enforce
+// (slotCard wants a tabletop card; collectAndSlot allows any source).
+//
+// Note we DON'T require the verb to be idle: you can top up an empty hole while
+// the verb is mid-run, which is what makes the Market an inbox queue (drop more
+// wood while it sells). Single-hole verbs are still effectively locked while
+// running — their one hole is occupied, so the "hole already filled" check below
+// rejects the drop anyway.
 function assertSlottable(ctx: any, c: any, verb: any, slotIndex: number): void {
   if (c.boardId !== verb.boardId)
     throw new SenderError("cards are on different boards");
   const def = ctx.db.cardDef.defId.find(verb.defId);
   if (!def || !def.isVerb) throw new SenderError("target is not a verb");
   const s = ctx.db.situation.cardId.find(verb.id);
-  if (!s || s.state !== "assembling") throw new SenderError("verb is busy");
+  if (!s) throw new SenderError("target is not a verb");
 
   const slot = [...ctx.db.slotDef.defId.filter(verb.defId)].find(
     (sl: any) => sl.slotIndex === slotIndex,
@@ -833,7 +853,7 @@ export const completeSituation = spacetimedb.reducer(
       return;
     }
 
-    if (eff.again !== null && requiredHolesFilled(ctx, verbCardId)) {
+    if (eff.again !== null && verbReady(ctx, verbCardId)) {
       tryBeginRun(ctx, verbCardId);
     } else {
       ctx.db.situation.cardId.update({

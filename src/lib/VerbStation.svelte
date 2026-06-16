@@ -47,9 +47,12 @@ const CIRC = 2 * Math.PI * R;
 const isOngoing = $derived(state === "ongoing");
 const isStalled = $derived(state === "stalled");
 
-// Does an empty, assembling hole accept the card currently being dragged?
+// Does an empty hole accept the card currently being dragged? Open holes light
+// up whatever the verb's run state — you can drop into the Market's inbox while
+// it's mid-sale; a filled hole (the only kind a busy single-hole verb has) is
+// excluded just below.
 function accepts(slot: SlotDef): boolean {
-  if (!dragDefId || state !== "assembling") return false;
+  if (!dragDefId) return false;
   if (slotted.has(slot.slotIndex)) return false;
   return (
     slot.accepts.includes(dragDefId) ||

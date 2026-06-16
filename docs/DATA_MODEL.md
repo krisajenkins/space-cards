@@ -288,9 +288,10 @@ Location =
    verb card and its situation are deleted. If it **is** reusable, the resolver's
    return decides what happens next:
    - **`again = null`** → back to `assembling`; consumed inputs must be
-     re-supplied (Work/Market need a fresh input each run).
-   - **`again = <duration>`** → re-fire after that delay (You emits Health every
-     minute; a Lumberjack-fed Forest emits Wood every minute).
+     re-supplied (a Work needs a fresh input each run).
+   - **`again = <duration>`** → re-fire if still `verbReady` (You emits Health
+     every minute; a Lumberjack-fed Forest emits Wood every minute; a Market
+     keeps selling while wood remains in its inbox, then idles when drained).
 
    Either way a run is gated by the **output cap**: a verb won't begin a run
    while its tray is full, so an uncollected emitter **stalls** instead of
@@ -352,6 +353,17 @@ collected onto the table ("planted") it autostarts. The Seed rides exactly this 
 a verb with no holes, produced by the Forest, that does nothing until you place it
 and then grows (`FOREST_GROWTH`) into a Forest. Placement-triggers-growth needs no
 new state: `moveCard` onto the tabletop runs the same autostart check as slotting.
+
+**Optional holes are an inbox queue.** A verb is _ready to run_ when every
+**required** hole is filled and — if it has any holes at all — at least one is
+filled (`verbReady`). The "at least one" clause is what separates a self-contained
+no-hole verb (You, Seed: always ready) from a verb whose holes are all _optional_:
+the latter fires whenever any one is filled and idles when empty. Combine that
+with re-fire (`again`) and a resolver that consumes the head hole each cycle, and
+the holes become a **queue drained one per cycle** — the Market is a five-deep
+wood inbox. Slotting also doesn't require an idle verb (only an empty, accepting
+hole), so you can keep topping up the queue mid-run; single-hole verbs stay
+effectively locked because their one hole is occupied while they run.
 
 **No failure state.** Every call completes "successfully". The variation is in
 the _outputs_: a resolver may produce something great, produce nothing (inputs
@@ -445,7 +457,10 @@ local server.
 - **Forest** — one hole accepting `health` or `lumberjack`. Health → chop,
   consumed, yields Wood + 10 % Lumberjack. Lumberjack → not consumed, every cycle
   yields Wood, or **5 % a Seed** instead.
-- **Market** — one hole accepting `wood`; yields a Coin.
+- **Market** — a five-deep `wood` inbox queue (five optional holes). Sells the
+  head of the queue for a Coin each cycle and re-fires until the queue is empty;
+  you can drop more wood in while it runs. Exercises the optional-holes / `again`
+  queue pattern (§6).
 - **Agency** — ten required `coin` holes; yields a guaranteed Lumberjack.
 - **Seed** — a one-shot, **no-hole** verb, `outputCap` 0. Dormant in the Forest's
   tray; **planted** on the tabletop it grows for `FOREST_GROWTH` and **`become`s**

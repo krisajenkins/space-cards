@@ -168,8 +168,10 @@ function onMove(e: PointerEvent) {
 function firstValidSlot(verbId: bigint, card: Card): number | null {
   const verbCard = onBoard.find((c) => c.id === verbId);
   if (!verbCard) return null;
+  // Any live verb with a free, accepting hole takes the card — including one
+  // mid-run, so you can keep filling the Market's inbox while it sells.
   const s = situationsByCard.get(verbId);
-  if (!s || s.state !== "assembling") return null;
+  if (!s) return null;
   const filled = slottedFor(verbId);
   const cdef = defsById.get(card.defId);
   for (const slot of slotsByDef.get(verbCard.defId) ?? []) {
