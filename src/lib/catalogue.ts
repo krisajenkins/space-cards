@@ -27,6 +27,8 @@ const G = {
   avatar: `<circle cx="12" cy="12" r="4.3"/><path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.4 5.4l2.1 2.1M16.5 16.5l2.1 2.1M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1"/>`,
   // A pine.
   forest: `<path d="M12 3l4.4 6.4h-2.6L18 15H6l4.2-5.6H7.6z"/><path d="M12 15v6"/>`,
+  // A sprouting seed — a stem with two opening leaves above a buried kernel.
+  seed: `<path d="M12 21v-7"/><path d="M12 14c-1.4 0-4-.6-4-3.2C8 8.6 10.4 8 12 8M12 14c1.4 0 4-.6 4-3.2C16 8.6 13.6 8 12 8"/><ellipse cx="12" cy="18.4" rx="2" ry="2.6" fill="currentColor" stroke="none"/>`,
   // Balance scales — the Market.
   market: `<path d="M12 4v15M7 19h10M5.5 7.5h13M5.5 7.5L3 13a3 3 0 006 0L8 7.5M18.5 7.5L16 13a3 3 0 006 0L21 7.5"/><circle cx="12" cy="4.6" r="1.2" fill="currentColor" stroke="none"/>`,
   // Generic fallback.
@@ -41,6 +43,7 @@ const BY_DEF: Record<string, Visual> = {
   you: { color: "var(--cat-avatar)", glyph: G.avatar },
   forest: { color: "var(--cat-lumberjack)", glyph: G.forest },
   market: { color: "var(--cat-coin)", glyph: G.market },
+  seed: { color: "var(--cat-seed)", glyph: G.seed },
 };
 
 const BY_CATEGORY: Record<string, Visual> = {
@@ -50,6 +53,7 @@ const BY_CATEGORY: Record<string, Visual> = {
   lumberjack: { color: "var(--cat-lumberjack)", glyph: G.lumberjack },
   avatar: { color: "var(--cat-avatar)", glyph: G.avatar },
   station: { color: "var(--cat-station)", glyph: G.market },
+  seed: { color: "var(--cat-seed)", glyph: G.seed },
 };
 
 export function visualFor(defId: string, category: string): Visual {

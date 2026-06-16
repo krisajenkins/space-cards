@@ -5,11 +5,12 @@ import { ScheduleAt, Timestamp } from "spacetimedb";
 // Durations (microseconds)
 // ──────────────────────────────────────────────────────────────────────────
 const MINUTE = 60_000_000n; // a literal minute (engine default fallback)
-const REST = 60_000_000n; // You resting to generate one Health
-const LUMBERJACK = 60_000_000n; // Lumberjack chopping one Wood in the Forest
+const REST = 15_000_000n; // You resting to generate one Health
+const LUMBERJACK = 20_000_000n; // Lumberjack chopping one Wood in the Forest
 const CHOP = 5_000_000n; // Forest chopping one Health
 const MARKET = 3_000_000n; // Market selling one Wood
 const HIRE = 8_000_000n; // Agency processing a hire
+const FOREST_GROWTH = 60_000_000n; // a planted Seed maturing into a Forest
 
 // ──────────────────────────────────────────────────────────────────────────
 // Auth — trusted issuers. We split identity (the principal, `ctx.sender`) from
@@ -172,7 +173,16 @@ export default spacetimedb;
 // Verb behaviour ("code per verb"): duration + resolution decided at runtime
 // from whatever is in the holes.
 // ──────────────────────────────────────────────────────────────────────────
-type Effects = { consume: bigint[]; produce: string[]; again: bigint | null };
+// `become` is transform-in-place: the verb card metamorphoses into a new card
+// where it stood, instead of producing into its output tray (a planted Seed
+// becoming a Forest). When set it supersedes `produce`/recycle — see
+// completeSituation.
+type Effects = {
+  consume: bigint[];
+  produce: string[];
+  again: bigint | null;
+  become?: string;
+};
 
 const RESOLVERS: Record<
   string,
@@ -187,19 +197,20 @@ const RESOLVERS: Record<
     resolve: () => ({ consume: [], produce: ["health"], again: REST }),
   },
 
-  // Forest: dual-mode.
-  //  - fed a Lumberjack: produce Wood every minute, keep the Lumberjack.
-  //  - fed Health: chop once (consuming it), 10% chance of a Lumberjack too.
+  // Forest: dual-mode. Either way a chop yields Wood, or a 10% Seed instead.
+  //  - fed a Lumberjack: chop every minute, keep the Lumberjack.
+  //  - fed Health: chop once (consuming it), plus a 1% chance of a Lumberjack.
   forest: {
     duration: (holes) => (holes[0]?.defId === "lumberjack" ? LUMBERJACK : CHOP),
     resolve: (ctx, holes) => {
       const input = holes[0];
       if (!input) return { consume: [], produce: [], again: null };
+      // 10% of chops throw up a Seed instead of Wood — plant it for a Forest.
+      const produce = [ctx.random() < 0.1 ? "seed" : "wood"];
       if (input.defId === "lumberjack") {
-        return { consume: [], produce: ["wood"], again: LUMBERJACK };
+        return { consume: [], produce, again: LUMBERJACK };
       }
-      const produce = ["wood"];
-      if (ctx.random() < 0.1) produce.push("lumberjack");
+      if (ctx.random() < 0.01) produce.push("lumberjack");
       return { consume: [input.id], produce, again: null };
     },
   },
@@ -212,6 +223,20 @@ const RESOLVERS: Record<
       if (!input) return { consume: [], produce: [], again: null };
       return { consume: [input.id], produce: ["coin"], again: null };
     },
+  },
+
+  // Seed: a no-hole, one-shot grower. It only runs once on the tabletop (see
+  // maybeAutostart's tabletop gate), so a Seed sitting in the Forest's tray
+  // waits, inert-looking, until the player plants it. After FOREST_GROWTH it
+  // metamorphoses into a Forest where it stood (`become`).
+  seed: {
+    duration: () => FOREST_GROWTH,
+    resolve: () => ({
+      consume: [],
+      produce: [],
+      again: null,
+      become: "forest",
+    }),
   },
 
   // Agency: a guaranteed Lumberjack for ten Coins — the deterministic path when
@@ -296,7 +321,15 @@ function tryBeginRun(ctx: any, verbCardId: bigint): void {
   });
 }
 
+// A verb begins a run only when it is idle (assembling) AND on the tabletop.
+// The tabletop gate is what makes "grows once planted" work: a no-hole verb
+// like a Seed won't run while it sits in an output tray, and repositioning an
+// already-running card is a no-op rather than a double-fire.
 function maybeAutostart(ctx: any, verbCardId: bigint): void {
+  const verb = ctx.db.card.id.find(verbCardId);
+  if (!verb || verb.location.tag !== "tabletop") return;
+  const s = ctx.db.situation.cardId.find(verbCardId);
+  if (!s || s.state !== "assembling") return;
   if (requiredHolesFilled(ctx, verbCardId)) tryBeginRun(ctx, verbCardId);
 }
 
@@ -332,12 +365,24 @@ function spawnOutput(
   defId: string,
   verbCardId: bigint,
 ): void {
-  ctx.db.card.insert({
+  const c = ctx.db.card.insert({
     id: 0n,
     boardId,
     defId,
     location: { tag: "output", value: { verbCardId } },
   });
+  // A verb produced into a tray (e.g. a Seed) gets run-state like any verb, but
+  // we do NOT autostart it: it isn't on the tabletop, so it can't run yet. It
+  // begins when the player collects it onto the table — see moveCard.
+  const def = ctx.db.cardDef.defId.find(defId);
+  if (def && def.isVerb) {
+    ctx.db.situation.insert({
+      cardId: c.id,
+      boardId,
+      state: "assembling",
+      endsAt: undefined,
+    });
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -421,6 +466,18 @@ export const init = spacetimedb.init((ctx) => {
   inert("wood", "Wood", "wood");
   inert("coin", "Coin", "coin");
   inert("lumberjack", "Lumberjack", "lumberjack");
+
+  // Seed: a verb, but one-shot and hole-less — it looks inert until planted on
+  // the tabletop, then grows into a Forest. outputCap 0 (it never trays output;
+  // it transforms in place), not reusable (a single metamorphosis).
+  ctx.db.cardDef.insert({
+    defId: "seed",
+    name: "Seed",
+    category: "seed",
+    isVerb: true,
+    reusable: false,
+    outputCap: 0,
+  });
 
   verb("you", "You", "avatar", 5);
   verb("forest", "Forest", "station", 5);
@@ -722,6 +779,11 @@ export const moveCard = spacetimedb.reducer(
       const s = ctx.db.situation.cardId.find(v);
       if (s && s.state === "stalled") tryBeginRun(ctx, v);
     }
+
+    // Planting: a card just placed on the table may now begin (a no-hole verb
+    // like a Seed starts growing the moment it's on the tabletop). Inert cards
+    // and verbs with unfilled holes are no-ops inside maybeAutostart.
+    maybeAutostart(ctx, cardId);
   },
 );
 
@@ -747,6 +809,19 @@ export const completeSituation = spacetimedb.reducer(
       : { consume: [], produce: [], again: null };
 
     for (const id of eff.consume) ctx.db.card.id.delete(id);
+
+    // Transform-in-place: the verb metamorphoses into a new card where it stood
+    // (a Seed → Forest), rather than producing into a tray it would orphan when
+    // it retires. Supersedes produce/recycle — we're done after the swap.
+    if (eff.become) {
+      const pos =
+        verb.location.tag === "tabletop" ? verb.location.value : { x: 0, y: 0 };
+      ctx.db.situation.cardId.delete(verbCardId);
+      ctx.db.card.id.delete(verbCardId);
+      spawnCard(ctx, verb.boardId, eff.become, pos.x, pos.y);
+      return;
+    }
+
     for (const defId of eff.produce)
       spawnOutput(ctx, verb.boardId, defId, verbCardId);
 

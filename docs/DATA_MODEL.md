@@ -335,6 +335,24 @@ completeSituation(timer) {
 }
 ```
 
+**Transform-in-place (`become`).** A resolver may return `become: <defId>`
+instead of producing into a tray: the verb card is deleted and a fresh card of
+`become`'s def is spawned **on the tabletop where the verb stood**. This is how a
+card _metamorphoses_ rather than _manufactures_ — a planted Seed becoming a
+Forest. `become` supersedes `produce`/recycle (the verb is gone), so it's the
+natural shape for a one-shot grower, and it composes into chains (egg → creature,
+sapling → tree). It also sidesteps the orphaned-tray problem a one-shot verb hits
+if it produces into a tray and then deletes itself.
+
+**Grows only on the tabletop.** A verb begins a run only while it is _idle and on
+the tabletop_ (the autostart gate). For verbs with holes this is invisible — they
+already live on the table. But it gives a **no-hole** verb a second life as a
+**maturing card**: produced into a tray it sits dormant and inert-looking;
+collected onto the table ("planted") it autostarts. The Seed rides exactly this —
+a verb with no holes, produced by the Forest, that does nothing until you place it
+and then grows (`FOREST_GROWTH`) into a Forest. Placement-triggers-growth needs no
+new state: `moveCard` onto the tabletop runs the same autostart check as slotting.
+
 **No failure state.** Every call completes "successfully". The variation is in
 the _outputs_: a resolver may produce something great, produce nothing (inputs
 consumed for no benefit), or hand back the very cards you put in. "Disappointing"
@@ -422,12 +440,20 @@ A first end-to-end slice is built in `spacetimedb/src/index.ts` and verified on 
 local server.
 
 - **Cards:** `health`, `wood`, `coin`, `lumberjack` (inert); `you`, `forest`,
-  `market` (verbs).
+  `market`, `agency`, `seed` (verbs).
 - **You** — no holes; emits 1 Health/min, `outputCap` 5. Autostarts on spawn.
-- **Forest** — one hole accepting `health` or `lumberjack`. Health → 5 s chop,
-  consumed, yields Wood + 10 % Lumberjack. Lumberjack → 1 Wood/min, not consumed.
-- **Market** — one hole accepting `wood`; 3 s, yields a Coin.
-- **`newGame`** seeds a board with You, Forest, Market and 3 Health.
+- **Forest** — one hole accepting `health` or `lumberjack`. Health → chop,
+  consumed, yields Wood + 10 % Lumberjack. Lumberjack → not consumed, every cycle
+  yields Wood, or **5 % a Seed** instead.
+- **Market** — one hole accepting `wood`; yields a Coin.
+- **Agency** — ten required `coin` holes; yields a guaranteed Lumberjack.
+- **Seed** — a one-shot, **no-hole** verb, `outputCap` 0. Dormant in the Forest's
+  tray; **planted** on the tabletop it grows for `FOREST_GROWTH` and **`become`s**
+  a Forest in place. Exercises the "grows only on the tabletop" gate and the
+  transform-in-place effect (§6). A Seed left in the tray counts against the
+  Forest's `outputCap`, so an unplanted Seed back-pressures the Forest to a stall —
+  emergent, no extra code.
+- **`newGame`** seeds a board with You, Forest, Market, Agency and 3 Health.
 
 Reducers: `newGame`, `slotCard`, `moveCard` (reposition / unslot / collect), and
 the scheduled `completeSituation`. Verb behaviour lives in a `RESOLVERS` map

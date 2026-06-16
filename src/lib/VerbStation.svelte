@@ -156,6 +156,7 @@ const stateLabel = $derived(
     </div>
   {/if}
 
+  {#if def.outputCap > 0}
   <div class="tray">
     <div class="tray-rail">
       {#each trayCells as cell, i (i)}
@@ -182,6 +183,7 @@ const stateLabel = $derived(
     </div>
     <span class="tray-label">output · {outputs.length}/{def.outputCap}</span>
   </div>
+  {/if}
 </div>
 
 <style>

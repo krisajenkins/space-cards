@@ -45,8 +45,13 @@ const slotsByDef = $derived.by(() => {
 // ── Board state ────────────────────────────────────────────────────────────
 const onBoard = $derived($cards.filter((c) => c.boardId === boardId));
 const looseCards = $derived(onBoard.filter((c) => placeOf(c) === "tabletop"));
+// Only tabletop verbs are stations. A verb can now also sit in a tray (a Seed
+// the Forest produced) — those render as that tray's output token, not as a
+// broken station with no position.
 const verbCards = $derived(
-  onBoard.filter((c) => defsById.get(c.defId)?.isVerb),
+  onBoard.filter(
+    (c) => defsById.get(c.defId)?.isVerb && placeOf(c) === "tabletop",
+  ),
 );
 const situationsByCard = $derived(
   new Map<bigint, Situation>(
