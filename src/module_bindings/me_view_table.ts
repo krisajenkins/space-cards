@@ -11,8 +11,9 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.u64().primaryKey(),
-  boardId: __t.u64().name("board_id"),
   userId: __t.u64().name("user_id"),
-  role: __t.string(),
+  primaryEmail: __t.string().name("primary_email"),
+  displayName: __t.string().name("display_name"),
+  pictureUrl: __t.option(__t.string()).name("picture_url"),
+  isAdmin: __t.bool().name("is_admin"),
 });

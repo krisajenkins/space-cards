@@ -13,7 +13,7 @@ import {
 export const Board = __t.object("Board", {
   id: __t.u64(),
   name: __t.string(),
-  owner: __t.identity(),
+  owner: __t.u64(),
   createdAt: __t.timestamp(),
 });
 export type Board = __Infer<typeof Board>;
@@ -21,7 +21,7 @@ export type Board = __Infer<typeof Board>;
 export const BoardMember = __t.object("BoardMember", {
   id: __t.u64(),
   boardId: __t.u64(),
-  identity: __t.identity(),
+  userId: __t.u64(),
   role: __t.string(),
 });
 export type BoardMember = __Infer<typeof BoardMember>;
@@ -46,6 +46,23 @@ export const CardDef = __t.object("CardDef", {
 });
 export type CardDef = __Infer<typeof CardDef>;
 
+export const Identity = __t.object("Identity", {
+  id: __t.identity(),
+  userId: __t.u64(),
+  get provider() {
+    return IdentityProvider;
+  },
+  linkedAt: __t.timestamp(),
+});
+export type Identity = __Infer<typeof Identity>;
+
+// The tagged union or sum type for the algebraic type `IdentityProvider`.
+export const IdentityProvider = __t.enum("IdentityProvider", {
+  Google: __t.unit(),
+  Spacetime: __t.unit(),
+});
+export type IdentityProvider = __Infer<typeof IdentityProvider>;
+
 // The tagged union or sum type for the algebraic type `Location`.
 export const Location = __t.enum("Location", {
   get Tabletop() {
@@ -59,6 +76,18 @@ export const Location = __t.enum("Location", {
   },
 });
 export type Location = __Infer<typeof Location>;
+
+export const MeRow = __t.object("MeRow", {
+  userId: __t.u64(),
+  primaryEmail: __t.string(),
+  displayName: __t.string(),
+  pictureUrl: __t.option(__t.string()),
+  isAdmin: __t.bool(),
+});
+export type MeRow = __Infer<typeof MeRow>;
+
+export const MeView = __t.object("MeView", {});
+export type MeView = __Infer<typeof MeView>;
 
 export const MyBoardMembers = __t.object("MyBoardMembers", {});
 export type MyBoardMembers = __Infer<typeof MyBoardMembers>;
@@ -79,12 +108,6 @@ export const Output = __t.object("Output", {
   verbCardId: __t.u64(),
 });
 export type Output = __Infer<typeof Output>;
-
-export const Player = __t.object("Player", {
-  identity: __t.identity(),
-  name: __t.string(),
-});
-export type Player = __Infer<typeof Player>;
 
 export const Situation = __t.object("Situation", {
   cardId: __t.u64(),
@@ -121,3 +144,13 @@ export const Tabletop = __t.object("Tabletop", {
   y: __t.f32(),
 });
 export type Tabletop = __Infer<typeof Tabletop>;
+
+export const User = __t.object("User", {
+  id: __t.u64(),
+  primaryEmail: __t.string(),
+  displayName: __t.string(),
+  pictureUrl: __t.option(__t.string()),
+  isAdmin: __t.bool(),
+  createdAt: __t.timestamp(),
+});
+export type User = __Infer<typeof User>;

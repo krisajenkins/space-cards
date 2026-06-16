@@ -9,6 +9,17 @@ const CHOP = 5_000_000n; // Forest chopping one Health
 const MARKET = 3_000_000n; // Market selling one Wood
 
 // ──────────────────────────────────────────────────────────────────────────
+// Auth — trusted issuers. We split identity (the principal, `ctx.sender`) from
+// user (the human); see docs/DATA_MODEL.md §11. A Google JWT auto-links by
+// verified email; everything else must be linked explicitly. The client id is
+// public (not a secret) so it lives here as a constant rather than in env.
+// ──────────────────────────────────────────────────────────────────────────
+// Google mints ID tokens with `iss` as EITHER form — accept both.
+const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
+const GOOGLE_CLIENT_ID =
+  "171597117898-udk35oal7pgj04a08uldr0k7cpa2tuaa.apps.googleusercontent.com";
+
+// ──────────────────────────────────────────────────────────────────────────
 // Where a card is. Mutually-exclusive places → a sum type.
 // ──────────────────────────────────────────────────────────────────────────
 const Location = t.enum("Location", {
@@ -44,14 +55,46 @@ const slotDef = table(
 );
 
 // ──────────────────────────────────────────────────────────────────────────
+// Auth — which provider minted an `identity` row. Payloadless variants.
+// ──────────────────────────────────────────────────────────────────────────
+const IdentityProvider = t.enum("IdentityProvider", {
+  Google: t.unit(),
+  Spacetime: t.unit(),
+});
+
+// ──────────────────────────────────────────────────────────────────────────
 // Ownership. PRIVATE: clients never read these tables directly — they read the
 // per-player `my_*` views below, scoped to board membership. See §2 of the doc.
+//
+// A `user` is a human; an `identity` is one authenticated principal
+// (`ctx.sender`). MANY identities point at one user, so a human who signs in
+// from several providers/devices is one account. Domain tables key on
+// `user.id` (NOT the principal) — keying on the principal would lock out
+// multi-provider auth. See docs/DATA_MODEL.md §11.
 // ──────────────────────────────────────────────────────────────────────────
-const player = table(
-  { name: "player" },
+const user = table(
+  { name: "user" },
   {
-    identity: t.identity().primaryKey(),
-    name: t.string(),
+    id: t.u64().primaryKey().autoInc(),
+    primaryEmail: t.string().unique(), // lower-cased; the cross-provider join key
+    displayName: t.string(),
+    pictureUrl: t.option(t.string()),
+    isAdmin: t.bool(),
+    createdAt: t.timestamp(),
+  },
+);
+
+// One row per linked principal. PK == ctx.sender → O(1) caller resolution.
+const identity = table(
+  {
+    name: "identity",
+    indexes: [{ accessor: "by_user", algorithm: "btree", columns: ["userId"] }],
+  },
+  {
+    id: t.identity().primaryKey(), // == ctx.sender
+    userId: t.u64(), // FK → user.id
+    provider: IdentityProvider,
+    linkedAt: t.timestamp(),
   },
 );
 
@@ -60,7 +103,7 @@ const board = table(
   {
     id: t.u64().primaryKey().autoInc(),
     name: t.string(),
-    owner: t.identity(), // sole authority to transfer cards off this board
+    owner: t.u64(), // user.id — sole authority to transfer cards off this board
     createdAt: t.timestamp(),
   },
 );
@@ -70,7 +113,7 @@ const boardMember = table(
   {
     id: t.u64().primaryKey().autoInc(),
     boardId: t.u64().index("btree"),
-    identity: t.identity().index("btree"),
+    userId: t.u64().index("btree"), // -> user.id
     role: t.string(), // 'player' | 'spectator'
   },
 );
@@ -112,7 +155,8 @@ const situationTimer = table(
 const spacetimedb = schema({
   cardDef,
   slotDef,
-  player,
+  user,
+  identity,
   board,
   boardMember,
   card,
@@ -281,17 +325,52 @@ function spawnOutput(
   });
 }
 
-function assertMember(ctx: any, boardId: bigint): void {
-  const ok = [...ctx.db.boardMember.boardId.filter(boardId)].some((m: any) =>
-    m.identity.isEqual(ctx.sender),
-  );
-  if (!ok) throw new SenderError("not a member of this board");
+// ──────────────────────────────────────────────────────────────────────────
+// Auth helpers. Resolve principal → identity → user. NOTE: `.find()` returns
+// `null` (not `undefined`) when absent — always compare against `null`, or the
+// check is an always-true auth bypass.
+// ──────────────────────────────────────────────────────────────────────────
+function normaliseEmail(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const e = raw.trim().toLowerCase();
+  return e.length > 0 ? e : null;
 }
 
-function ensurePlayer(ctx: any): void {
-  if (!ctx.db.player.identity.find(ctx.sender)) {
-    ctx.db.player.insert({ identity: ctx.sender, name: "Player" });
+function lookupCaller(ctx: any): { identity: any; user: any } | null {
+  const ident = ctx.db.identity.id.find(ctx.sender);
+  if (ident === null) return null; // unknown principal
+  const u = ctx.db.user.id.find(ident.userId);
+  if (u === null) return null; // dangling FK (shouldn't happen)
+  return { identity: ident, user: u };
+}
+
+function requireCaller(ctx: any): { identity: any; user: any } {
+  const caller = lookupCaller(ctx);
+  if (caller === null) {
+    throw new SenderError(
+      "Sign in first — no linked profile for this identity.",
+    );
   }
+  return caller;
+}
+
+function requireAdmin(ctx: any, action: string): { identity: any; user: any } {
+  const caller = requireCaller(ctx);
+  if (!caller.user.isAdmin) {
+    throw new SenderError(`${action} requires admin privileges.`);
+  }
+  return caller;
+}
+
+// Resolve the caller and assert they are a member of the board. Returns the
+// caller's user so callers can use `me.id` for ownership checks.
+function requireMember(ctx: any, boardId: bigint): { user: any } {
+  const { user: me } = requireCaller(ctx);
+  const ok = [...ctx.db.boardMember.boardId.filter(boardId)].some(
+    (m: any) => m.userId === me.id,
+  );
+  if (!ok) throw new SenderError("not a member of this board");
+  return { user: me };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -348,11 +427,124 @@ export const init = spacetimedb.init((ctx) => {
   });
 });
 
+// Auto-link trusted (Google) logins on connect. Connecting is permissive — any
+// principal may open a socket — but the `identity` table is the gate: only a
+// linked principal can do anything (see reducers below). Untrusted providers
+// (e.g. SpacetimeAuth CLI tokens) are NOT auto-linked; they link explicitly via
+// `bootstrap_first_admin` / a future "link account" reducer. See doc §11.
 export const onConnect = spacetimedb.clientConnected((ctx) => {
-  ensurePlayer(ctx);
+  const jwt = ctx.senderAuth.jwt;
+
+  // Trust check: BOTH issuer and audience (issuer alone would accept a token
+  // minted for a different app by the same IdP).
+  const isGoogle =
+    jwt !== null &&
+    GOOGLE_ISSUERS.includes(jwt.issuer) &&
+    jwt.audience.includes(GOOGLE_CLIENT_ID);
+
+  const payload = jwt?.fullPayload ?? null;
+  const email = normaliseEmail(payload?.["email"]);
+  const pictureClaim = payload?.["picture"];
+  const pictureUrl =
+    typeof pictureClaim === "string" ? pictureClaim : undefined;
+  const nameClaim = payload?.["name"];
+  const displayName =
+    typeof nameClaim === "string" && nameClaim.trim().length > 0
+      ? nameClaim.trim()
+      : (email?.split("@")[0] ?? "Player");
+
+  const existing = ctx.db.identity.id.find(ctx.sender);
+
+  // Known principal → refresh ONLY provider-owned fields (email, picture).
+  // Never re-sync displayName: the human owns that once they've edited it.
+  if (existing !== null) {
+    if (!isGoogle || email === null) return;
+    const u = ctx.db.user.id.find(existing.userId);
+    if (u === null) return;
+    // Email rotation: skip the email change if that address now belongs to a
+    // DIFFERENT user (would violate the unique constraint); still refresh picture.
+    const collision = ctx.db.user.primaryEmail.find(email);
+    const nextEmail =
+      collision !== null && collision.id !== u.id ? u.primaryEmail : email;
+    ctx.db.user.id.update({
+      ...u,
+      primaryEmail: nextEmail,
+      pictureUrl: pictureUrl ?? u.pictureUrl,
+    });
+    return;
+  }
+
+  // New principal. Only auto-link providers we trust to assert a verified email.
+  if (!isGoogle || email === null) return;
+
+  // Find-or-create the user by email, then attach this principal. This is what
+  // merges providers: an existing user with that email (CLI bootstrap, prior
+  // login) gets a second identity rather than forking a second human.
+  const existingUser = ctx.db.user.primaryEmail.find(email);
+  const userId =
+    existingUser?.id ??
+    ctx.db.user.insert({
+      id: 0n,
+      primaryEmail: email,
+      displayName,
+      pictureUrl,
+      isAdmin: false,
+      createdAt: ctx.timestamp,
+    }).id;
+
+  ctx.db.identity.insert({
+    id: ctx.sender,
+    userId,
+    provider: { tag: "Google" },
+    linkedAt: ctx.timestamp,
+  });
 });
 
 export const onDisconnect = spacetimedb.clientDisconnected((_ctx) => {});
+
+// Explicit linking for non-auto providers (the CLI / SpacetimeAuth path), which
+// also bootstraps the first admin. Find-or-create the same user the web login
+// resolves to (by email), link THIS principal, and flip isAdmin. One-shot: it
+// refuses once any admin exists, so it closes itself. See doc §5.
+export const bootstrapFirstAdmin = spacetimedb.reducer(
+  { email: t.string() },
+  (ctx, { email }) => {
+    for (const u of ctx.db.user.iter()) {
+      if (u.isAdmin)
+        throw new SenderError("An admin already exists; bootstrap is closed.");
+    }
+    const trimmed = normaliseEmail(email);
+    if (trimmed === null)
+      throw new SenderError("requires the human's primary email.");
+
+    const target =
+      ctx.db.user.primaryEmail.find(trimmed) ??
+      ctx.db.user.insert({
+        id: 0n,
+        primaryEmail: trimmed,
+        displayName: trimmed.split("@")[0] ?? trimmed,
+        pictureUrl: undefined,
+        isAdmin: false,
+        createdAt: ctx.timestamp,
+      });
+
+    const existing = ctx.db.identity.id.find(ctx.sender);
+    if (existing === null) {
+      ctx.db.identity.insert({
+        id: ctx.sender,
+        userId: target.id,
+        provider: { tag: "Spacetime" },
+        linkedAt: ctx.timestamp,
+      });
+    } else if (existing.userId !== target.id) {
+      throw new SenderError(
+        "This identity is already linked to a different user.",
+      );
+    }
+
+    ctx.db.user.id.update({ ...target, isAdmin: true });
+  },
+);
 
 // ──────────────────────────────────────────────────────────────────────────
 // Reducers
@@ -360,17 +552,17 @@ export const onDisconnect = spacetimedb.clientDisconnected((_ctx) => {});
 
 // Start a fresh board for the caller, seeded with You + Forest + Market + Health.
 export const newGame = spacetimedb.reducer((ctx) => {
-  ensurePlayer(ctx);
+  const { user: me } = requireCaller(ctx);
   const b = ctx.db.board.insert({
     id: 0n,
     name: "New Game",
-    owner: ctx.sender,
+    owner: me.id,
     createdAt: ctx.timestamp,
   });
   ctx.db.boardMember.insert({
     id: 0n,
     boardId: b.id,
-    identity: ctx.sender,
+    userId: me.id,
     role: "player",
   });
   spawnCard(ctx, b.id, "you", 0, 0);
@@ -388,7 +580,7 @@ export const slotCard = spacetimedb.reducer(
     const c = ctx.db.card.id.find(cardId);
     const verb = ctx.db.card.id.find(verbCardId);
     if (!c || !verb) throw new SenderError("card not found");
-    assertMember(ctx, c.boardId);
+    requireMember(ctx, c.boardId);
     if (c.boardId !== verb.boardId)
       throw new SenderError("cards are on different boards");
     if (c.location.tag !== "tabletop")
@@ -431,7 +623,7 @@ export const moveCard = spacetimedb.reducer(
   (ctx, { cardId, x, y }) => {
     const c = ctx.db.card.id.find(cardId);
     if (!c) throw new SenderError("card not found");
-    assertMember(ctx, c.boardId);
+    requireMember(ctx, c.boardId);
 
     const old = c.location;
     if (old.tag === "slotted") {
@@ -500,17 +692,52 @@ export const completeSituation = spacetimedb.reducer(
 );
 
 // ──────────────────────────────────────────────────────────────────────────
-// Per-player views: the ONLY way clients read game state. Each is scoped to the
-// boards the caller is a member of (a spectator membership counts), so you can
-// never see another player's game unless you've been invited onto their board.
-// (The catalogue — card_def / slot_def — is read directly; it's public.)
+// Views: the ONLY way clients read game state. Each `my_*` view resolves the
+// caller (principal → identity → user) and returns rows on boards that user is
+// a member of (a spectator membership counts), so you can never see another
+// player's game unless you've been invited onto their board. An unlinked caller
+// resolves to nothing and sees empty results. (The catalogue — card_def /
+// slot_def — is read directly; it's public.)
 // ──────────────────────────────────────────────────────────────────────────
+
+// "Me": who the client is signed in as, and their capabilities. Empty until the
+// caller's principal is linked to a user. NOTE: primaryEmail IS projected here
+// (the caller's own email, to themselves) — but NOT in any cross-user view.
+const MeRow = t.object("MeRow", {
+  userId: t.u64(),
+  primaryEmail: t.string(),
+  displayName: t.string(),
+  pictureUrl: t.option(t.string()),
+  isAdmin: t.bool(),
+});
+
+export const meView = spacetimedb.view(
+  { name: "me_view", public: true },
+  t.array(MeRow),
+  (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
+    const { user: u } = caller;
+    return [
+      {
+        userId: u.id,
+        primaryEmail: u.primaryEmail,
+        displayName: u.displayName,
+        pictureUrl: u.pictureUrl,
+        isAdmin: u.isAdmin,
+      },
+    ];
+  },
+);
+
 export const myBoards = spacetimedb.view(
   { name: "my_boards", public: true },
   t.array(board.rowType),
   (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
     const out: any[] = [];
-    for (const m of ctx.db.boardMember.identity.filter(ctx.sender)) {
+    for (const m of ctx.db.boardMember.userId.filter(caller.user.id)) {
       const b = ctx.db.board.id.find(m.boardId);
       if (b) out.push(b);
     }
@@ -522,8 +749,10 @@ export const myBoardMembers = spacetimedb.view(
   { name: "my_board_members", public: true },
   t.array(boardMember.rowType),
   (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
     const out: any[] = [];
-    for (const mine of ctx.db.boardMember.identity.filter(ctx.sender)) {
+    for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const peer of ctx.db.boardMember.boardId.filter(mine.boardId))
         out.push(peer);
     }
@@ -531,19 +760,22 @@ export const myBoardMembers = spacetimedb.view(
   },
 );
 
+// Co-members of your boards, as `user` rows — but with primaryEmail BLANKED.
+// Email is the cross-provider join key; keep it off the wire (doc §9).
 export const myPlayers = spacetimedb.view(
   { name: "my_players", public: true },
-  t.array(player.rowType),
+  t.array(user.rowType),
   (ctx) => {
-    const seen = new Set<string>();
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
+    const seen = new Set<bigint>();
     const out: any[] = [];
-    for (const mine of ctx.db.boardMember.identity.filter(ctx.sender)) {
+    for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const peer of ctx.db.boardMember.boardId.filter(mine.boardId)) {
-        const hex = peer.identity.toHexString();
-        if (seen.has(hex)) continue;
-        seen.add(hex);
-        const p = ctx.db.player.identity.find(peer.identity);
-        if (p) out.push(p);
+        if (seen.has(peer.userId)) continue;
+        seen.add(peer.userId);
+        const u = ctx.db.user.id.find(peer.userId);
+        if (u) out.push({ ...u, primaryEmail: "" });
       }
     }
     return out;
@@ -554,8 +786,10 @@ export const myCards = spacetimedb.view(
   { name: "my_cards", public: true },
   t.array(card.rowType),
   (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
     const out: any[] = [];
-    for (const mine of ctx.db.boardMember.identity.filter(ctx.sender)) {
+    for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const c of ctx.db.card.boardId.filter(mine.boardId)) out.push(c);
     }
     return out;
@@ -566,8 +800,10 @@ export const mySituations = spacetimedb.view(
   { name: "my_situations", public: true },
   t.array(situation.rowType),
   (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
     const out: any[] = [];
-    for (const mine of ctx.db.boardMember.identity.filter(ctx.sender)) {
+    for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const s of ctx.db.situation.boardId.filter(mine.boardId))
         out.push(s);
     }

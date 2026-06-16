@@ -83,16 +83,17 @@ players, not operators.
 
 ### Visibility matrix
 
-| Table             | Client exposure | How                                             |
-| ----------------- | --------------- | ----------------------------------------------- |
-| `card_def`        | **public**      | Read directly (the catalogue)                   |
-| `slot_def`        | **public**      | Read directly (the catalogue)                   |
-| `player`          | private         | via `my_players` (co-members of your boards)    |
-| `board`           | private         | via `my_boards` (boards you belong to)          |
-| `board_member`    | private         | via `my_board_members` (members of your boards) |
-| `card`            | private         | via `my_cards` (cards on your boards)           |
-| `situation`       | private         | via `my_situations` (calls on your boards)      |
-| `situation_timer` | **none**        | Server-only scheduling table                    |
+| Table             | Client exposure | How                                                                               |
+| ----------------- | --------------- | --------------------------------------------------------------------------------- |
+| `card_def`        | **public**      | Read directly (the catalogue)                                                     |
+| `slot_def`        | **public**      | Read directly (the catalogue)                                                     |
+| `user`            | private         | via `me_view` (yourself, with email) and `my_players` (co-members, email blanked) |
+| `identity`        | private         | never exposed — principal→user mapping (see §11)                                  |
+| `board`           | private         | via `my_boards` (boards you belong to)                                            |
+| `board_member`    | private         | via `my_board_members` (members of your boards)                                   |
+| `card`            | private         | via `my_cards` (cards on your boards)                                             |
+| `situation`       | private         | via `my_situations` (calls on your boards)                                        |
+| `situation_timer` | **none**        | Server-only scheduling table                                                      |
 
 Each `my_*` view collects the caller's `board_member` rows, then returns the rows
 on those boards — so a spectator membership grants read access too, and you see
@@ -154,29 +155,39 @@ slot_def {
 
 ### 3.2 Ownership — players & boards
 
-A board is a play surface ("the table"). Players relate to boards
-**many-to-many**, so single-player, shared, and spectated boards all come from
-one model.
+A board is a play surface ("the table"). A **`user`** is a human (see §11); a
+human relates to boards **many-to-many**, so single-player, shared, and
+spectated boards all come from one model.
 
 ```
-player ──< board_member >── board ──< card
-                                  └──< situation
+user ──< identity                       (a human ←→ their auth principals; §11)
+  └──< board_member >── board ──< card
+                            └──< situation
 ```
 
 ```typescript
-player        { identity: Identity (pk), name: string }
+// The human. NOT the connection principal — see §11. Domain tables key on
+// `user.id`, never on the principal, so multi-provider login is possible.
+user          {
+  id:           u64 (pk, autoinc)
+  primaryEmail: string (unique)   // lower-cased; cross-provider join key
+  displayName:  string
+  pictureUrl:   string?
+  isAdmin:      bool
+  createdAt:    Timestamp
+}
 
 board         {
   id:        u64 (pk, autoinc)
   name:      string
-  owner:     Identity   // the one player who may hand cards off to other boards
+  owner:     u64        // -> user.id; the one human who may hand cards off
   createdAt: Timestamp
 }
 
 board_member  {
   id:       u64 (pk, autoinc)
   boardId:  u64        // -> board
-  identity: Identity   // -> player
+  userId:   u64        // -> user.id
   role:     string     // 'player' | 'spectator'  (the owner is named on `board`)
 }
 ```
@@ -396,7 +407,8 @@ real.
 ## 9. Open questions
 
 1. **Invitations** — how does a `board_member` row come to exist? (Explicitly
-   deferred — "a question for another day".)
+   deferred — "a question for another day".) Authentication itself is now built
+   (§11); what remains is the invite flow that adds a _second_ `user` to a board.
 2. **Resolver authoring ergonomics** — a `RESOLVERS` map keyed by `defId` is fine
    early; at scale, do we want it backed by a registration table?
 3. **View cost at scale** — the `my_*` views recompute over the caller's boards;
@@ -420,7 +432,10 @@ local server.
 Reducers: `newGame`, `slotCard`, `moveCard` (reposition / unslot / collect), and
 the scheduled `completeSituation`. Verb behaviour lives in a `RESOLVERS` map
 keyed by `defId` (the §6 "switch", as a table). Read surface: the five `my_*`
-views; game tables are private, catalogue public, `situation_timer` server-only.
+views plus `me_view` (§11); game tables are private, catalogue public,
+`situation_timer` server-only. All action reducers are gated behind a linked
+identity (§11) — `newGame` resolves the caller to a `user` and owns the board by
+`user.id`.
 
 **Verified live:** autostart, timer→resolve→produce, input consumption,
 probabilistic output (the 10 % Lumberjack), recycle-to-assembling, the continuous
@@ -431,8 +446,75 @@ while the views return correctly-scoped rows.
 **Implemented but not yet exercised live:** the output-cap stall + resume-on-
 collect, and the continuous Lumberjack-fed Forest.
 
-**Still deferred:** invitations, and a client UI (no Svelte front-end yet).
+**Still deferred:** invitations, and the full game UI (the Svelte client is a
+sign-in + new-game shell, not the tabletop yet).
 
-```
+---
 
-```
+## 11. Authentication & identity
+
+SpacetimeDB authenticates a **connection**, not a person: every connection
+arrives as `ctx.sender`, an `Identity` derived from the caller's JWT
+(`blake3(issuer + "|" + subject)`). The same human therefore presents a
+_different_ principal per auth provider/device. So we split **identity** (the
+principal) from **user** (the human), and key all domain data on `user.id` —
+never on the principal. (Keying domain tables on the principal, à la the
+quickstart, would permanently lock out multi-provider login.)
+
+### Two tables
+
+- **`user`** (§3.2) — the human. Synthetic `u64` PK so MANY principals can point
+  at one human. `primaryEmail` is `.unique()` + lower-cased: it's the natural
+  key that lets two providers _discover each other_. Roles (`isAdmin`) live here
+  — a human is an admin once, regardless of device.
+- **`identity`** — one row per linked principal: `id` (the `Identity`, == the
+  principal) as PK → O(1) caller resolution, `userId` FK, `provider`
+  (`Google` | `Spacetime`), `linkedAt`.
+
+### Caller resolution & gating
+
+Every reducer/view resolves the caller in two hops:
+`ctx.sender → identity → user` (`lookupCaller`). The **`identity` table is the
+access gate**: a principal with no row resolves to nothing.
+
+- **Reducers** call `requireCaller` and **throw** when unlinked
+  (`Sign in first …`). `requireAdmin` adds the role check.
+- **Views** call `lookupCaller` and return `[]` when unlinked (graceful empty
+  state) — so an anonymous client may open a socket and read the public
+  catalogue, but sees no game data and can take no action.
+
+> Footgun: `.find()` returns **`null`**, not `undefined`, when absent.
+> `… !== undefined` is an always-true auth bypass — always compare to `null`.
+
+### Linking — Google (auto) vs SpacetimeAuth (explicit)
+
+- **Google** is trusted to assert a verified email, so `onConnect` auto-links:
+  it checks **both** issuer (`accounts.google.com`) **and** audience (our client
+  id) on `ctx.senderAuth.jwt`, then **finds-or-creates a `user` by email** and
+  attaches the principal. Find-or-create-by-email is what merges providers:
+  whoever connects first creates the user; later principals with the same email
+  attach to it. On reconnect only provider-owned fields (email, picture) are
+  refreshed — never `displayName`, which the human owns once edited.
+- **SpacetimeAuth** (the CLI's anonymous-ish token) is **not** auto-linked.
+  `bootstrapFirstAdmin` is the explicit link path (and admin bootstrap): it
+  find-or-creates the user by email, attaches `ctx.sender` as a `Spacetime`
+  identity, and flips `isAdmin`. It refuses once any admin exists, so it
+  self-closes. This same shape — find-or-create user by email, attach the
+  current principal — is the generic account-linking primitive for a future
+  "link account" button.
+
+> Trust rule for any new provider: **only auto-link a provider you trust to
+> prove the join key (email).** Auto-linking an untrusted issuer is an
+> account-takeover vector. Otherwise require an already-trusted session and an
+> explicit link reducer.
+
+### Client
+
+The client's only auth job is to obtain a Google ID token and hand it to the
+connection (`withToken`); the server does the rest on connect. There is **no
+live token swap** on a SpacetimeDB connection, so `Root.svelte` keys the
+`Connection` component on the token store (`{#key $googleToken}`) — a new token
+tears down and rebuilds the connection. Tokens are validated (issuer / audience
+/ `exp`) and stored per host+db, and refreshed ahead of expiry. `me_view` tells
+the UI who it's signed in as. The Google client id is **public** (not a secret):
+it lives as a server constant and as `VITE_GOOGLE_CLIENT_ID` on the client.

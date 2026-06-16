@@ -13,6 +13,6 @@ import {
 export default __t.row({
   id: __t.u64().primaryKey(),
   name: __t.string(),
-  owner: __t.identity(),
+  owner: __t.u64(),
   createdAt: __t.timestamp().name("created_at"),
 });

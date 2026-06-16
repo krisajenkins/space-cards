@@ -34,6 +34,7 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import BootstrapFirstAdminReducer from "./bootstrap_first_admin_reducer";
 import MoveCardReducer from "./move_card_reducer";
 import NewGameReducer from "./new_game_reducer";
 import SlotCardReducer from "./slot_card_reducer";
@@ -42,6 +43,7 @@ import SlotCardReducer from "./slot_card_reducer";
 
 // Import all table schema definitions
 import CardDefRow from "./card_def_table";
+import MeViewRow from "./me_view_table";
 import MyBoardMembersRow from "./my_board_members_table";
 import MyBoardsRow from "./my_boards_table";
 import MyCardsRow from "./my_cards_table";
@@ -97,6 +99,14 @@ const tablesSchema = __schema({
     },
     SlotDefRow,
   ),
+  meView: __table(
+    {
+      name: "me_view",
+      indexes: [],
+      constraints: [],
+    },
+    MeViewRow,
+  ),
   myBoardMembers: __table(
     {
       name: "my_board_members",
@@ -141,6 +151,7 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("bootstrap_first_admin", BootstrapFirstAdminReducer),
   __reducerSchema("move_card", MoveCardReducer),
   __reducerSchema("new_game", NewGameReducer),
   __reducerSchema("slot_card", SlotCardReducer),
