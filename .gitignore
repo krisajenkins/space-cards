@@ -1,6 +1,18 @@
 # Nix
 /.direnv/
 /.envrc
- 
+
 # Claude
 /.claude/
+
+# Spacetime
+node_modules
+dist
+.svelte-kit
+*.log
+
+.DS_Store
+
+spacetime.local.json
+/.env.development.local
+/.env.local

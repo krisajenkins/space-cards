@@ -1,0 +1,8 @@
+{
+  "dev": {
+    "run": "pnpm run dev"
+  },
+  "module-path": "./spacetimedb",
+  "database": "spacecards",
+  "server": "maincloud"
+}
