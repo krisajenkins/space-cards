@@ -1,3 +1,86 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
+# Space Cards
+
+A card-game engine built on SpacetimeDB. The game is a tabletop of cards: inert
+cards (resources) and **verb cards** (functions whose typed "holes" are filled by
+dragging other cards in; when the required holes are filled the verb runs for a
+duration and produces new cards). The authoritative design — the metaphor, the
+data-model rationale, and every decision locked so far — lives in
+`docs/DATA_MODEL.md`. **Read it before changing the schema or game logic.**
+
+Stack: SpacetimeDB TypeScript module (server) + Svelte 5 + Vite (client).
+Package manager is **pnpm**; system deps come from Nix (`direnv reload` / `use
+flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
+
+## Layout
+
+- `spacetimedb/src/index.ts` — the entire server module: tables, reducers, the
+  `RESOLVERS` map, lifecycle hooks, and the `my_*` views. This is where game
+  logic lives. It is its own pnpm package (`spacetimedb/package.json`).
+- `src/` — Svelte client. `main.ts` → `Root.svelte` (sets up
+  `SpacetimeDBProvider`) → `App.svelte` (UI). **Note:** `App.svelte` is still
+  the unmodified `person`-table starter template — the game UI is not built yet.
+- `src/module_bindings/` — generated client bindings. **Do not edit by hand**;
+  regenerate after any schema/reducer change.
+- `docs/DATA_MODEL.md` — design doc and source of truth for intent.
+
+## Commands
+
+```bash
+pnpm dev                       # Vite dev server (client) at localhost:5173
+pnpm build                     # vite build
+pnpm spacetime:generate        # regenerate src/module_bindings from the module
+pnpm spacetime:publish:local   # publish module to the local server
+pnpm spacetime:publish         # publish module to maincloud (default server)
+```
+
+Default DB name is `spacecards`, default server is `maincloud` (see
+`spacetime.json` / `.env.local`). The client reads `VITE_SPACETIMEDB_HOST` and
+`VITE_SPACETIMEDB_DB_NAME`.
+
+Note: the `pnpm generate` script in `package.json` invokes `cargo run -p
+gen-bindings`, but there is no Rust crate in this repo — use
+`pnpm spacetime:generate` (the `spacetime` CLI) instead.
+
+Local iteration loop: `spacetime start` (server) → `pnpm spacetime:publish:local`
+→ `pnpm spacetime:generate` → `pnpm dev`. `spacetime dev` automates rebuild +
+publish + bindings if you prefer it.
+
+There is no test suite. Type-check the client with `svelte-check`.
+
+## Architecture notes specific to this codebase
+
+- **Game tables are private; clients read only through the five `my_*` views**
+  (`my_boards`, `my_board_members`, `my_players`, `my_cards`, `my_situations`),
+  each scoped to the caller's board membership. Only the catalogue (`card_def`,
+  `slot_def`) is `public`. When you add a table that clients need to see, add a
+  membership-scoped view — do not just mark the table public. See §2 of the doc.
+- **A card's place is a `Location` sum type** (`tabletop` / `slotted` / `output`),
+  not separate nullable columns. There is no quantity anywhere — every card is a
+  discrete row; "3 wood" is three cards / three holes.
+- **Verb behaviour is code, not data.** The generic engine (assembly, recycling,
+  output-cap stalls) is shared; per-verb resolution lives in the `RESOLVERS` map
+  keyed by `defId`. A resolver decides duration, what to consume, and whether to
+  re-fire (`again`) at runtime from what's in the holes — durations are not static
+  columns. To add a verb: add a `card_def` (+ `slot_def`s) in `init`, then a
+  `RESOLVERS` entry.
+- **Calls run on per-situation one-shot timers** (`situation_timer`, a scheduled
+  table → `completeSituation`), not a global tick. Zero running calls → zero
+  scheduler work. A re-firing verb inserts a fresh timer each cycle.
+- **No failure state.** Every call "succeeds"; a disappointing output is an
+  outcome, not an error. Don't add a `failed` situation state.
+- Authorisation is always `ctx.sender` via `assertMember`; board-level ownership
+  (`board.owner`) gates cross-board transfers. Never trust identity from args.
+
+The reference below is generic SpacetimeDB documentation.
+
+---
+
 # SpacetimeDB Core Concepts
 
 SpacetimeDB is a relational database that is also a server. It lets you upload application logic directly into the database via WebAssembly modules, eliminating the traditional web/game server layer entirely.
