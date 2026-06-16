@@ -6,8 +6,10 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
-import AddReducer from "../add_reducer";
-import SayHelloReducer from "../say_hello_reducer";
+import MoveCardReducer from "../move_card_reducer";
+import NewGameReducer from "../new_game_reducer";
+import SlotCardReducer from "../slot_card_reducer";
 
-export type AddParams = __Infer<typeof AddReducer>;
-export type SayHelloParams = __Infer<typeof SayHelloReducer>;
+export type MoveCardParams = __Infer<typeof MoveCardReducer>;
+export type NewGameParams = __Infer<typeof NewGameReducer>;
+export type SlotCardParams = __Infer<typeof SlotCardReducer>;

@@ -10,7 +10,114 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const Person = __t.object("Person", {
+export const Board = __t.object("Board", {
+  id: __t.u64(),
+  name: __t.string(),
+  owner: __t.identity(),
+  createdAt: __t.timestamp(),
+});
+export type Board = __Infer<typeof Board>;
+
+export const BoardMember = __t.object("BoardMember", {
+  id: __t.u64(),
+  boardId: __t.u64(),
+  identity: __t.identity(),
+  role: __t.string(),
+});
+export type BoardMember = __Infer<typeof BoardMember>;
+
+export const Card = __t.object("Card", {
+  id: __t.u64(),
+  boardId: __t.u64(),
+  defId: __t.string(),
+  get location() {
+    return Location;
+  },
+});
+export type Card = __Infer<typeof Card>;
+
+export const CardDef = __t.object("CardDef", {
+  defId: __t.string(),
+  name: __t.string(),
+  category: __t.string(),
+  isVerb: __t.bool(),
+  reusable: __t.bool(),
+  outputCap: __t.u32(),
+});
+export type CardDef = __Infer<typeof CardDef>;
+
+// The tagged union or sum type for the algebraic type `Location`.
+export const Location = __t.enum("Location", {
+  get Tabletop() {
+    return Tabletop;
+  },
+  get Slotted() {
+    return Slotted;
+  },
+  get Output() {
+    return Output;
+  },
+});
+export type Location = __Infer<typeof Location>;
+
+export const MyBoardMembers = __t.object("MyBoardMembers", {});
+export type MyBoardMembers = __Infer<typeof MyBoardMembers>;
+
+export const MyBoards = __t.object("MyBoards", {});
+export type MyBoards = __Infer<typeof MyBoards>;
+
+export const MyCards = __t.object("MyCards", {});
+export type MyCards = __Infer<typeof MyCards>;
+
+export const MyPlayers = __t.object("MyPlayers", {});
+export type MyPlayers = __Infer<typeof MyPlayers>;
+
+export const MySituations = __t.object("MySituations", {});
+export type MySituations = __Infer<typeof MySituations>;
+
+export const Output = __t.object("Output", {
+  verbCardId: __t.u64(),
+});
+export type Output = __Infer<typeof Output>;
+
+export const Player = __t.object("Player", {
+  identity: __t.identity(),
   name: __t.string(),
 });
-export type Person = __Infer<typeof Person>;
+export type Player = __Infer<typeof Player>;
+
+export const Situation = __t.object("Situation", {
+  cardId: __t.u64(),
+  boardId: __t.u64(),
+  state: __t.string(),
+  endsAt: __t.option(__t.timestamp()),
+});
+export type Situation = __Infer<typeof Situation>;
+
+export const SituationTimer = __t.object("SituationTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  verbCardId: __t.u64(),
+});
+export type SituationTimer = __Infer<typeof SituationTimer>;
+
+export const SlotDef = __t.object("SlotDef", {
+  id: __t.u64(),
+  defId: __t.string(),
+  slotIndex: __t.u32(),
+  accepts: __t.array(__t.string()),
+  required: __t.bool(),
+});
+export type SlotDef = __Infer<typeof SlotDef>;
+
+export const Slotted = __t.object("Slotted", {
+  verbCardId: __t.u64(),
+  slotIndex: __t.u32(),
+});
+export type Slotted = __Infer<typeof Slotted>;
+
+export const Tabletop = __t.object("Tabletop", {
+  x: __t.f32(),
+  y: __t.f32(),
+});
+export type Tabletop = __Infer<typeof Tabletop>;
