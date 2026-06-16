@@ -1,4 +1,4 @@
-import { schema, table, t } from "spacetimedb/server";
+import { schema, table, t, SenderError } from "spacetimedb/server";
 import { Location, IdentityProvider, type Effects } from "./types";
 import { RESOLVERS } from "./resolvers";
 import {
@@ -150,6 +150,17 @@ export default spacetimedb;
 export const completeSituation = spacetimedb.reducer(
   { timer: situationTimer.rowType },
   (ctx, { timer }) => {
+    // Scheduler-only. A scheduled reducer is callable over the wire like any
+    // other, so without this a client could forge a `timer` row and force-
+    // resolve any verb on any board (skipping durations, mutating cards on
+    // boards they aren't a member of). The scheduler invokes us as the module
+    // itself, so the gate is: sender must be the database's own identity.
+    // (`databaseIdentity` is the non-deprecated accessor; old code used
+    // `ctx.identity`.)
+    if (!ctx.sender.equals(ctx.databaseIdentity)) {
+      throw new SenderError("completeSituation is scheduler-only");
+    }
+
     ctx.db.situationTimer.scheduledId.delete(timer.scheduledId);
 
     const verbCardId = timer.verbCardId;
