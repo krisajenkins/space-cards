@@ -7,6 +7,7 @@ import { ScheduleAt, Timestamp } from "spacetimedb";
 const MINUTE = 60_000_000n;
 const CHOP = 5_000_000n; // Forest chopping one Health
 const MARKET = 3_000_000n; // Market selling one Wood
+const HIRE = 8_000_000n; // Agency processing a hire
 
 // ──────────────────────────────────────────────────────────────────────────
 // Auth — trusted issuers. We split identity (the principal, `ctx.sender`) from
@@ -210,6 +211,18 @@ const RESOLVERS: Record<
       return { consume: [input.id], produce: ["coin"], again: null };
     },
   },
+
+  // Agency: a guaranteed Lumberjack for ten Coins — the deterministic path when
+  // the Forest's 10% drop won't oblige. Eats every coin in its holes (all ten
+  // are required, so a run only fires once full) and hands back one Lumberjack.
+  agency: {
+    duration: () => HIRE,
+    resolve: (_ctx, holes) => ({
+      consume: holes.map((h: any) => h.id),
+      produce: ["lumberjack"],
+      again: null,
+    }),
+  },
 };
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -410,6 +423,7 @@ export const init = spacetimedb.init((ctx) => {
   verb("you", "You", "avatar", 5);
   verb("forest", "Forest", "station", 5);
   verb("market", "Market", "station", 10);
+  verb("agency", "Agency", "station", 3);
 
   ctx.db.slotDef.insert({
     id: 0n,
@@ -425,6 +439,18 @@ export const init = spacetimedb.init((ctx) => {
     accepts: ["wood"],
     required: true,
   });
+
+  // Agency: ten Coin holes (no quantity in the model — multiplicity is multiple
+  // holes; see DATA_MODEL §3.1). All required, so the hire fires only once paid.
+  for (let i = 0; i < 10; i++) {
+    ctx.db.slotDef.insert({
+      id: 0n,
+      defId: "agency",
+      slotIndex: i,
+      accepts: ["coin"],
+      required: true,
+    });
+  }
 });
 
 // Auto-link trusted (Google) logins on connect. Connecting is permissive — any
@@ -568,6 +594,7 @@ export const newGame = spacetimedb.reducer((ctx) => {
   spawnCard(ctx, b.id, "you", 0, 0);
   spawnCard(ctx, b.id, "forest", 200, 0);
   spawnCard(ctx, b.id, "market", 400, 0);
+  spawnCard(ctx, b.id, "agency", 40, 380);
   spawnCard(ctx, b.id, "health", 0, 150);
   spawnCard(ctx, b.id, "health", 80, 150);
   spawnCard(ctx, b.id, "health", 160, 150);
