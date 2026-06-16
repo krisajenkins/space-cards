@@ -1,0 +1,117 @@
+<script lang="ts">
+// A single inert resource card — a warm parchment token engraved with its
+// glyph. Purely presentational: the Board owns position and drag handling and
+// wraps this in a draggable surface. `size` lets a hole render a snug copy.
+import { visualFor } from "./catalogue";
+
+let {
+  defId,
+  name,
+  category,
+  size = "md",
+  grabbing = false,
+}: {
+  defId: string;
+  name: string;
+  category: string;
+  size?: "sm" | "md";
+  grabbing?: boolean;
+} = $props();
+
+const v = $derived(visualFor(defId, category));
+</script>
+
+<div
+  class="token"
+  class:sm={size === "sm"}
+  class:grabbing
+  style="--tint: {v.color}"
+>
+  <div class="glyph">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      {@html v.glyph}
+    </svg>
+  </div>
+  <div class="name">{name}</div>
+</div>
+
+<style>
+.token {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 92px;
+  height: 116px;
+  padding: 0.5rem;
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 30%),
+    linear-gradient(180deg, var(--parchment), var(--parchment-2));
+  color: var(--parchment-ink);
+  border: 1px solid rgba(120, 96, 50, 0.45);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 -10px 18px -14px rgba(70, 50, 10, 0.6) inset,
+    0 14px 22px -14px rgba(0, 0, 0, 0.85);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* a coloured spine across the top, tinted by category */
+.token::before {
+  content: "";
+  position: absolute;
+  inset: 6px 6px auto 6px;
+  height: 5px;
+  border-radius: 4px;
+  background: var(--tint);
+  opacity: 0.92;
+  box-shadow: 0 0 10px -1px var(--tint);
+}
+
+.token.grabbing {
+  cursor: grabbing;
+}
+
+.glyph {
+  color: var(--tint);
+  margin-top: 0.35rem;
+}
+.glyph svg {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.45));
+}
+
+.name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.86rem;
+  line-height: 1;
+  text-align: center;
+  color: #3a311f;
+}
+
+/* compact variant for slots / trays */
+.token.sm {
+  width: 64px;
+  height: 80px;
+  border-radius: 10px;
+  gap: 0.15rem;
+}
+.token.sm .glyph svg {
+  width: 30px;
+  height: 30px;
+}
+.token.sm .name {
+  font-size: 0.62rem;
+}
+.token.sm::before {
+  height: 4px;
+}
+</style>

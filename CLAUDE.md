@@ -22,9 +22,17 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
 - `spacetimedb/src/index.ts` — the entire server module: tables, reducers, the
   `RESOLVERS` map, lifecycle hooks, and the `my_*` views. This is where game
   logic lives. It is its own pnpm package (`spacetimedb/package.json`).
-- `src/` — Svelte client. `main.ts` → `Root.svelte` (sets up
-  `SpacetimeDBProvider`) → `App.svelte` (UI). **Note:** `App.svelte` is still
-  the unmodified `person`-table starter template — the game UI is not built yet.
+- `src/` — Svelte client. `main.ts` (imports global `app.css`) → `Root.svelte`
+  (sets up `SpacetimeDBProvider`) → `App.svelte`. `App.svelte` shows a sign-in
+  hero when signed out, and otherwise drops the player straight into their one
+  board (`my_boards[0]`) — v1 deliberately does **not** list boards even though
+  the schema allows many. The tabletop UI lives in `src/lib/`: `Board.svelte`
+  (freeform pointer-drag surface; turns drops into `slot_card` / `move_card`,
+  runs the rAF countdown clock), `VerbStation.svelte` (a verb card — sockets,
+  countdown ring, output tray), `CardToken.svelte` (a resource card), and
+  `catalogue.ts` (per-card colours + SVG glyphs, `Location`-tag + time helpers).
+  Aesthetic: a dark "celestial workbench" (Fraunces / Hanken Grotesk / Space
+  Mono, brass + astral-cyan).
 - `src/module_bindings/` — generated client bindings. **Do not edit by hand**;
   regenerate after any schema/reducer change.
 - `docs/DATA_MODEL.md` — design doc and source of truth for intent.

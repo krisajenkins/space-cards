@@ -573,6 +573,35 @@ export const newGame = spacetimedb.reducer((ctx) => {
   spawnCard(ctx, b.id, "health", 160, 150);
 });
 
+// Shared gate for slotting card `c` into verb `verb`'s hole `slotIndex`: the
+// verb must be an assembling verb, the hole must exist, accept the card, and be
+// empty. Throws a SenderError on any failure. Source-location rules are the
+// caller's to enforce (slotCard wants a tabletop card; collectAndSlot allows
+// any source).
+function assertSlottable(ctx: any, c: any, verb: any, slotIndex: number): void {
+  if (c.boardId !== verb.boardId)
+    throw new SenderError("cards are on different boards");
+  const def = ctx.db.cardDef.defId.find(verb.defId);
+  if (!def || !def.isVerb) throw new SenderError("target is not a verb");
+  const s = ctx.db.situation.cardId.find(verb.id);
+  if (!s || s.state !== "assembling") throw new SenderError("verb is busy");
+
+  const slot = [...ctx.db.slotDef.defId.filter(verb.defId)].find(
+    (sl: any) => sl.slotIndex === slotIndex,
+  );
+  if (!slot) throw new SenderError("no such hole");
+  const cdef = ctx.db.cardDef.defId.find(c.defId);
+  const cat = cdef ? cdef.category : "";
+  if (!slot.accepts.includes(c.defId) && !slot.accepts.includes(cat))
+    throw new SenderError("that card is not accepted here");
+  if (
+    holeCards(ctx, verb.id).some(
+      (h: any) => h.location.value.slotIndex === slotIndex,
+    )
+  )
+    throw new SenderError("hole already filled");
+}
+
 // Drop a loose card into a verb's hole.
 export const slotCard = spacetimedb.reducer(
   { cardId: t.u64(), verbCardId: t.u64(), slotIndex: t.u32() },
@@ -581,37 +610,54 @@ export const slotCard = spacetimedb.reducer(
     const verb = ctx.db.card.id.find(verbCardId);
     if (!c || !verb) throw new SenderError("card not found");
     requireMember(ctx, c.boardId);
-    if (c.boardId !== verb.boardId)
-      throw new SenderError("cards are on different boards");
     if (c.location.tag !== "tabletop")
       throw new SenderError("card is not loose on the table");
 
-    const def = ctx.db.cardDef.defId.find(verb.defId);
-    if (!def || !def.isVerb) throw new SenderError("target is not a verb");
-    const s = ctx.db.situation.cardId.find(verbCardId);
-    if (!s || s.state !== "assembling") throw new SenderError("verb is busy");
-
-    const slot = [...ctx.db.slotDef.defId.filter(verb.defId)].find(
-      (sl: any) => sl.slotIndex === slotIndex,
-    );
-    if (!slot) throw new SenderError("no such hole");
-    const cdef = ctx.db.cardDef.defId.find(c.defId);
-    const cat = cdef ? cdef.category : "";
-    if (!slot.accepts.includes(c.defId) && !slot.accepts.includes(cat)) {
-      throw new SenderError("that card is not accepted here");
-    }
-    if (
-      holeCards(ctx, verbCardId).some(
-        (h: any) => h.location.value.slotIndex === slotIndex,
-      )
-    ) {
-      throw new SenderError("hole already filled");
-    }
+    assertSlottable(ctx, c, verb, slotIndex);
 
     ctx.db.card.id.update({
       ...c,
       location: { tag: "slotted", value: { verbCardId, slotIndex } },
     });
+    maybeAutostart(ctx, verbCardId);
+  },
+);
+
+// Collect a produced (output) or slotted card and drop it straight into another
+// verb's hole — atomically. This is the one-gesture equivalent of moveCard then
+// slotCard, but in a single transaction, so the target verb can't slip out of
+// `assembling` in the gap. Freeing an output slot may resume a stalled emitter,
+// exactly as moveCard's collect path does.
+export const collectAndSlot = spacetimedb.reducer(
+  { cardId: t.u64(), verbCardId: t.u64(), slotIndex: t.u32() },
+  (ctx, { cardId, verbCardId, slotIndex }) => {
+    const c = ctx.db.card.id.find(cardId);
+    const verb = ctx.db.card.id.find(verbCardId);
+    if (!c || !verb) throw new SenderError("card not found");
+    requireMember(ctx, c.boardId);
+
+    const old = c.location;
+    // A card bound to a verb that's mid-run can't be pulled out.
+    if (old.tag === "slotted") {
+      const src = ctx.db.situation.cardId.find(old.value.verbCardId);
+      if (src && src.state !== "assembling")
+        throw new SenderError("cannot take a card out of a running verb");
+    }
+
+    assertSlottable(ctx, c, verb, slotIndex);
+
+    ctx.db.card.id.update({
+      ...c,
+      location: { tag: "slotted", value: { verbCardId, slotIndex } },
+    });
+
+    // Vacating an output tray can un-stall the verb that produced this card.
+    if (old.tag === "output") {
+      const src = ctx.db.situation.cardId.find(old.value.verbCardId);
+      if (src && src.state === "stalled")
+        tryBeginRun(ctx, old.value.verbCardId);
+    }
+
     maybeAutostart(ctx, verbCardId);
   },
 );

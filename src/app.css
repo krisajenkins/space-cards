@@ -1,0 +1,194 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Space Cards — "Celestial Workbench"
+   A dark, tactile orrery: deep void felt, brass machinery, warm parchment
+   tokens, and a cool astral glow on anything that's running.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* surfaces */
+  --void: #080a14;
+  --void-2: #0e1222;
+  --felt: #131830;
+  --felt-line: rgba(154, 176, 230, 0.07);
+  --panel: #171d34;
+  --panel-edge: rgba(201, 214, 255, 0.1);
+
+  /* paper / tokens */
+  --parchment: #efe6d2;
+  --parchment-2: #e2d4b6;
+  --parchment-ink: #2a2418;
+  --parchment-faint: #8a7d60;
+
+  /* metals & energy */
+  --brass: #cba65a;
+  --brass-bright: #ead29a;
+  --brass-deep: #8a6d2f;
+  --astral: #74c7d6; /* "running" / time energy */
+  --astral-bright: #aef0fb;
+  --ember: #ef7a52;
+
+  /* category tints */
+  --cat-health: #ef7a52;
+  --cat-wood: #c08a4c;
+  --cat-coin: #ecc35a;
+  --cat-lumberjack: #74b06a;
+  --cat-avatar: #b491e6;
+  --cat-station: #cba65a;
+
+  /* type */
+  --display: "Fraunces", Georgia, serif;
+  --body: "Hanken Grotesk", system-ui, sans-serif;
+  --mono: "Space Mono", ui-monospace, monospace;
+
+  --ink: #ece7da;
+  --ink-soft: #aab0c6;
+  --ink-faint: #6f7796;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--body);
+  color: var(--ink);
+  background-color: var(--void);
+  background-image:
+    radial-gradient(
+      120% 90% at 50% -10%,
+      rgba(116, 199, 214, 0.12),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 80% at 85% 110%,
+      rgba(203, 166, 90, 0.1),
+      transparent 60%
+    ),
+    radial-gradient(circle at 50% 40%, var(--felt), var(--void) 80%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  height: 100%;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+button {
+  font-family: var(--body);
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(116, 199, 214, 0.32);
+  color: #fff;
+}
+
+/* slim, brassy scrollbars */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(203, 166, 90, 0.28);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(203, 166, 90, 0.5);
+  background-clip: content-box;
+}
+
+/* a primary brass button, used across the shell */
+.cw-btn {
+  appearance: none;
+  border: 1px solid var(--brass-deep);
+  background: linear-gradient(180deg, #b98f3e, #8a6829);
+  color: #1d1606;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.7rem 1.4rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  box-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.35) inset,
+    0 10px 24px -12px rgba(0, 0, 0, 0.9);
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.cw-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.cw-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.cw-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cw-btn--ghost {
+  background: rgba(20, 26, 46, 0.7);
+  border: 1px solid var(--panel-edge);
+  color: var(--ink-soft);
+  box-shadow: none;
+  font-weight: 600;
+}
+.cw-btn--ghost:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: rgba(201, 214, 255, 0.25);
+  filter: none;
+}
+
+/* Rejection flash — a card bounced off an invalid target shakes in place.
+   Global so both loose cards (Board) and slotted/output cards (VerbStation)
+   can use it. */
+@keyframes reject {
+  0% {
+    transform: translateX(0);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  15% {
+    filter: drop-shadow(0 0 14px rgba(239, 122, 82, 0.85));
+  }
+  20% {
+    transform: translateX(-7px) rotate(-3deg);
+  }
+  40% {
+    transform: translateX(6px) rotate(2deg);
+  }
+  60% {
+    transform: translateX(-4px) rotate(-1deg);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}

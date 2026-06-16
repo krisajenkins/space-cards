@@ -35,6 +35,7 @@ import {
 
 // Import all reducer arg schemas
 import BootstrapFirstAdminReducer from "./bootstrap_first_admin_reducer";
+import CollectAndSlotReducer from "./collect_and_slot_reducer";
 import MoveCardReducer from "./move_card_reducer";
 import NewGameReducer from "./new_game_reducer";
 import SlotCardReducer from "./slot_card_reducer";
@@ -152,6 +153,7 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("bootstrap_first_admin", BootstrapFirstAdminReducer),
+  __reducerSchema("collect_and_slot", CollectAndSlotReducer),
   __reducerSchema("move_card", MoveCardReducer),
   __reducerSchema("new_game", NewGameReducer),
   __reducerSchema("slot_card", SlotCardReducer),
