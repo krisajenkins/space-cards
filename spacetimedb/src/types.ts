@@ -25,10 +25,14 @@ export const IdentityProvider = t.enum("IdentityProvider", {
 // where it stood, instead of producing into its output tray (a planted Seed
 // becoming a Forest). When set it supersedes `produce`/recycle — see
 // completeSituation.
+// `again` is the re-fire flag: when true, the verb starts another run as soon
+// as this one completes (if its holes are still filled); when false it falls
+// idle and waits for the player. The next run's length is recomputed from
+// `duration()` — `again` does not carry it.
 export type Effects = {
   consume: bigint[];
   produce: string[];
-  again: bigint | null;
+  again: boolean;
   become?: string;
 };
 

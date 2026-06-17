@@ -22,7 +22,7 @@ export const RESOLVERS: Record<
   // You: no inputs, emits one Health per minute (capped on the card_def).
   you: {
     duration: () => REST,
-    resolve: () => ({ consume: [], produce: ["health"], again: REST }),
+    resolve: () => ({ consume: [], produce: ["health"], again: true }),
   },
 
   // Forest: dual-mode. Either way a chop yields Wood, or a 10% Seed instead.
@@ -32,14 +32,15 @@ export const RESOLVERS: Record<
     duration: (holes) => (holes[0]?.defId === "lumberjack" ? LUMBERJACK : CHOP),
     resolve: (ctx, holes) => {
       const input = holes[0];
-      if (!input) return { consume: [], produce: [], again: null };
+      if (!input) return { consume: [], produce: [], again: false };
       // 10% of chops throw up a Seed instead of Wood — plant it for a Forest.
       const produce = [ctx.random() < 0.1 ? "seed" : "wood"];
       if (input.defId === "lumberjack") {
-        return { consume: [], produce, again: LUMBERJACK };
+        return { consume: [], produce, again: true };
       }
+      // During 10% of your chopping you'll meet a lumberjack
       if (ctx.random() < 0.01) produce.push("lumberjack");
-      return { consume: [input.id], produce, again: null };
+      return { consume: [input.id], produce, again: false };
     },
   },
 
@@ -50,8 +51,8 @@ export const RESOLVERS: Record<
     duration: () => MARKET,
     resolve: (_ctx, holes) => {
       const input = holes[0];
-      if (!input) return { consume: [], produce: [], again: null };
-      return { consume: [input.id], produce: ["coin"], again: MARKET };
+      if (!input) return { consume: [], produce: [], again: false };
+      return { consume: [input.id], produce: ["coin"], again: true };
     },
   },
 
@@ -64,7 +65,7 @@ export const RESOLVERS: Record<
     resolve: () => ({
       consume: [],
       produce: [],
-      again: null,
+      again: false,
       become: "forest",
     }),
   },
@@ -77,7 +78,7 @@ export const RESOLVERS: Record<
     resolve: (_ctx, holes) => ({
       consume: holes.map((h: any) => h.id),
       produce: ["lumberjack"],
-      again: null,
+      again: false,
     }),
   },
 };

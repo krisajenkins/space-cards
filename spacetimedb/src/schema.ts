@@ -176,7 +176,7 @@ export const completeSituation = spacetimedb.reducer(
     const holes = holeCards(ctx, verbCardId);
     const eff: Effects = r
       ? r.resolve(ctx, holes)
-      : { consume: [], produce: [], again: null };
+      : { consume: [], produce: [], again: false };
 
     for (const id of eff.consume) ctx.db.card.id.delete(id);
 
@@ -203,7 +203,7 @@ export const completeSituation = spacetimedb.reducer(
       return;
     }
 
-    if (eff.again !== null && verbReady(ctx, verbCardId)) {
+    if (eff.again && verbReady(ctx, verbCardId)) {
       tryBeginRun(ctx, verbCardId);
     } else {
       ctx.db.situation.cardId.update({
