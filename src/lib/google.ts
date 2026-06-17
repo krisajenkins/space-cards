@@ -1,9 +1,15 @@
 // Google Identity Services (GIS) + token lifecycle.
 //
-// The client's only auth job is to obtain a Google ID token (a JWT) and hand it
-// to the SpacetimeDB connection. The server (onConnect) validates issuer +
-// audience and links the principal to a user by verified email. See
-// docs/DATA_MODEL.md §11 and the multi-identity auth note.
+// The client's only auth job is to obtain a Google ID token (a JWT) ONCE and
+// hand it to the SpacetimeDB connection to establish identity. The server
+// (onConnect) validates issuer + audience and links the principal to a user by
+// verified email. See docs/DATA_MODEL.md §11 and the multi-identity auth note.
+//
+// The Google ID token lives only ~1 hour and is NOT what keeps a session alive:
+// SpacetimeDB re-issues the same identity as a long-lived session token, which
+// Connection.svelte persists and reuses. So we deliberately do NOT keep the
+// Google JWT refreshed — once it has linked the identity, the SpacetimeDB token
+// carries the session and Google is touched again only on an explicit re-login.
 //
 // There is no live token swap on a SpacetimeDB connection, and the Svelte SDK
 // keeps the connection in a page-lifetime singleton that's reused across
@@ -16,7 +22,10 @@ import { writable, get, type Writable } from "svelte/store";
 // server module is their single source of truth — it validates ID tokens
 // against this same audience and issuer set — so import them rather than
 // duplicating (here or in env). See spacetimedb/src/constants.ts.
-import { GOOGLE_CLIENT_ID, GOOGLE_ISSUERS } from "../../spacetimedb/src/constants";
+import {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_ISSUERS,
+} from "../../spacetimedb/src/constants";
 export { GOOGLE_CLIENT_ID };
 
 const HOST = import.meta.env.VITE_SPACETIMEDB_HOST ?? "ws://localhost:3000";
@@ -69,25 +78,13 @@ function loadValidToken(): string | undefined {
   return undefined;
 }
 
-// Persist a token silently (no reload). Used for proactive refresh: the live
-// connection already holds its own SpacetimeDB session, so a refreshed Google
-// token only needs to be stored for the next page load.
+// Persist a freshly-minted Google ID token and publish it to the store. We do
+// NOT schedule any refresh: the SpacetimeDB session token (held by the live
+// connection) is what keeps us signed in past the Google token's ~1h expiry, so
+// there's nothing to keep alive here. Only called on an explicit sign-in.
 function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
   googleToken.set(token);
-  scheduleRefresh(token);
-}
-
-let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-const REFRESH_LEAD_MS = 5 * 60 * 1000;
-
-function scheduleRefresh(token: string): void {
-  if (refreshTimer) clearTimeout(refreshTimer);
-  const claims = decodeJwt(token);
-  if (!claims?.exp) return;
-  const fireIn = claims.exp * 1000 - Date.now() - REFRESH_LEAD_MS;
-  // GIS "silent" refresh still pops a One-Tap prompt if the session needs it.
-  refreshTimer = setTimeout(() => promptGoogle(), Math.max(fireIn, 1000));
 }
 
 // ── GIS script loading ────────────────────────────────────────────────────
@@ -158,7 +155,6 @@ export async function promptGoogle(): Promise<void> {
 }
 
 export function signOutGoogle(): void {
-  if (refreshTimer) clearTimeout(refreshTimer);
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(STDB_TOKEN_KEY);
   googleToken.set(undefined);
@@ -167,7 +163,3 @@ export function signOutGoogle(): void {
   // on the live (singleton) connection.
   window.location.reload();
 }
-
-// Re-arm the refresh timer for an already-stored token on page load.
-const initial = loadValidToken();
-if (initial) scheduleRefresh(initial);
