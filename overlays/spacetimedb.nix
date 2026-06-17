@@ -7,17 +7,12 @@
 #
 # 2. Update the version number below (without the 'v' prefix)
 #
-# 3. Get hashes for each platform:
-#    For x86_64-darwin:
-#      curl -sL https://github.com/clockworklabs/SpacetimeDB/releases/download/vVERSION/spacetime-x86_64-apple-darwin.tar.gz | nix hash file --sri --type sha256 /dev/stdin
-#    For aarch64-darwin:
-#      curl -sL https://github.com/clockworklabs/SpacetimeDB/releases/download/vVERSION/spacetime-aarch64-apple-darwin.tar.gz | nix hash file --sri --type sha256 /dev/stdin
-#    For x86_64-linux:
-#      curl -sL https://github.com/clockworklabs/SpacetimeDB/releases/download/vVERSION/spacetime-x86_64-unknown-linux-gnu.tar.gz | nix hash file --sri --type sha256 /dev/stdin
-#    For aarch64-linux:
-#      curl -sL https://github.com/clockworklabs/SpacetimeDB/releases/download/vVERSION/spacetime-aarch64-unknown-linux-gnu.tar.gz | nix hash file --sri --type sha256 /dev/stdin
+# 3. Get the hash (nix-prefetch-url caches into the store, so the build that
+#    follows won't re-download):
+#      nix hash convert --hash-algo sha256 --to sri \
+#        "$(nix-prefetch-url https://github.com/clockworklabs/SpacetimeDB/releases/download/vVERSION/spacetime-aarch64-apple-darwin.tar.gz)"
 #
-# 4. Update the hashes below
+# 4. Update the hash below
 #
 # 5. Test: nix build .#spacetimedb
 #
@@ -31,27 +26,12 @@
 final: prev: {
   spacetimedb = prev.stdenv.mkDerivation rec {
     pname = "spacetime";
-    version = "2.5.0";
+    version = "2.6.0";
 
-    src = prev.fetchurl (
-      if prev.stdenv.hostPlatform.system == "x86_64-darwin" then {
-        url = "https://github.com/clockworklabs/SpacetimeDB/releases/download/v${version}/spacetime-x86_64-apple-darwin.tar.gz";
-        hash = "sha256-2GaJZ2kpAMb7c6IYCHSQSFFWKcHSP7+nbDVXiOLSJ0w=";
-      }
-      else if prev.stdenv.hostPlatform.system == "aarch64-darwin" then {
-        url = "https://github.com/clockworklabs/SpacetimeDB/releases/download/v${version}/spacetime-aarch64-apple-darwin.tar.gz";
-        hash = "sha256-Cz0mbj8MkfkowFHoJEd+qUHp+ImVKSmf41d7l/puTi0=";
-      }
-      else if prev.stdenv.hostPlatform.system == "x86_64-linux" then {
-        url = "https://github.com/clockworklabs/SpacetimeDB/releases/download/v${version}/spacetime-x86_64-unknown-linux-gnu.tar.gz";
-        hash = "sha256-fI1kJNAJKi2ACKF5lEvIMCqtR/peIdG6Y2X2w6Iha7Y=";
-      }
-      else if prev.stdenv.hostPlatform.system == "aarch64-linux" then {
-        url = "https://github.com/clockworklabs/SpacetimeDB/releases/download/v${version}/spacetime-aarch64-unknown-linux-gnu.tar.gz";
-        hash = "sha256-bau056XKRWQ/Xl0txHXHqkBCcm7jb365ewY51xWVi7M=";
-      }
-      else throw "Unsupported platform: ${prev.stdenv.hostPlatform.system}"
-    );
+    src = prev.fetchurl {
+      url = "https://github.com/clockworklabs/SpacetimeDB/releases/download/v${version}/spacetime-aarch64-apple-darwin.tar.gz";
+      hash = "sha256-GkERAmA0Q3BKzy8AXzTTTIjX3FU1Hy56b0HGPDnoaKQ=";
+    };
 
     # No subdirectory in tarball, binaries are at root
     sourceRoot = ".";
@@ -74,7 +54,7 @@ final: prev: {
       description = "SpacetimeDB CLI and standalone server - a distributed database with intelligent modules";
       homepage = "https://spacetimedb.com";
       license = licenses.bsl11; # Business Source License 1.1 - converts to AGPL-3.0 on 2030-10-31
-      platforms = [ "aarch64-darwin" "x86_64-darwin" "x86_64-linux" "aarch64-linux" ];
+      platforms = [ "aarch64-darwin" ];
       mainProgram = "spacetime";
     };
   };
