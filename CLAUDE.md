@@ -9,9 +9,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A card-game engine built on SpacetimeDB. The game is a tabletop of cards: inert
 cards (resources) and **verb cards** (functions whose typed "holes" are filled by
 dragging other cards in; when the required holes are filled the verb runs for a
-duration and produces new cards). The authoritative design — the metaphor, the
-data-model rationale, and every decision locked so far — lives in
+duration and produces new cards). The authoritative *engine* design — the
+metaphor, the data-model rationale, and every decision locked so far — lives in
 `docs/DATA_MODEL.md`. **Read it before changing the schema or game logic.**
+
+The engine now runs a real game, **Escape the Moon** (crash-land, gather, refine,
+fabricate, automate with drones, build a rocket, escape). Its card list, recipes
+and progression are in `docs/ESCAPE_THE_MOON.md` — **read it before changing
+cards, resolvers, or `newGame`.**
 
 Stack: SpacetimeDB TypeScript module (server) + Svelte 5 + Vite (client).
 Package manager is **pnpm**; system deps come from Nix (`direnv reload` / `use
@@ -19,9 +24,16 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
 
 ## Layout
 
-- `spacetimedb/src/index.ts` — the entire server module: tables, reducers, the
-  `RESOLVERS` map, lifecycle hooks, and the `my_*` views. This is where game
-  logic lives. It is its own pnpm package (`spacetimedb/package.json`).
+- `spacetimedb/src/` — the server module (its own pnpm package). Split into
+  focused files re-exported from `index.ts`: `schema.ts` (tables + the scheduled
+  `completeSituation`), `engine.ts` (the generic verb engine — assembly, runs,
+  output caps, spawning), `resolvers.ts` (the `RESOLVERS` map: per-verb behaviour,
+  the generalised courier, the build/subsystem recipe maps), `lifecycle.ts`
+  (`init` authors the catalogue; connect/disconnect; admin bootstrap),
+  `reducers.ts` (player actions: `newGame`, `slotCard`, `collectAndSlot`,
+  `moveCard`, and admin `devGrant`), `views.ts` (the `my_*` read views),
+  `constants.ts`, `types.ts`, `auth.ts`. Reducer names are snake_cased on the
+  wire (`new_game`, `slot_card`, …).
 - `src/` — Svelte client. `main.ts` (imports global `app.css`) → `Root.svelte`
   (sets up `SpacetimeDBProvider`) → `App.svelte`. `App.svelte` shows a sign-in
   hero when signed out, and otherwise drops the player straight into their one
@@ -35,7 +47,9 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
   Mono, brass + astral-cyan).
 - `src/module_bindings/` — generated client bindings. **Do not edit by hand**;
   regenerate after any schema/reducer change.
-- `docs/DATA_MODEL.md` — design doc and source of truth for intent.
+- `docs/DATA_MODEL.md` — engine design doc and source of truth for intent.
+- `docs/ESCAPE_THE_MOON.md` — the game design: cards, recipes, the two gates
+  (Power / Blueprints), automation-as-reward, and the six-act progression.
 
 ## Commands
 

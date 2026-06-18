@@ -4,16 +4,58 @@ import { holeCards, maybeAutostart, spawnCard, tryBeginRun } from "./engine";
 import { requireCaller, requireMember } from "./auth";
 import type { Ctx, Card } from "./types";
 
+// Admin-only: drop a card of `defId` onto a board. An operational tool — gift a
+// card, or stand up a test scenario without playing the chain by hand. Gated on
+// the caller being an admin AND a member of the board.
+export const devGrant = spacetimedb.reducer(
+  { boardId: t.u64(), defId: t.string(), x: t.f32(), y: t.f32() },
+  (ctx, { boardId, defId, x, y }) => {
+    const { user: me } = requireCaller(ctx);
+    if (!me.isAdmin) throw new SenderError("admin only");
+    requireMember(ctx, boardId);
+    if (!ctx.db.cardDef.defId.find(defId))
+      throw new SenderError("no such card def");
+    spawnCard(ctx, boardId, defId, x, y);
+  },
+);
+
 // ──────────────────────────────────────────────────────────────────────────
 // Reducers
 // ──────────────────────────────────────────────────────────────────────────
 
-// Start a fresh board for the caller, seeded with You + Forest + Market + Health.
+// The Workshop's salvaged manuals — every machine and drone you can build. They
+// are all seeded so the game is always completable; the tech-tree order is
+// enforced by the resource graph, not by withholding the blueprints. See the
+// BUILDS map in resolvers.ts.
+const BLUEPRINTS = [
+  "solar",
+  "refinery",
+  "fabricator",
+  "kiln",
+  "electronics_fab",
+  "ice_mine",
+  "electrolysis",
+  "chem_reactor",
+  "assembler",
+  "rocket",
+  "mining_drone",
+  "survey_drone",
+  "hauler",
+  "feeder",
+  "fitter",
+  "tanker",
+  "cargo",
+];
+
+// Start a fresh board: the crash site. Survivor + the hand-cranked stations
+// (Regolith Field, Wreck, Printer, Workshop), a little bootstrap material, and
+// the shelf of blueprints. From here you build a Solar Array, electrify, and
+// climb the tech tree to a Rocket. See docs/ESCAPE_THE_MOON.md.
 export const newGame = spacetimedb.reducer((ctx) => {
   const { user: me } = requireCaller(ctx);
   const b = ctx.db.board.insert({
     id: 0n,
-    name: "New Game",
+    name: "Crash Site",
     owner: me.id,
     createdAt: ctx.timestamp,
   });
@@ -23,17 +65,26 @@ export const newGame = spacetimedb.reducer((ctx) => {
     userId: me.id,
     role: { tag: "player" },
   });
-  // Lay the opening table out with room to breathe — the verb cards are wide
-  // (trays, sockets), so these are spaced for their real footprints: the three
-  // machines along the top, the starting Health beneath You (its source), and
-  // the broad Agency in the bottom-left.
-  spawnCard(ctx, b.id, "you", 40, 40);
-  spawnCard(ctx, b.id, "forest", 360, 40);
-  spawnCard(ctx, b.id, "market", 660, 40);
-  spawnCard(ctx, b.id, "agency", 40, 480);
-  spawnCard(ctx, b.id, "health", 40, 300);
-  spawnCard(ctx, b.id, "health", 150, 300);
-  spawnCard(ctx, b.id, "health", 260, 300);
+
+  // Tier-0 stations along the top.
+  spawnCard(ctx, b.id, "survivor", 40, 40);
+  spawnCard(ctx, b.id, "regolith_field", 300, 40);
+  spawnCard(ctx, b.id, "wreck", 560, 40);
+  spawnCard(ctx, b.id, "printer", 820, 40);
+  spawnCard(ctx, b.id, "workshop", 1080, 40);
+
+  // A handful of parts so the first Solar Array build isn't a cold start.
+  spawnCard(ctx, b.id, "component", 1080, 320);
+  spawnCard(ctx, b.id, "component", 1180, 320);
+  spawnCard(ctx, b.id, "scrap", 560, 320);
+  spawnCard(ctx, b.id, "scrap", 660, 320);
+
+  // The blueprint shelf, laid out in a grid in the lower band of the table.
+  BLUEPRINTS.forEach((target, i) => {
+    const x = 40 + (i % 9) * 150;
+    const y = 520 + Math.floor(i / 9) * 140;
+    spawnCard(ctx, b.id, `blueprint_${target}`, x, y);
+  });
 });
 
 // Shared gate for slotting card `c` into verb `verb`'s hole `slotIndex`: the
@@ -42,8 +93,8 @@ export const newGame = spacetimedb.reducer((ctx) => {
 // (slotCard wants a tabletop card; collectAndSlot allows any source).
 //
 // Note we DON'T require the verb to be idle: you can top up an empty hole while
-// the verb is mid-run, which is what makes the Market an inbox queue (drop more
-// wood while it sells). Single-hole verbs are still effectively locked while
+// the verb is mid-run, which is what makes a Refinery's raw inbox a queue (drop
+// more scrap while it smelts). Single-hole verbs are still effectively locked while
 // running — their one hole is occupied, so the "hole already filled" check below
 // rejects the drop anyway.
 function assertSlottable(

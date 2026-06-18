@@ -29,10 +29,10 @@ export function outputCount(ctx: Ctx, verbCardId: bigint): number {
 
 // A verb is ready to run when every required hole is filled AND — if it has any
 // holes at all — at least one of them is filled. The second clause is what lets
-// a hole-less verb (You, Seed) fire while self-contained, yet stops a verb with
-// optional holes from firing on nothing: the Market's five wood holes are all
-// optional, so it fires whenever any wood is waiting and drains the queue one
-// per cycle, but sits idle when empty.
+// a hole-less verb (the Survivor, a courier) fire while self-contained, yet
+// stops a verb with optional holes from firing on nothing: a Refinery's raw
+// inbox holes are all optional, so it fires whenever raw is waiting and drains
+// the queue one per cycle, but sits idle when empty.
 export function verbReady(ctx: Ctx, verbCardId: bigint): boolean {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb) return false;

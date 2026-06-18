@@ -1,14 +1,30 @@
 // ──────────────────────────────────────────────────────────────────────────
-// Durations (microseconds)
+// Durations (microseconds) — Escape the Moon.
+//
+// Kept short so the whole gather → refine → fabricate → assemble → launch chain
+// is observable in a live session within a minute or two. The chemistry branch
+// (CHEM) is the deliberate late bottleneck; the courier heartbeat (COURIER_HOLD)
+// is the fastest clock so logistics keep up with production.
 // ──────────────────────────────────────────────────────────────────────────
-export const MINUTE = 60_000_000n; // a literal minute (engine default fallback)
-export const REST = 15_000_000n; // You resting to generate one Health
-export const LUMBERJACK = 20_000_000n; // Lumberjack chopping one Wood in the Forest
-export const CHOP = 5_000_000n; // Forest chopping one Health
-export const MARKET = 3_000_000n; // Market selling one Wood
-export const HIRE = 8_000_000n; // Agency processing a hire
-export const FOREST_GROWTH = 60_000_000n; // a planted Seed maturing into a Forest
-export const WORKER_HOLD = 2_000_000n; // Worker carrying a stolen card before it deposits it
+export const MINUTE = 60_000_000n; // engine default fallback for an unknown verb
+
+export const COURIER_HOLD = 2_000_000n; // a drone carrying one card before it deposits it
+export const EFFORT = 6_000_000n; // the Survivor producing one Effort
+export const SOLAR = 5_000_000n; // the Solar Array producing one Power
+export const GATHER = 4_000_000n; // hand-gathering one raw (Field / Wreck) with Effort
+export const DRONE_GATHER = 5_000_000n; // a catalyst drone gathering one raw, continuously
+export const PRINT = 6_000_000n; // the crude Printer turning raw into a Component
+export const BUILD = 6_000_000n; // the Workshop assembling one machine from a blueprint
+
+export const REFINE = 5_000_000n; // raw → Metal
+export const FABRICATE = 6_000_000n; // Metal → Component
+export const KILN = 6_000_000n; // raw → Silicon / Glass
+export const ELECTRONICS = 7_000_000n; // Silicon → Circuit
+export const MINE_ICE = 6_000_000n; // subsurface ice → Water
+export const ELECTROLYSIS = 7_000_000n; // Water → Hydrogen + Oxygen
+export const CHEM = 10_000_000n; // Hydrogen + Oxygen → Fuel (the bottleneck)
+export const ASSEMBLE = 12_000_000n; // components → a rocket Subsystem
+export const LAUNCH = 15_000_000n; // the Rocket counting down to escape
 
 // ──────────────────────────────────────────────────────────────────────────
 // Auth — trusted issuers. We split identity (the principal, `ctx.sender`) from

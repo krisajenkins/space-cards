@@ -226,22 +226,25 @@ Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then t
 1. **Crash (hands).** Survivor + Regolith Field + Wreck + a crude Printer. Hand-
    feed Effort into everything. *Novelty: the basic gather→make loop. Goal: build
    a Solar Array.*
-2. **Power up.** Solar Array online; electrify the Refinery & Fabricator (faster,
-   but Power-gated — first logistics puzzle). Build the Drone Bay. *Automation:
-   **Mining Drone** + **Hauler Drone** retire hand-gathering and hand-power.*
+2. **Power up.** Build a Solar Array at the Workshop and plant it; electrify the
+   Refinery & Fabricator (faster, but Power-gated — first logistics puzzle).
+   *Automation: a **Mining Drone** + **Hauler Drone** retire hand-gathering and
+   hand-power.*
 3. **The line.** Add the **Feeder Drone** so refine→fabricate runs unattended.
    *Novelty + automation together: you now watch a self-running line for the
    first time. Goal: a fully hands-off metal→component line.*
-4. **Electronics.** Kiln → Silicon, Electronics Fab → Circuit; smarter machines
-   need Circuits. *Novelty: the electronics sub-tree. Automation: **Survey
-   Drone** + **Lab Assistant** start the research engine running itself.*
-5. **Research & chemistry.** Scanner → Data → **Lab** → Blueprints. Ice Mine →
-   Electrolysis → **Chem Reactor** → Fuel (the deliberate bottleneck).
-   *Automation: **Tanker Drone** tames fuel logistics.*
-6. **Liftoff.** **Assembler** (driven by the **Assembly Arm**) builds Engine,
-   Hull, Avionics, Life-Support, Heat-Shield from Components + Circuits +
-   Blueprints. Grind Fuel. Build a **Foreman Drone** and watch the whole base run
-   itself. Slot all six into the **Rocket**; it `become`s **Escape**. *Win.*
+4. **Electronics.** Kiln → Silicon/Glass, Electronics Fab → Circuit; the
+   subsystems need Circuits and Glass. *Novelty: the electronics sub-tree.
+   Automation: the **Survey Drone** works the Wreck and the **Fitter Drone** runs
+   the parts line.*
+5. **Chemistry.** Ice Mine → Water → **Electrolysis** → H₂ + O₂ → **Chem
+   Reactor** → Fuel (the deliberate bottleneck). *Automation: the **Tanker
+   Drone** tames the liquid/fuel logistics.*
+6. **Liftoff.** The **Assembler** builds Engine, Hull, Avionics, Life-Support and
+   Heat-Shield from Components, Circuits, Glass and Water (recipe choice — load
+   for the part you want). Grind Fuel. Let the **Cargo Drone** carry finished
+   subsystems straight into the **Rocket**; once all five subsystems + three Fuel
+   are in, it `become`s **Escape**. *Win.*
 
 ---
 
@@ -278,10 +281,17 @@ without touching the engine.
 4. **~~Drone upkeep.~~ RESOLVED — drones are FREE once built.** The kind version:
    no ongoing Power/parts cost. Simpler and friendlier; the tension lives in
    *building* the automation, not in feeding it.
-5. **Concrete recipe table.** §5 fixes inputs/outputs but not durations, output
-   caps, drone heartbeats, or the exact `ready`-hook predicates for Kiln / Lab /
-   Assembler / Drone Bay. Needs nailing down before implementation.
-6. **Build order / unlock gating.** What stops the player building tier-5 verbs
-   on turn one? Likely: the Drone Bay / Lab / Assembler recipes themselves require
-   Circuits or Blueprints that only exist later — i.e. the tree gates itself
-   through inputs. Confirm the dependency graph has no shortcuts.
+5. **~~Concrete recipe table.~~ RESOLVED — built.** Durations live in
+   `constants.ts`; output caps, holes, and `ready`-hook predicates in
+   `lifecycle.ts` + `resolvers.ts`. Construction is the Workshop reading a
+   Blueprint's `defId` (a clean selector), not the count-matched Lab originally
+   sketched — see §3 Gate 2.
+6. **~~Build order / unlock gating.~~ RESOLVED — the resource graph gates it.**
+   Blueprints are all seeded, but you still can't build a Subsystem without an
+   Assembler + components + power, can't power anything without a Solar Array,
+   etc. The tech-tree order is enforced by input dependencies, with no shortcuts.
+7. **No tabletop UI yet.** The game logic is complete and CLI-verified, but the
+   Svelte client is still the sign-in shell — you currently "play" via
+   `spacetime call`. The freeform drag-and-drop tabletop is the next major piece.
+8. **`devGrant` is an admin tool.** Handy for testing and gifting cards; it is
+   gated on `isAdmin`, but worth revisiting before any public deployment.

@@ -1,60 +1,174 @@
 import {
-  REST,
-  LUMBERJACK,
-  CHOP,
-  MARKET,
-  HIRE,
-  FOREST_GROWTH,
-  WORKER_HOLD,
+  COURIER_HOLD,
+  EFFORT,
+  SOLAR,
+  GATHER,
+  DRONE_GATHER,
+  PRINT,
+  BUILD,
+  REFINE,
+  FABRICATE,
+  KILN,
+  ELECTRONICS,
+  MINE_ICE,
+  ELECTROLYSIS,
+  CHEM,
+  ASSEMBLE,
+  LAUNCH,
 } from "./constants";
 import type { Ctx, Card, Effects, SlottedCard } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Verb behaviour ("code per verb"): duration + resolution decided at runtime
 // from whatever is in the holes. `resolve` also receives the verb card itself,
-// so a hole-less verb (the Worker) can still find its own id / board.
+// so a hole-less verb (a courier) can still find its own id / board.
 // ──────────────────────────────────────────────────────────────────────────
 export type Resolver = {
   duration: (holes: SlottedCard[]) => bigint;
   resolve: (ctx: Ctx, holes: SlottedCard[], verb: Card) => Effects;
   // Optional readiness override, consulted by verbReady on top of the generic
   // "required holes filled" check. It's what lets one verb offer a CHOICE of
-  // recipes — the per-hole `required` flag can only AND holes together, so it
-  // can't express "10 Coins OR 5 Coins + 3 Health". Omit for standard verbs.
+  // recipes, or gate a powered machine on having BOTH power and an input. Omit
+  // for standard verbs.
   ready?: (ctx: Ctx, holes: SlottedCard[], verb: Card) => boolean;
 };
 
-// The Worker only collects from a couple of producing stations — the Forest and
-// the Market. The verb-card skip below also keeps it clear of a Seed sitting in
-// the Forest's tray (nothing accepts a `seed`, so it would carry one forever).
-const WORKER_TAKES_FROM = ["forest", "market"];
+const NOOP: Effects = { consume: [], produce: [], again: false };
 
-// The first card sitting in an eligible output tray on this board — the Worker's
-// loot. Eligibility is by the producing verb, not the card: only the Forest and
-// the Market are fair game.
-function firstOutboxCard(ctx: Ctx, boardId: bigint): Card | null {
+// ──────────────────────────────────────────────────────────────────────────
+// Small hole helpers. A "hole" is a card slotted into a verb; we routinely ask
+// what category it is, count a category, or take N ids of one to consume.
+// ──────────────────────────────────────────────────────────────────────────
+function catOf(ctx: Ctx, card: Card): string {
+  const d = ctx.db.cardDef.defId.find(card.defId);
+  return d ? d.category : "";
+}
+function count(ctx: Ctx, holes: SlottedCard[], cat: string): number {
+  return holes.filter((h) => catOf(ctx, h) === cat).length;
+}
+function take(
+  ctx: Ctx,
+  holes: SlottedCard[],
+  cat: string,
+  n: number,
+): bigint[] {
+  return holes
+    .filter((h) => catOf(ctx, h) === cat)
+    .slice(0, n)
+    .map((h) => h.id);
+}
+const hasPower = (holes: SlottedCard[]) =>
+  holes.some((h) => h.defId === "power");
+
+// A power-gated transformer: one Power + one `inputCat` card per cycle → one
+// `output`. Re-fires while both are present; consuming the Power leaves the
+// required power hole empty, so it idles the moment power runs out (the Power
+// gate) and resumes when a Hauler — or the player — re-feeds it.
+function poweredOne(dur: bigint, inputCat: string, output: string): Resolver {
+  return {
+    duration: () => dur,
+    ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, inputCat) > 0,
+    resolve: (ctx, holes) => {
+      const power = take(ctx, holes, "power", 1);
+      const input = take(ctx, holes, inputCat, 1);
+      if (power.length === 0 || input.length === 0) return NOOP;
+      return { consume: [...power, ...input], produce: [output], again: true };
+    },
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Construction. A Blueprint card's defId is the unambiguous selector for what
+// the Workshop builds — no fragile count-matching. Blueprints are seeded as
+// "salvaged manuals" (newGame), so every machine is reachable; the TECH-TREE
+// ORDER is enforced by the resource graph (you can't build a Subsystem without
+// an Assembler + components + power), not by gating the manuals.
+// ──────────────────────────────────────────────────────────────────────────
+type Build = { output: string; cost: number }; // cost = Components consumed
+const BUILDS: Record<string, Build> = {
+  // Machines
+  blueprint_solar: { output: "solar_array", cost: 2 },
+  blueprint_refinery: { output: "refinery", cost: 3 },
+  blueprint_fabricator: { output: "fabricator", cost: 3 },
+  blueprint_kiln: { output: "kiln", cost: 3 },
+  blueprint_electronics_fab: { output: "electronics_fab", cost: 4 },
+  blueprint_ice_mine: { output: "ice_mine", cost: 3 },
+  blueprint_electrolysis: { output: "electrolysis", cost: 4 },
+  blueprint_chem_reactor: { output: "chem_reactor", cost: 5 },
+  blueprint_assembler: { output: "assembler", cost: 5 },
+  blueprint_rocket: { output: "rocket", cost: 6 },
+  // Drones (the automation layer — built the same way)
+  blueprint_mining_drone: { output: "mining_drone", cost: 2 },
+  blueprint_survey_drone: { output: "survey_drone", cost: 2 },
+  blueprint_hauler: { output: "hauler", cost: 2 },
+  blueprint_feeder: { output: "feeder", cost: 3 },
+  blueprint_fitter: { output: "fitter", cost: 3 },
+  blueprint_tanker: { output: "tanker", cost: 3 },
+  blueprint_cargo: { output: "cargo", cost: 4 },
+};
+
+// Rocket subsystems. The Assembler offers a CHOICE of recipes (Agency-style
+// `ready` hook): load the ingredients for the subsystem you want. Checked
+// most-specific-first so an overlapping load (e.g. 5 components) resolves
+// deterministically. Every recipe also costs one Power (handled in resolve).
+type Recipe = { output: string; need: Record<string, number> };
+const SUBSYSTEMS: Recipe[] = [
+  { output: "life_support", need: { component: 2, circuit: 1, water: 1 } },
+  { output: "heat_shield", need: { component: 3, glass: 2 } },
+  { output: "avionics", need: { circuit: 4 } },
+  { output: "engine", need: { component: 4, circuit: 1 } },
+  { output: "hull", need: { component: 5 } },
+];
+const recipeSatisfied = (ctx: Ctx, holes: SlottedCard[], r: Recipe) =>
+  Object.entries(r.need).every(([cat, n]) => count(ctx, holes, cat) >= n);
+
+// ──────────────────────────────────────────────────────────────────────────
+// Couriers. A generalised Worker: a hole-less verb that each beat either grabs
+// a card it carries from an eligible output tray, or hands the one it's holding
+// to the first open hole that accepts it. Each courier type carries a DISJOINT
+// set of categories so two couriers never fight over the same card.
+//   from = null  → raid any verb's tray;  [defIds] → only those producers.
+// ──────────────────────────────────────────────────────────────────────────
+type CourierSpec = { carries: string[]; from: string[] | null };
+const COURIERS: Record<string, CourierSpec> = {
+  hauler: { carries: ["power"], from: ["solar_array"] },
+  feeder: { carries: ["raw", "metal"], from: null },
+  fitter: { carries: ["silicon", "glass", "circuit", "component"], from: null },
+  tanker: { carries: ["water", "hydrogen", "oxygen", "fuel"], from: null },
+  cargo: { carries: ["subsystem", "blueprint"], from: null },
+};
+
+// The first card in an eligible output tray on this board that this courier is
+// willing to carry. Never hauls a verb card (a dormant machine/drone waiting to
+// be planted) — only resources.
+function firstCourierLoot(
+  ctx: Ctx,
+  boardId: bigint,
+  spec: CourierSpec,
+): Card | null {
   for (const c of ctx.db.card.boardId.filter(boardId)) {
     if (c.location.tag !== "output") continue;
     const producer = ctx.db.card.id.find(c.location.value.verbCardId);
-    if (!producer || !WORKER_TAKES_FROM.includes(producer.defId)) continue;
+    if (!producer) continue;
+    if (spec.from !== null && !spec.from.includes(producer.defId)) continue;
     const def = ctx.db.cardDef.defId.find(c.defId);
-    if (!def || def.isVerb) continue; // don't haul off a Seed it can't place
+    if (!def || def.isVerb) continue;
+    if (!spec.carries.includes(def.category)) continue;
     return c;
   }
   return null;
 }
 
-// An empty hole, somewhere on the board, that accepts `card` — where the Worker
+// An empty hole anywhere on the board that accepts `card` — where a courier
 // hands off what it carries. Scans tabletop verbs (a tray-bound verb can't take
-// inputs) and skips `excludeVerbId` (the Worker itself).
+// inputs) and skips `excludeVerbId` (the courier itself).
 function firstOpenSlot(
   ctx: Ctx,
   boardId: bigint,
   card: Card,
   excludeVerbId: bigint,
 ): { verbCardId: bigint; slotIndex: number } | null {
-  const cdef = ctx.db.cardDef.defId.find(card.defId);
-  const cat = cdef ? cdef.category : "";
+  const cat = catOf(ctx, card);
   const boardCards = [...ctx.db.card.boardId.filter(boardId)];
   for (const verb of boardCards) {
     if (verb.id === excludeVerbId || verb.location.tag !== "tabletop") continue;
@@ -81,142 +195,254 @@ function firstOpenSlot(
   return null;
 }
 
-export const RESOLVERS: Record<string, Resolver> = {
-  // You: no inputs, emits one Health per minute (capped on the card_def).
-  you: {
-    duration: () => REST,
-    resolve: () => ({ consume: [], produce: ["health"], again: true }),
-  },
-
-  // Forest: dual-mode. Either way a chop yields Wood, or a 10% Seed instead.
-  //  - fed a Lumberjack: chop every minute, keep the Lumberjack.
-  //  - fed Health: chop once (consuming it), plus a 1% chance of a Lumberjack.
-  forest: {
-    duration: (holes) => (holes[0]?.defId === "lumberjack" ? LUMBERJACK : CHOP),
-    resolve: (ctx, holes) => {
-      const input = holes[0];
-      if (!input) return { consume: [], produce: [], again: false };
-      // 10% of chops throw up a Seed instead of Wood — plant it for a Forest.
-      const produce = [ctx.random() < 0.1 ? "seed" : "wood"];
-      if (input.defId === "lumberjack") {
-        return { consume: [], produce, again: true };
-      }
-      // During 10% of your chopping you'll meet a lumberjack
-      if (ctx.random() < 0.01) produce.push("lumberjack");
-      return { consume: [input.id], produce, again: false };
-    },
-  },
-
-  // Market: an inbox queue. Sells the wood at the head of the queue (lowest
-  // slot) for a Coin each cycle, then re-fires to work through whatever else is
-  // waiting — `again` drains the queue while `verbReady` stops it when empty.
-  market: {
-    duration: () => MARKET,
-    resolve: (_ctx, holes) => {
-      const input = holes[0];
-      if (!input) return { consume: [], produce: [], again: false };
-      return { consume: [input.id], produce: ["coin"], again: true };
-    },
-  },
-
-  // Seed: a no-hole, one-shot grower. It only runs once on the tabletop (see
-  // maybeAutostart's tabletop gate), so a Seed sitting in the Forest's tray
-  // waits, inert-looking, until the player plants it. After FOREST_GROWTH it
-  // metamorphoses into a Forest where it stood (`become`).
-  seed: {
-    duration: () => FOREST_GROWTH,
-    resolve: () => ({
+function courierResolve(
+  ctx: Ctx,
+  holes: SlottedCard[],
+  verb: Card,
+  spec: CourierSpec,
+): Effects {
+  const carried = holes[0];
+  if (carried) {
+    const dest = firstOpenSlot(ctx, verb.boardId, carried, verb.id);
+    if (!dest) return { consume: [], produce: [], again: true }; // keep holding
+    return {
       consume: [],
       produce: [],
-      again: false,
-      become: "forest",
-    }),
-  },
-
-  // Worker: a hole-less courier that keeps a 2s heartbeat (like You, it re-fires
-  // forever so it can act on its own). Each beat it either grabs one card from an
-  // output tray and holds it (the card becomes slotted into the Worker), or — if
-  // already carrying — hands that card to the first open, accepting hole it can
-  // find. Carrying spans exactly one beat, so "steal → hold 2s → deposit". With
-  // no tray to take it back from, the held card is locked in transit until the
-  // Worker places it; if no hole will take it yet, it keeps holding.
-  worker: {
-    duration: () => WORKER_HOLD,
-    resolve: (ctx, holes, verb) => {
-      const carried = holes[0];
-      if (carried) {
-        const dest = firstOpenSlot(ctx, verb.boardId, carried, verb.id);
-        if (!dest) return { consume: [], produce: [], again: true };
-        return {
-          consume: [],
-          produce: [],
-          again: true,
-          moves: [
-            {
-              cardId: carried.id,
-              to: {
-                tag: "slotted",
-                value: {
-                  verbCardId: dest.verbCardId,
-                  slotIndex: dest.slotIndex,
-                },
-              },
-            },
-          ],
-        };
-      }
-      const loot = firstOutboxCard(ctx, verb.boardId);
-      if (!loot) return { consume: [], produce: [], again: true };
-      return {
-        consume: [],
-        produce: [],
-        again: true,
-        moves: [
-          {
-            cardId: loot.id,
-            to: {
-              tag: "slotted",
-              value: { verbCardId: verb.id, slotIndex: 0 },
-            },
+      again: true,
+      moves: [
+        {
+          cardId: carried.id,
+          to: {
+            tag: "slotted",
+            value: { verbCardId: dest.verbCardId, slotIndex: dest.slotIndex },
           },
-        ],
-      };
+        },
+      ],
+    };
+  }
+  const loot = firstCourierLoot(ctx, verb.boardId, spec);
+  if (!loot) return { consume: [], produce: [], again: true }; // nothing to haul
+  return {
+    consume: [],
+    produce: [],
+    again: true,
+    moves: [
+      {
+        cardId: loot.id,
+        to: { tag: "slotted", value: { verbCardId: verb.id, slotIndex: 0 } },
+      },
+    ],
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// The resolver table — one entry per verb defId.
+// ──────────────────────────────────────────────────────────────────────────
+export const RESOLVERS: Record<string, Resolver> = {
+  // ── Tier 0: the crash site (hand-cranked, no power) ──────────────────────
+
+  // Survivor: your own two hands. Emits one Effort per cycle, forever.
+  survivor: {
+    duration: () => EFFORT,
+    resolve: () => ({ consume: [], produce: ["effort"], again: true }),
+  },
+
+  // Regolith Field: dual-mode, like the old Forest.
+  //  - fed Effort: gather once, consuming it.
+  //  - fed a Mining Drone (catalyst): gather every cycle, keeping the drone.
+  regolith_field: {
+    duration: (holes) =>
+      holes[0]?.defId === "mining_drone" ? DRONE_GATHER : GATHER,
+    resolve: (_ctx, holes) => {
+      const input = holes[0];
+      if (!input) return NOOP;
+      if (input.defId === "mining_drone")
+        return { consume: [], produce: ["regolith"], again: true };
+      return { consume: [input.id], produce: ["regolith"], again: false };
     },
   },
 
-  // Agency: a job board with two postings, gated by whichever recipe you fully
-  // pay for. 5 Coins + 3 Health hires a Worker; 10 Coins hires a Lumberjack. Its
-  // holes are all optional (10 coin + 3 health), so the generic gate alone would
-  // fire it on the first coin — `ready` is what holds the run until a whole
-  // recipe is on the table. Either hire lands dormant in the tray (a verb like
-  // the Worker waits there, inert, until planted; see spawnOutput).
-  agency: {
-    duration: () => HIRE,
-    ready: (_ctx, holes) => {
-      const coins = holes.filter((h) => h.defId === "coin").length;
-      const health = holes.filter((h) => h.defId === "health").length;
-      return (coins >= 5 && health >= 3) || coins >= 10;
+  // Wreck: the discovery node. Mostly Scrap; ~20% a Salvage (a ready-made part).
+  // Effort scavenges once; a Survey Drone scavenges continuously.
+  wreck: {
+    duration: (holes) =>
+      holes[0]?.defId === "survey_drone" ? DRONE_GATHER : GATHER,
+    resolve: (ctx, holes) => {
+      const input = holes[0];
+      if (!input) return NOOP;
+      const drop = ctx.random() < 0.2 ? "salvage" : "scrap";
+      if (input.defId === "survey_drone")
+        return { consume: [], produce: [drop], again: true };
+      return { consume: [input.id], produce: [drop], again: false };
     },
+  },
+
+  // Printer: the crude bootstrap fabricator — raw → Component, no power, slow.
+  // An inbox queue that drains one per cycle (like the old Market).
+  printer: {
+    duration: () => PRINT,
     resolve: (_ctx, holes) => {
-      const coins = holes.filter((h) => h.defId === "coin");
-      const health = holes.filter((h) => h.defId === "health");
-      // Worker first: if both recipes are somehow payable at once, the combined
-      // hire wins (in practice autostart fires the moment one recipe completes,
-      // so this only arbitrates the rare simultaneous case).
-      if (coins.length >= 5 && health.length >= 3) {
-        return {
-          consume: [...coins.slice(0, 5), ...health.slice(0, 3)].map(
-            (h) => h.id,
-          ),
-          produce: ["worker"],
-          again: false,
-        };
-      }
+      const input = holes[0];
+      if (!input) return NOOP;
+      return { consume: [input.id], produce: ["component"], again: true };
+    },
+  },
+
+  // Workshop: hand-cranked constructor. Blueprint (selects the output) + Effort
+  // + enough Components → the machine/drone, dormant in the tray to be planted.
+  // Cranked by Effort (not Power) so it works from turn one, before any Solar.
+  workshop: {
+    duration: () => BUILD,
+    ready: (ctx, holes) => {
+      const bp = holes.find((h) => catOf(ctx, h) === "blueprint");
+      const effort = holes.find((h) => h.defId === "effort");
+      if (!bp || !effort) return false;
+      const recipe = BUILDS[bp.defId];
+      return !!recipe && count(ctx, holes, "component") >= recipe.cost;
+    },
+    resolve: (ctx, holes) => {
+      const bp = holes.find((h) => catOf(ctx, h) === "blueprint");
+      const effort = holes.find((h) => h.defId === "effort");
+      if (!bp || !effort) return NOOP;
+      const recipe = BUILDS[bp.defId];
+      if (!recipe) return NOOP;
+      const comps = take(ctx, holes, "component", recipe.cost);
+      if (comps.length < recipe.cost) return NOOP;
       return {
-        consume: coins.slice(0, 10).map((h) => h.id),
-        produce: ["lumberjack"],
+        consume: [bp.id, effort.id, ...comps],
+        produce: [recipe.output],
         again: false,
       };
     },
+  },
+
+  // ── Power: the emitter that opens up every big machine ───────────────────
+  solar_array: {
+    duration: () => SOLAR,
+    resolve: () => ({ consume: [], produce: ["power"], again: true }),
+  },
+
+  // ── Tier 1–3: power-gated production line ────────────────────────────────
+  refinery: poweredOne(REFINE, "raw", "metal"),
+  fabricator: poweredOne(FABRICATE, "metal", "component"),
+  electronics_fab: poweredOne(ELECTRONICS, "silicon", "circuit"),
+
+  // Kiln: raw → Silicon (or, 50% of the time, Glass). Powered.
+  kiln: {
+    duration: () => KILN,
+    ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, "raw") > 0,
+    resolve: (ctx, holes) => {
+      const power = take(ctx, holes, "power", 1);
+      const input = take(ctx, holes, "raw", 1);
+      if (power.length === 0 || input.length === 0) return NOOP;
+      const out = ctx.random() < 0.5 ? "silicon" : "glass";
+      return { consume: [...power, ...input], produce: [out], again: true };
+    },
+  },
+
+  // Ice Mine: a power-gated emitter — Power in, Water out, no other input.
+  ice_mine: {
+    duration: () => MINE_ICE,
+    ready: (_ctx, holes) => hasPower(holes),
+    resolve: (ctx, holes) => {
+      const power = take(ctx, holes, "power", 1);
+      if (power.length === 0) return NOOP;
+      return { consume: power, produce: ["water"], again: true };
+    },
+  },
+
+  // Electrolysis: Water + Power → Hydrogen + Oxygen.
+  electrolysis: {
+    duration: () => ELECTROLYSIS,
+    ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, "water") > 0,
+    resolve: (ctx, holes) => {
+      const power = take(ctx, holes, "power", 1);
+      const water = take(ctx, holes, "water", 1);
+      if (power.length === 0 || water.length === 0) return NOOP;
+      return {
+        consume: [...power, ...water],
+        produce: ["hydrogen", "oxygen"],
+        again: true,
+      };
+    },
+  },
+
+  // Chem Reactor: Hydrogen + Oxygen + Power → Fuel. The late bottleneck (slow,
+  // and the only path to the Fuel the Rocket burns).
+  chem_reactor: {
+    duration: () => CHEM,
+    ready: (ctx, holes) =>
+      hasPower(holes) &&
+      count(ctx, holes, "hydrogen") > 0 &&
+      count(ctx, holes, "oxygen") > 0,
+    resolve: (ctx, holes) => {
+      const power = take(ctx, holes, "power", 1);
+      const h2 = take(ctx, holes, "hydrogen", 1);
+      const o2 = take(ctx, holes, "oxygen", 1);
+      if (power.length === 0 || h2.length === 0 || o2.length === 0) return NOOP;
+      return {
+        consume: [...power, ...h2, ...o2],
+        produce: ["fuel"],
+        again: true,
+      };
+    },
+  },
+
+  // Assembler: components → a rocket Subsystem. Recipe choice (`ready` hook):
+  // whichever subsystem's ingredients you've loaded, most-specific-first.
+  assembler: {
+    duration: () => ASSEMBLE,
+    ready: (ctx, holes) =>
+      hasPower(holes) && SUBSYSTEMS.some((r) => recipeSatisfied(ctx, holes, r)),
+    resolve: (ctx, holes) => {
+      const power = take(ctx, holes, "power", 1);
+      if (power.length === 0) return NOOP;
+      const recipe = SUBSYSTEMS.find((r) => recipeSatisfied(ctx, holes, r));
+      if (!recipe) return NOOP;
+      const consume = [...power];
+      for (const [cat, n] of Object.entries(recipe.need))
+        consume.push(...take(ctx, holes, cat, n));
+      return { consume, produce: [recipe.output], again: true };
+    },
+  },
+
+  // ── Liftoff ──────────────────────────────────────────────────────────────
+  // Rocket: all five Subsystems + three Fuel (all required holes) → it fires
+  // and metamorphoses into Escape where it stood. One-shot. You're home.
+  rocket: {
+    duration: () => LAUNCH,
+    resolve: (_ctx, holes) => ({
+      consume: holes.map((h) => h.id),
+      produce: [],
+      again: false,
+      become: "escape",
+    }),
+  },
+
+  // ── The automation layer: couriers ───────────────────────────────────────
+  hauler: {
+    duration: () => COURIER_HOLD,
+    resolve: (ctx, holes, verb) =>
+      courierResolve(ctx, holes, verb, COURIERS.hauler),
+  },
+  feeder: {
+    duration: () => COURIER_HOLD,
+    resolve: (ctx, holes, verb) =>
+      courierResolve(ctx, holes, verb, COURIERS.feeder),
+  },
+  fitter: {
+    duration: () => COURIER_HOLD,
+    resolve: (ctx, holes, verb) =>
+      courierResolve(ctx, holes, verb, COURIERS.fitter),
+  },
+  tanker: {
+    duration: () => COURIER_HOLD,
+    resolve: (ctx, holes, verb) =>
+      courierResolve(ctx, holes, verb, COURIERS.tanker),
+  },
+  cargo: {
+    duration: () => COURIER_HOLD,
+    resolve: (ctx, holes, verb) =>
+      courierResolve(ctx, holes, verb, COURIERS.cargo),
   },
 };

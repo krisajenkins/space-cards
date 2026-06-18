@@ -22,7 +22,7 @@ import {
 export const cardDef = table(
   { name: "card_def", public: true },
   {
-    defId: t.string().primaryKey(), // 'health', 'forest', ...
+    defId: t.string().primaryKey(), // 'regolith', 'refinery', ...
     name: t.string(),
     category: t.string(), // coarse nominal type a hole can accept
     isVerb: t.bool(),

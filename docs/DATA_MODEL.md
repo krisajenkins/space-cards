@@ -465,6 +465,16 @@ real.
 
 ## 10. Implemented slice (You / Forest / Market)
 
+> **Superseded.** These cards were the engine's first demo slice. They have been
+> **replaced** by the real game, **Escape the Moon** (see
+> `docs/ESCAPE_THE_MOON.md`), which exercises the same engine features through
+> re-skinned verbs — the Survivor/Solar Array are `you`-style emitters, the
+> Regolith Field is the dual-mode `forest`, the powered machines are `market`
+> queues, the couriers generalise the `worker`, and the Rocket uses `become`.
+> The module is now split across focused files (`schema.ts`, `engine.ts`,
+> `resolvers.ts`, `lifecycle.ts`, `reducers.ts`, `views.ts`, …), not one
+> `index.ts`. The description below is kept for historical context.
+
 A first end-to-end slice is built in `spacetimedb/src/index.ts` and verified on a
 local server.
 
