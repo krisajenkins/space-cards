@@ -1,0 +1,627 @@
+-- allium: 3
+-- space-cards.allium
+--
+-- Distilled from the SpacetimeDB server module (spacetimedb/src/*.ts).
+-- Source of truth for intent: docs/DATA_MODEL.md.
+--
+-- Scope: the authoritative game engine and its ownership/identity model.
+-- Includes: the card catalogue, board ownership, the verb lifecycle
+--   (assemble -> run -> complete -> recycle/become/stall), and the v1 verbs
+--   (You, Forest, Market, Seed, Agency).
+-- Excludes:
+--   - The Svelte client (src/): rendering, drag gestures, the rAF clock.
+--   - SpacetimeDB plumbing: the per-situation scheduled timer (modelled here as
+--     a temporal trigger), the `my_*` views (modelled as the BoardView surface),
+--     and the public/private table split.
+--   - Google OAuth verification (issuer/audience/JWT): a trusted Google sign-in
+--     is modelled as an already-verified GoogleSignIn stimulus carrying the
+--     verified email. The cross-provider linking-by-email logic IS in scope.
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+enum IdentityProvider { google | spacetime }
+enum MemberRole { player | spectator }
+
+------------------------------------------------------------
+-- Entities
+------------------------------------------------------------
+
+-- Catalogue: authored content describing what cards exist. A `card_def` is a
+-- template; a Card is an instance of one. Verbs carry run-behaviour flags.
+entity CardDef {
+    def_id: String              -- 'health', 'forest', ... (stable key)
+    name: String
+    category: String            -- coarse nominal type a hole can accept
+    is_verb: Boolean
+    reusable: Boolean           -- verb only: survive completion and re-arm?
+    output_cap: Integer         -- verb only: max cards the output tray holds (0 = no tray)
+
+    slots: SlotDef with card_def = this   -- the holes this verb exposes
+}
+
+-- One hole on a verb. `accepts` holds category names and/or def_ids; a card may
+-- be dropped in if either its def_id or its category is listed.
+entity SlotDef {
+    card_def: CardDef           -- the verb this hole belongs to
+    slot_index: Integer
+    accepts: Set<String>
+    required: Boolean
+}
+
+-- A human. MANY identities (one per authenticated principal) point at one user,
+-- so signing in from several providers/devices is one account. primary_email is
+-- the lower-cased cross-provider join key. See DATA_MODEL §11.
+entity User {
+    primary_email: String
+    display_name: String
+    picture_url: String?
+    is_admin: Boolean
+    created_at: Timestamp
+
+    identities: Identity with user = this
+    memberships: BoardMember with user = this
+}
+
+-- One row per linked authenticated principal (ctx.sender).
+entity Identity {
+    principal: String           -- the authenticated principal id
+    user: User
+    provider: IdentityProvider
+    linked_at: Timestamp
+}
+
+entity Board {
+    name: String
+    owner: User                 -- sole authority to transfer cards off this board
+    created_at: Timestamp
+
+    members: BoardMember with board = this
+    cards: Card with board = this
+    situations: Situation with board = this
+}
+
+entity BoardMember {
+    board: Board
+    user: User
+    role: MemberRole
+}
+
+-- A card instance. Its place is a mutually-exclusive sum (tabletop / slotted /
+-- output) modelled as a `place` discriminator with state-dependent fields, not
+-- separate nullable columns. There is no quantity: "3 wood" is three Cards.
+entity Card {
+    board: Board
+    def: CardDef
+    place: tabletop | slotted | output
+
+    -- tabletop: a free position on the surface
+    x: Decimal when place = tabletop
+    y: Decimal when place = tabletop
+
+    -- slotted | output: bound to a verb card (the holder)
+    holder: Card when place = slotted | output
+    -- slotted only: which hole of the holder
+    slot_index: Integer when place = slotted
+
+    situation: Situation with card = this   -- present only for verb cards
+
+    -- Holes and tray of THIS card (meaningful only when it is a verb).
+    held_cards: Card with holder = this
+    slotted_cards: held_cards where place = slotted
+    output_cards: held_cards where place = output
+
+    output_count: output_cards.count
+    at_capacity: def.output_cap > 0 and output_count >= def.output_cap
+
+    -- Readiness: every required hole filled, and — if the verb has any holes at
+    -- all — at least one is filled. The second clause lets a hole-less verb (You,
+    -- a planted Seed) fire while self-contained, yet stops an all-optional verb
+    -- (the Market) firing on an empty queue.
+    filled_slot_indices: slotted_cards -> slot_index
+    required_slots: def.slots where required
+    all_required_filled: required_slots.all(s => s.slot_index in filled_slot_indices)
+    has_holes: def.slots.count > 0
+    some_holes_filled: slotted_cards.count > 0
+    verb_ready: all_required_filled and (not has_holes or some_holes_filled)
+
+    transitions place {
+        tabletop -> slotted     -- SlotCard
+        slotted -> tabletop     -- MoveCard (unslot)
+        output -> tabletop      -- MoveCard (collect)
+        slotted -> slotted      -- CollectAndSlot (slotted source)
+        output -> slotted       -- CollectAndSlot (output source)
+    }
+}
+
+-- Runtime state of an active verb card. 1:1 with the verb card. A call lives as
+-- `ongoing` until its deadline, then is resolved by a completion rule.
+entity Situation {
+    card: Card
+    board: Board
+    state: assembling | ongoing | stalled
+    ends_at: Timestamp when state = ongoing
+
+    on_tabletop: card.place = tabletop
+
+    -- Per-verb run length, recomputed at each begin from what's in the holes.
+    -- (The "code per verb" duration resolver, captured declaratively.)
+    duration:
+        if card.def = you: config.rest_duration
+        else if card.def = forest:
+            if card.slotted_cards.any(c => c.def = lumberjack): config.lumberjack_chop_duration
+            else: config.chop_duration
+        else if card.def = market: config.market_duration
+        else if card.def = seed: config.forest_growth_duration
+        else if card.def = agency: config.hire_duration
+        else: config.default_duration
+
+    -- A verb begins when idle, on the tabletop, and ready. This is what makes
+    -- "grows once planted" work and re-arms a reusable verb after completion.
+    can_begin: state = assembling and card.place = tabletop and card.verb_ready
+    -- A stalled emitter resumes once its tray has room again.
+    can_resume: state = stalled and card.place = tabletop
+        and not card.at_capacity and card.verb_ready
+
+    transitions state {
+        assembling -> ongoing   -- BeginRun
+        assembling -> stalled   -- BeginRun, tray full
+        ongoing -> assembling   -- completion (recycle)
+        stalled -> ongoing      -- UnstallProducer
+    }
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- Durations (spacetimedb/src/constants.ts).
+    rest_duration: Duration = 15.seconds            -- You resting -> one Health
+    chop_duration: Duration = 5.seconds             -- Forest chop fed Health (once)
+    lumberjack_chop_duration: Duration = 20.seconds -- Forest chop fed a Lumberjack (repeating)
+    market_duration: Duration = 3.seconds           -- Market selling one Wood
+    hire_duration: Duration = 8.seconds             -- Agency processing a hire
+    forest_growth_duration: Duration = 60.seconds   -- planted Seed maturing into a Forest
+    default_duration: Duration = 60.seconds         -- engine fallback for an unknown verb
+
+    -- Probabilistic Forest drops.
+    seed_drop_chance: Decimal = 0.10                -- a chop yields a Seed instead of Wood
+    lumberjack_encounter_chance: Decimal = 0.01     -- a Health-fed chop also throws up a Lumberjack
+}
+
+------------------------------------------------------------
+-- Defaults: the v1 catalogue (seeded by `init`).
+------------------------------------------------------------
+
+-- Inert resources.
+default CardDef health     = { def_id: "health",     name: "Health",     category: "health",     is_verb: false, reusable: false, output_cap: 0 }
+default CardDef wood       = { def_id: "wood",       name: "Wood",       category: "wood",       is_verb: false, reusable: false, output_cap: 0 }
+default CardDef coin       = { def_id: "coin",       name: "Coin",       category: "coin",       is_verb: false, reusable: false, output_cap: 0 }
+default CardDef lumberjack = { def_id: "lumberjack", name: "Lumberjack", category: "lumberjack", is_verb: false, reusable: false, output_cap: 0 }
+
+-- Seed: a one-shot, hole-less verb. Looks inert until planted on the tabletop,
+-- then transforms in place into a Forest. Trays nothing (output_cap 0), single
+-- metamorphosis (not reusable).
+default CardDef seed = { def_id: "seed", name: "Seed", category: "seed", is_verb: true, reusable: false, output_cap: 0 }
+
+-- Stations (reusable verbs).
+default CardDef you    = { def_id: "you",    name: "You",    category: "avatar",  is_verb: true, reusable: true, output_cap: 5 }
+default CardDef forest = { def_id: "forest", name: "Forest", category: "station", is_verb: true, reusable: true, output_cap: 5 }
+default CardDef market = { def_id: "market", name: "Market", category: "station", is_verb: true, reusable: true, output_cap: 10 }
+default CardDef agency = { def_id: "agency", name: "Agency", category: "station", is_verb: true, reusable: true, output_cap: 3 }
+
+-- Forest: one required hole, accepting Health or a Lumberjack.
+default SlotDef forest_hole = { card_def: forest, slot_index: 0, accepts: { "health", "lumberjack" }, required: true }
+
+-- Market: a five-deep inbox queue for Wood. None required — it sells whatever is
+-- waiting, one per cycle, so a single Wood fires it and you can keep topping up.
+default SlotDef market_hole_0 = { card_def: market, slot_index: 0, accepts: { "wood" }, required: false }
+default SlotDef market_hole_1 = { card_def: market, slot_index: 1, accepts: { "wood" }, required: false }
+default SlotDef market_hole_2 = { card_def: market, slot_index: 2, accepts: { "wood" }, required: false }
+default SlotDef market_hole_3 = { card_def: market, slot_index: 3, accepts: { "wood" }, required: false }
+default SlotDef market_hole_4 = { card_def: market, slot_index: 4, accepts: { "wood" }, required: false }
+
+-- Agency: ten Coin holes, all required (multiplicity is multiple holes, not a
+-- quantity), so a hire fires only once fully paid.
+default SlotDef agency_hole_0 = { card_def: agency, slot_index: 0, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_1 = { card_def: agency, slot_index: 1, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_2 = { card_def: agency, slot_index: 2, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_3 = { card_def: agency, slot_index: 3, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_4 = { card_def: agency, slot_index: 4, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_5 = { card_def: agency, slot_index: 5, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_6 = { card_def: agency, slot_index: 6, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_7 = { card_def: agency, slot_index: 7, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_8 = { card_def: agency, slot_index: 8, accepts: { "coin" }, required: true }
+default SlotDef agency_hole_9 = { card_def: agency, slot_index: 9, accepts: { "coin" }, required: true }
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- ── Board setup ──────────────────────────────────────────
+
+-- Start a fresh board for the caller, seeded with You + Forest + Market + Agency
+-- + three Health. The verb cards get their Situations via InitVerbSituation; You
+-- (hole-less, ready) begins resting at once via BeginRun.
+rule NewGame {
+    when: NewGame(actor)
+    ensures:
+        let board = Board.created(name: "New Game", owner: actor, created_at: now)
+        BoardMember.created(board: board, user: actor, role: player)
+        Card.created(board: board, def: you,    place: tabletop, x: 40,  y: 40)
+        Card.created(board: board, def: forest, place: tabletop, x: 360, y: 40)
+        Card.created(board: board, def: market, place: tabletop, x: 660, y: 40)
+        Card.created(board: board, def: agency, place: tabletop, x: 40,  y: 480)
+        Card.created(board: board, def: health, place: tabletop, x: 40,  y: 300)
+        Card.created(board: board, def: health, place: tabletop, x: 150, y: 300)
+        Card.created(board: board, def: health, place: tabletop, x: 260, y: 300)
+}
+
+-- Every new verb card gets run-state. Covers both spawn paths (opening layout
+-- and produced-into-tray verbs like a Seed). A tray-born verb does not begin
+-- until collected onto the tabletop (BeginRun requires tabletop).
+rule InitVerbSituation {
+    when: card: Card.created
+    requires: card.def.is_verb
+    ensures: Situation.created(card: card, board: card.board, state: assembling)
+}
+
+-- ── Generic engine: begin, stall, resume ─────────────────
+
+-- A ready verb on the tabletop begins a run — unless its output tray is full, in
+-- which case it stalls instead. Re-arming a reusable verb (which returns to
+-- `assembling`) re-triggers this rule.
+rule BeginRun {
+    when: situation: Situation.can_begin
+    ensures:
+        if situation.card.at_capacity:
+            situation.state = stalled
+        else:
+            situation.state = ongoing
+            situation.ends_at = now + situation.duration
+}
+
+-- Vacating a card from a full tray (collect or collect-and-slot) makes room, so
+-- a stalled emitter picks up where it left off.
+rule UnstallProducer {
+    when: situation: Situation.can_resume
+    ensures:
+        situation.state = ongoing
+        situation.ends_at = now + situation.duration
+}
+
+-- ── Per-verb completion ("code per verb") ────────────────
+-- Each fires when a call reaches its deadline. The recycle bookkeeping (return
+-- to `assembling`, clear the deadline) is shared; what is consumed / produced /
+-- transformed is the verb's own logic. Re-fire is emergent: a reusable verb
+-- whose holes are still filled re-satisfies `can_begin` and BeginRun runs again.
+
+-- You: emit one Health each cycle, forever (no inputs).
+rule CompleteYou {
+    when: situation: Situation.ends_at <= now
+    requires: situation.state = ongoing
+    requires: situation.card.def = you
+    ensures:
+        Card.created(board: situation.board, def: health, place: output, holder: situation.card)
+        situation.state = assembling
+        situation.ends_at = null
+}
+
+-- Forest: dual-mode chop. Every chop yields Wood, or a Seed instead (10%).
+--  - fed a Lumberjack: chop repeatedly, keep the Lumberjack.
+--  - fed Health: chop once (consuming it), with a 1% chance of also meeting a
+--    Lumberjack. The emptied hole stops the re-fire.
+rule CompleteForest {
+    when: situation: Situation.ends_at <= now
+    requires: situation.state = ongoing
+    requires: situation.card.def = forest
+    let fed_lumberjack = situation.card.slotted_cards.any(c => c.def = lumberjack)
+    let yields_seed = roll(config.seed_drop_chance)
+    ensures:
+        if yields_seed:
+            Card.created(board: situation.board, def: seed, place: output, holder: situation.card)
+        else:
+            Card.created(board: situation.board, def: wood, place: output, holder: situation.card)
+        if not fed_lumberjack:
+            for input in situation.card.slotted_cards:
+                not exists input                -- consume the Health
+            if roll(config.lumberjack_encounter_chance):
+                Card.created(board: situation.board, def: lumberjack, place: output, holder: situation.card)
+        situation.state = assembling
+        situation.ends_at = null
+}
+
+-- Market: an inbox queue. Sell the Wood at the head (lowest slot) for a Coin,
+-- then re-fire to drain whatever else is waiting.
+rule CompleteMarket {
+    when: situation: Situation.ends_at <= now
+    requires: situation.state = ongoing
+    requires: situation.card.def = market
+    let head = min_by(situation.card.slotted_cards, c => c.slot_index)
+    ensures:
+        not exists head
+        Card.created(board: situation.board, def: coin, place: output, holder: situation.card)
+        situation.state = assembling
+        situation.ends_at = null
+}
+
+-- Agency: a guaranteed Lumberjack for ten Coins. Eats every coin (all holes
+-- required, so it fires only when fully paid) and hands back one Lumberjack.
+rule CompleteAgency {
+    when: situation: Situation.ends_at <= now
+    requires: situation.state = ongoing
+    requires: situation.card.def = agency
+    ensures:
+        for coin in situation.card.slotted_cards:
+            not exists coin
+        Card.created(board: situation.board, def: lumberjack, place: output, holder: situation.card)
+        situation.state = assembling
+        situation.ends_at = null
+}
+
+-- Seed: transform-in-place. After maturing, the Seed metamorphoses into a Forest
+-- where it stood, rather than producing into a tray. Supersedes produce/recycle.
+rule CompleteSeed {
+    when: situation: Situation.ends_at <= now
+    requires: situation.state = ongoing
+    requires: situation.card.def = seed
+    requires: situation.card.place = tabletop
+    ensures:
+        Card.created(board: situation.board, def: forest, place: tabletop,
+                     x: situation.card.x, y: situation.card.y)
+        not exists situation.card
+        not exists situation
+}
+
+-- ── Player gestures ──────────────────────────────────────
+
+-- Drop a loose tabletop card into a verb's empty, accepting hole. The verb need
+-- not be idle — topping up an empty hole mid-run is what makes the Market a
+-- queue. Filling a hole may satisfy `can_begin` and start the verb (BeginRun).
+rule SlotCard {
+    when: SlotCard(actor, card, verb, slot_index)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = tabletop
+    requires: card.board = verb.board
+    requires: verb.def.is_verb
+    let slot = SlotDef{card_def: verb.def, slot_index: slot_index}
+    requires: exists slot
+    requires: card.def.def_id in slot.accepts or card.def.category in slot.accepts
+    requires: not verb.slotted_cards.any(h => h.slot_index = slot_index)
+    ensures:
+        card.place = slotted
+        card.holder = verb
+        card.slot_index = slot_index
+}
+
+-- Move a card back to a tabletop position. Unslot path: a card bound to a running
+-- or stalled verb cannot be pulled out (only an assembling one).
+rule MoveSlottedToTabletop {
+    when: MoveCard(actor, card, x, y)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = slotted
+    requires: card.holder.situation.state = assembling
+    ensures:
+        card.place = tabletop
+        card.x = x
+        card.y = y
+        card.holder = null
+        card.slot_index = null
+}
+
+-- Collect a produced card off a tray onto the tabletop. Vacating the tray may
+-- un-stall the producing verb (handled by UnstallProducer). A no-hole verb like
+-- a Seed begins growing the moment it lands on the table (BeginRun).
+rule MoveOutputToTabletop {
+    when: MoveCard(actor, card, x, y)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = output
+    ensures:
+        card.place = tabletop
+        card.x = x
+        card.y = y
+        card.holder = null
+}
+
+-- Reposition a card already on the tabletop.
+rule RepositionCard {
+    when: MoveCard(actor, card, x, y)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = tabletop
+    ensures:
+        card.x = x
+        card.y = y
+}
+
+-- One-gesture collect-then-slot for an output card, atomically (so the target
+-- verb can't slip out of `assembling` in the gap). May un-stall the source's
+-- producer as the tray frees up.
+rule CollectOutputIntoHole {
+    when: CollectAndSlot(actor, card, verb, slot_index)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = output
+    requires: card.board = verb.board
+    requires: verb.def.is_verb
+    let slot = SlotDef{card_def: verb.def, slot_index: slot_index}
+    requires: exists slot
+    requires: card.def.def_id in slot.accepts or card.def.category in slot.accepts
+    requires: not verb.slotted_cards.any(h => h.slot_index = slot_index)
+    ensures:
+        card.place = slotted
+        card.holder = verb
+        card.slot_index = slot_index
+}
+
+-- The same, for a card slotted in another verb's hole. The source verb must be
+-- assembling — you cannot strip a card from a running verb.
+rule CollectSlottedIntoHole {
+    when: CollectAndSlot(actor, card, verb, slot_index)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = slotted
+    requires: card.holder.situation.state = assembling
+    requires: card.board = verb.board
+    requires: verb.def.is_verb
+    let slot = SlotDef{card_def: verb.def, slot_index: slot_index}
+    requires: exists slot
+    requires: card.def.def_id in slot.accepts or card.def.category in slot.accepts
+    requires: not verb.slotted_cards.any(h => h.slot_index = slot_index)
+    ensures:
+        card.place = slotted
+        card.holder = verb
+        card.slot_index = slot_index
+}
+
+-- ── Identity & access ────────────────────────────────────
+
+-- A trusted Google sign-in from a new principal. Find-or-create the user by
+-- verified email (merging providers under one human), then link this principal.
+rule LinkGoogleIdentity {
+    when: GoogleSignIn(principal, email, display_name, picture?)
+    requires: not exists Identity{principal: principal}
+    let existing_user = User{primary_email: email}
+    ensures:
+        if exists existing_user:
+            Identity.created(principal: principal, user: existing_user,
+                             provider: google, linked_at: now)
+        else:
+            let u = User.created(primary_email: email, display_name: display_name,
+                                 picture_url: picture, is_admin: false, created_at: now)
+            Identity.created(principal: principal, user: u, provider: google, linked_at: now)
+}
+
+-- A trusted Google sign-in from a known principal: refresh only provider-owned
+-- fields (email, picture). Never re-sync display_name — the human owns it once
+-- edited. Skip the email change if that address now belongs to a different user.
+rule RefreshGoogleProfile {
+    when: GoogleSignIn(principal, email, display_name, picture?)
+    let ident = Identity{principal: principal}
+    requires: exists ident
+    let collision = User{primary_email: email}
+    ensures:
+        if not exists collision or collision = ident.user:
+            ident.user.primary_email = email
+        ident.user.picture_url = picture ?? ident.user.picture_url
+}
+
+-- Explicit linking for non-auto providers (the CLI / SpacetimeAuth path), which
+-- also bootstraps the first admin. One-shot: refuses once any admin exists.
+rule BootstrapFirstAdmin {
+    when: BootstrapFirstAdmin(principal, email)
+    requires: not Users.any(u => u.is_admin)
+    let target = User{primary_email: email}
+    let existing = Identity{principal: principal}
+    requires: not exists existing or existing.user = target
+    ensures:
+        if exists target:
+            target.is_admin = true
+            if not exists existing:
+                Identity.created(principal: principal, user: target,
+                                 provider: spacetime, linked_at: now)
+        else:
+            let u = User.created(primary_email: email, display_name: email,
+                                 picture_url: null, is_admin: true, created_at: now)
+            Identity.created(principal: principal, user: u, provider: spacetime, linked_at: now)
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- Email is the cross-provider join key; two users cannot share one.
+invariant UniqueEmail {
+    for a in Users:
+        for b in Users:
+            a != b implies a.primary_email != b.primary_email
+}
+
+-- A Situation exists only for a verb card.
+invariant SituationsAreVerbs {
+    for s in Situations:
+        s.card.def.is_verb
+}
+
+-- A card and its situation are always on the same board.
+invariant SituationBoardMatchesCard {
+    for s in Situations:
+        s.board = s.card.board
+}
+
+-- A principal links to exactly one user (no forked humans across devices).
+invariant OneUserPerPrincipal {
+    for a in Identities:
+        for b in Identities:
+            a != b implies a.principal != b.principal
+}
+
+------------------------------------------------------------
+-- Actor Declarations
+------------------------------------------------------------
+
+actor AuthenticatedUser {
+    identified_by: User where identities.count > 0
+}
+
+-- A member (player or spectator) of a particular board.
+actor Member {
+    within: Board
+    identified_by: User where exists BoardMember{user: this, board: within}
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- The tabletop a member sees and acts on. Mirrors the `my_*` views: a member
+-- reads only boards they belong to, and a co-member's email is never on the wire.
+surface BoardView {
+    facing viewer: Member
+    context board: Board
+
+    exposes:
+        for card in board.cards:
+            card.def
+            card.place
+        for situation in board.situations:
+            situation.state
+            situation.ends_at
+        for member in board.members:
+            member.user.display_name
+            member.role
+
+    provides:
+        NewGame(viewer)
+        SlotCard(viewer, card, verb, slot_index)
+        MoveCard(viewer, card, x, y)
+        CollectAndSlot(viewer, card, verb, slot_index)
+
+    @guarantee BoardScopedVisibility
+        -- A viewer sees only boards they are a member of. Another board's cards,
+        -- situations and players are invisible to non-members.
+
+    @guarantee EmailNotLeaked
+        -- A co-member's primary_email (the cross-provider identity join key) is
+        -- never projected to other players; only the caller sees their own.
+}
+
+-- "Me": the caller's own profile, including their own email (and nobody else's).
+surface MyProfile {
+    facing viewer: AuthenticatedUser
+    context me: User where exists Identity{user: me}
+
+    exposes:
+        me.display_name
+        me.primary_email
+        me.picture_url
+        me.is_admin
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+open question "Engine supports non-reusable retire (a verb that vanishes on completion without `become`), but no v1 verb uses it. Keep as engine capability or drop?"
+open question "v1 drops the player into a single board (my_boards[0]) though the schema allows many. When does multi-board selection become a real flow?"
+open question "A spectator membership is read-only in intent, but no rule rejects a spectator calling SlotCard/MoveCard. Should board gestures require role = player?"
+open question "Board.owner is set at creation and documented as 'sole authority to transfer cards off this board' (DATA_MODEL §6), but no cross-board transfer flow exists yet — owner is declared and never read. Build the transfer gesture or drop the field until it is needed."
