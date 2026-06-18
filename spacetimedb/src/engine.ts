@@ -44,6 +44,11 @@ export function verbReady(ctx: Ctx, verbCardId: bigint): boolean {
     .every((s) => filled.has(s.slotIndex));
   if (!requiredFilled) return false;
   if (slots.length > 0 && holes.length === 0) return false; // has holes, none filled
+  // A verb may impose readiness the per-hole `required` flag can't express — an
+  // Agency that fires on EITHER of two complete recipes, say. Its `ready` hook
+  // has the final say on top of the generic checks above.
+  const r = RESOLVERS[verb.defId];
+  if (r?.ready && !r.ready(ctx, holes, verb)) return false;
   return true;
 }
 

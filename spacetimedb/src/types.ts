@@ -66,11 +66,18 @@ export const MemberRole = t.enum("MemberRole", {
 // as this one completes (if its holes are still filled); when false it falls
 // idle and waits for the player. The next run's length is recomputed from
 // `duration()` — `again` does not carry it.
+// `moves` relocates cards that already exist on the board, rather than creating
+// or destroying them — the Worker uses it to shuttle a card out of an output
+// tray and into an open hole. Each entry sets a card's `location` to `to`; the
+// engine then runs the same side-effects a player's slot/collect would (a
+// vacated tray can un-stall its emitter; a freshly-filled hole can autostart its
+// verb). See completeSituation.
 export type Effects = {
   consume: bigint[];
   produce: string[];
   again: boolean;
   become?: string;
+  moves?: { cardId: bigint; to: LocationValue }[];
 };
 
 // "Me": who the client is signed in as, and their capabilities. Empty until the

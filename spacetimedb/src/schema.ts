@@ -9,6 +9,7 @@ import {
 import { RESOLVERS } from "./resolvers";
 import {
   holeCards,
+  maybeAutostart,
   spawnCard,
   spawnOutput,
   tryBeginRun,
@@ -181,10 +182,27 @@ export const completeSituation = spacetimedb.reducer(
     const r = RESOLVERS[verb.defId];
     const holes = holeCards(ctx, verbCardId);
     const eff: Effects = r
-      ? r.resolve(ctx, holes)
+      ? r.resolve(ctx, holes, verb)
       : { consume: [], produce: [], again: false };
 
     for (const id of eff.consume) ctx.db.card.id.delete(id);
+
+    // Relocations (the Worker shuttling a card from a tray into a hole). Apply
+    // each move, then mirror the side-effects a player's slot/collect triggers:
+    // vacating an output tray can un-stall its emitter, and filling a hole can
+    // autostart the destination verb.
+    for (const mv of eff.moves ?? []) {
+      const moving = ctx.db.card.id.find(mv.cardId);
+      if (!moving) continue;
+      const from = moving.location;
+      ctx.db.card.id.update({ ...moving, location: mv.to });
+      if (from.tag === "output") {
+        const src = ctx.db.situation.cardId.find(from.value.verbCardId);
+        if (src && src.state.tag === "stalled")
+          tryBeginRun(ctx, from.value.verbCardId);
+      }
+      if (mv.to.tag === "slotted") maybeAutostart(ctx, mv.to.value.verbCardId);
+    }
 
     // Transform-in-place: the verb metamorphoses into a new card where it stood
     // (a Seed → Forest), rather than producing into a tray it would orphan when

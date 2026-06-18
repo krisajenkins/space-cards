@@ -31,6 +31,8 @@ const G = {
   seed: `<path d="M12 21v-7"/><path d="M12 14c-1.4 0-4-.6-4-3.2C8 8.6 10.4 8 12 8M12 14c1.4 0 4-.6 4-3.2C16 8.6 13.6 8 12 8"/><ellipse cx="12" cy="18.4" rx="2" ry="2.6" fill="currentColor" stroke="none"/>`,
   // Balance scales — the Market.
   market: `<path d="M12 4v15M7 19h10M5.5 7.5h13M5.5 7.5L3 13a3 3 0 006 0L8 7.5M18.5 7.5L16 13a3 3 0 006 0L21 7.5"/><circle cx="12" cy="4.6" r="1.2" fill="currentColor" stroke="none"/>`,
+  // A courier carrying a parcel — the Worker.
+  worker: `<circle cx="12" cy="5" r="2.4"/><path d="M12 8.4v6"/><path d="M8 17.5l4-3 4 3"/><rect x="9" y="9.4" width="6" height="5" rx="1" fill="currentColor" stroke="none"/>`,
   // Generic fallback.
   token: `<rect x="5" y="5" width="14" height="14" rx="3"/>`,
 };
@@ -44,6 +46,7 @@ const BY_DEF: Record<string, Visual> = {
   forest: { color: "var(--cat-lumberjack)", glyph: G.forest },
   market: { color: "var(--cat-coin)", glyph: G.market },
   seed: { color: "var(--cat-seed)", glyph: G.seed },
+  worker: { color: "var(--cat-station)", glyph: G.worker },
 };
 
 const BY_CATEGORY: Record<string, Visual> = {

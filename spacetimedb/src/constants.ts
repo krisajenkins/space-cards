@@ -8,6 +8,7 @@ export const CHOP = 5_000_000n; // Forest chopping one Health
 export const MARKET = 3_000_000n; // Market selling one Wood
 export const HIRE = 8_000_000n; // Agency processing a hire
 export const FOREST_GROWTH = 60_000_000n; // a planted Seed maturing into a Forest
+export const WORKER_HOLD = 2_000_000n; // Worker carrying a stolen card before it deposits it
 
 // ──────────────────────────────────────────────────────────────────────────
 // Auth — trusted issuers. We split identity (the principal, `ctx.sender`) from

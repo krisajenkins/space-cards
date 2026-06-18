@@ -54,6 +54,12 @@ export const init = spacetimedb.init((ctx) => {
   verb("market", "Market", "station", 10);
   verb("agency", "Agency", "station", 3);
 
+  // Worker: a hole-less courier (no slot_defs — so it stays `verbReady` while
+  // empty-handed and keeps its 2s heartbeat). outputCap 0: it never trays
+  // output, it carries a stolen card in transit (slotted into itself) and hands
+  // it to an open hole. See the `worker` resolver.
+  verb("worker", "Worker", "station", 0);
+
   ctx.db.slotDef.insert({
     id: 0n,
     defId: "forest",
@@ -74,15 +80,29 @@ export const init = spacetimedb.init((ctx) => {
     });
   }
 
-  // Agency: ten Coin holes (no quantity in the model — multiplicity is multiple
-  // holes; see DATA_MODEL §3.1). All required, so the hire fires only once paid.
+  // Agency: two postings on one board — 5 Coins + 3 Health hires a Worker, or
+  // 10 Coins hires a Lumberjack. Multiplicity is multiple holes, never a
+  // quantity (see DATA_MODEL §3.1): ten coin holes and three health holes. They
+  // are all OPTIONAL — neither recipe needs every hole, so the `required` flag
+  // can't gate the hire; the agency resolver's `ready` hook does, firing only
+  // once a whole recipe is paid. Either hire lands dormant in the tray (a verb
+  // produced into output, like a Seed) until you place it on the table.
   for (let i = 0; i < 10; i++) {
     ctx.db.slotDef.insert({
       id: 0n,
       defId: "agency",
       slotIndex: i,
       accepts: ["coin"],
-      required: true,
+      required: false,
+    });
+  }
+  for (let i = 10; i < 13; i++) {
+    ctx.db.slotDef.insert({
+      id: 0n,
+      defId: "agency",
+      slotIndex: i,
+      accepts: ["health"],
+      required: false,
     });
   }
 });

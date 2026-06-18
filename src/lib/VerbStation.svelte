@@ -79,6 +79,16 @@ const trayCells = $derived(
 const stateLabel = $derived(
   isOngoing ? "running" : isStalled ? "tray full" : "ready",
 );
+
+// Cards slotted into this verb that don't map to a declared hole — a card the
+// Worker has stolen and is carrying in transit (it holds with no slot_def of its
+// own). Shown read-only: it's locked into the running verb until it's deposited.
+const held = $derived(
+  [...slotted.entries()]
+    .filter(([idx]) => !slots.some((s) => s.slotIndex === idx))
+    .sort((a, b) => a[0] - b[0])
+    .map(([, card]) => card),
+);
 </script>
 
 <div
@@ -156,6 +166,24 @@ const stateLabel = $derived(
           {/if}
         </div>
       {/each}
+    </div>
+  {/if}
+
+  {#if held.length > 0}
+    <div class="carry">
+      <span class="carry-label">carrying</span>
+      <div class="carry-cards">
+        {#each held as card (card.id)}
+          <div class="carry-card">
+            <CardToken
+              defId={card.defId}
+              name={nameOf(card.defId)}
+              category={categoryOf(card.defId)}
+              size="sm"
+            />
+          </div>
+        {/each}
+      </div>
     </div>
   {/if}
 
@@ -416,6 +444,35 @@ header {
 .slotted-card.reject,
 .out-card.reject {
   animation: reject 0.46s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.carry {
+  margin-top: 0.8rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(203, 166, 90, 0.16);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.carry-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.carry-cards {
+  display: flex;
+  gap: 5px;
+}
+/* a parcel in transit — gently bob so it reads as "being carried", not slotted */
+.carry-card {
+  animation: bob 1.6s ease-in-out infinite;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
 .tray {

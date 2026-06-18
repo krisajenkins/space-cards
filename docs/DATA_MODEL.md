@@ -365,6 +365,23 @@ wood inbox. Slotting also doesn't require an idle verb (only an empty, accepting
 hole), so you can keep topping up the queue mid-run; single-hole verbs stay
 effectively locked because their one hole is occupied while they run.
 
+**Choice of recipe — the `ready` hook.** The per-hole `required` flag can only
+_AND_ holes together, so a single verb can't natively offer a choice between two
+complete recipes. A resolver may therefore supply an optional **`ready`
+predicate** that the engine's `verbReady` consults _on top of_ the generic
+required-holes check: the verb runs only when `ready` also returns true. The
+Agency uses it to fire on _either_ "10 Coins" _or_ "5 Coins + 3 Health" from one
+pool of all-optional holes, picking the matching output in its resolver.
+
+**Relocating cards — the `moves` effect.** Resolvers normally only `consume`
+their inputs and `produce` new cards. A resolver that needs to _move an existing
+card_ — the Worker shuttling a card from an output tray into another verb's hole
+— returns a **`moves`** list (`{ cardId, to: Location }`). The engine applies each
+relocation and then runs the same side-effects a player's slot/collect would: a
+vacated tray can un-stall its emitter, and a freshly-filled hole can autostart
+its destination verb. This keeps the resolver declarative — it _decides_ the
+moves; the engine _applies_ them.
+
 **No failure state.** Every call completes "successfully". The variation is in
 the _outputs_: a resolver may produce something great, produce nothing (inputs
 consumed for no benefit), or hand back the very cards you put in. "Disappointing"
@@ -452,7 +469,7 @@ A first end-to-end slice is built in `spacetimedb/src/index.ts` and verified on 
 local server.
 
 - **Cards:** `health`, `wood`, `coin`, `lumberjack` (inert); `you`, `forest`,
-  `market`, `agency`, `seed` (verbs).
+  `market`, `agency`, `seed`, `worker` (verbs).
 - **You** — no holes; emits 1 Health/min, `outputCap` 5. Autostarts on spawn.
 - **Forest** — one hole accepting `health` or `lumberjack`. Health → chop,
   consumed, yields Wood + 10 % Lumberjack. Lumberjack → not consumed, every cycle
@@ -461,7 +478,22 @@ local server.
   head of the queue for a Coin each cycle and re-fires until the queue is empty;
   you can drop more wood in while it runs. Exercises the optional-holes / `again`
   queue pattern (§6).
-- **Agency** — ten required `coin` holes; yields a guaranteed Lumberjack.
+- **Agency** — a two-recipe job board: **5 Coins + 3 Health** hires a Worker, or
+  **10 Coins** hires a Lumberjack. Its ten `coin` + three `health` holes are all
+  _optional_; a per-verb **`ready` hook** (see §6) holds the run until one whole
+  recipe is paid, which the flat `required` flag can't express. The hire lands
+  dormant in the tray — for the Worker (a verb) that means it waits there inert,
+  like a Seed, until planted.
+- **Worker** — a **no-hole** courier, `outputCap` 0, that keeps a 2 s heartbeat
+  (re-fires forever, like You, so it acts on its own). It only collects from a
+  couple of producing stations — the **Forest and the Market** (eligibility is by
+  the producing verb, not the card). Each beat it grabs one such card from a tray
+  and holds it (the card becomes _slotted_ into
+  the Worker), then on the next beat hands it to the first open, accepting hole
+  it finds — "steal → hold 2 s → deposit". With no tray to pull it back from, the
+  carried card is locked in transit until placed; if no hole will take it yet, it
+  keeps holding. Bought from the Agency, not seeded on a fresh board. Exercises
+  the **`moves` effect** (§6).
 - **Seed** — a one-shot, **no-hole** verb, `outputCap` 0. Dormant in the Forest's
   tray; **planted** on the tabletop it grows for `FOREST_GROWTH` and **`become`s**
   a Forest in place. Exercises the "grows only on the tabletop" gate and the
