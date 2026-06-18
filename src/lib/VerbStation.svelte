@@ -5,7 +5,7 @@
 // comes in as props from the Board; this component only draws and forwards the
 // pointer events that begin a drag on a slotted or produced card.
 import type { Card, CardDef, SlotDef } from "../module_bindings/types";
-import { visualFor, formatRemaining } from "./catalogue";
+import { visualFor, formatRemaining, type RunState } from "./catalogue";
 import CardToken from "./CardToken.svelte";
 
 let {
@@ -24,7 +24,7 @@ let {
   onOutputPointerDown,
 }: {
   def: CardDef;
-  state: string; // 'assembling' | 'ongoing' | 'stalled'
+  state: RunState;
   progress: number; // 0..1
   remainingMs: number;
   slots: SlotDef[];

@@ -6,19 +6,18 @@ import {
   HIRE,
   FOREST_GROWTH,
 } from "./constants";
-import type { Effects } from "./types";
+import type { Ctx, Effects, SlottedCard } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Verb behaviour ("code per verb"): duration + resolution decided at runtime
 // from whatever is in the holes.
 // ──────────────────────────────────────────────────────────────────────────
-export const RESOLVERS: Record<
-  string,
-  {
-    duration: (holes: any[]) => bigint;
-    resolve: (ctx: any, holes: any[]) => Effects;
-  }
-> = {
+export type Resolver = {
+  duration: (holes: SlottedCard[]) => bigint;
+  resolve: (ctx: Ctx, holes: SlottedCard[]) => Effects;
+};
+
+export const RESOLVERS: Record<string, Resolver> = {
   // You: no inputs, emits one Health per minute (capped on the card_def).
   you: {
     duration: () => REST,
@@ -76,7 +75,7 @@ export const RESOLVERS: Record<
   agency: {
     duration: () => HIRE,
     resolve: (_ctx, holes) => ({
-      consume: holes.map((h: any) => h.id),
+      consume: holes.map((h) => h.id),
       produce: ["lumberjack"],
       again: false,
     }),

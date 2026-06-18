@@ -1,30 +1,28 @@
 import { ScheduleAt, Timestamp } from "spacetimedb";
 import { MINUTE } from "./constants";
 import { RESOLVERS } from "./resolvers";
+import type { Ctx, Card, SlottedCard } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Engine helpers
 // ──────────────────────────────────────────────────────────────────────────
-export function holeCards(ctx: any, verbCardId: bigint): any[] {
+export function holeCards(ctx: Ctx, verbCardId: bigint): SlottedCard[] {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb) return [];
   return [...ctx.db.card.boardId.filter(verb.boardId)]
     .filter(
-      (c: any) =>
+      (c): c is SlottedCard =>
         c.location.tag === "slotted" &&
         c.location.value.verbCardId === verbCardId,
     )
-    .sort(
-      (a: any, b: any) =>
-        a.location.value.slotIndex - b.location.value.slotIndex,
-    );
+    .sort((a, b) => a.location.value.slotIndex - b.location.value.slotIndex);
 }
 
-export function outputCount(ctx: any, verbCardId: bigint): number {
+export function outputCount(ctx: Ctx, verbCardId: bigint): number {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb) return 0;
   return [...ctx.db.card.boardId.filter(verb.boardId)].filter(
-    (c: any) =>
+    (c) =>
       c.location.tag === "output" && c.location.value.verbCardId === verbCardId,
   ).length;
 }
@@ -35,22 +33,22 @@ export function outputCount(ctx: any, verbCardId: bigint): number {
 // optional holes from firing on nothing: the Market's five wood holes are all
 // optional, so it fires whenever any wood is waiting and drains the queue one
 // per cycle, but sits idle when empty.
-export function verbReady(ctx: any, verbCardId: bigint): boolean {
+export function verbReady(ctx: Ctx, verbCardId: bigint): boolean {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb) return false;
   const slots = [...ctx.db.slotDef.defId.filter(verb.defId)];
   const holes = holeCards(ctx, verbCardId);
-  const filled = new Set(holes.map((h: any) => h.location.value.slotIndex));
+  const filled = new Set(holes.map((h) => h.location.value.slotIndex));
   const requiredFilled = slots
-    .filter((s: any) => s.required)
-    .every((s: any) => filled.has(s.slotIndex));
+    .filter((s) => s.required)
+    .every((s) => filled.has(s.slotIndex));
   if (!requiredFilled) return false;
   if (slots.length > 0 && holes.length === 0) return false; // has holes, none filled
   return true;
 }
 
 // Begin (or re-begin) a run, unless the output tray is full → then stall.
-export function tryBeginRun(ctx: any, verbCardId: bigint): void {
+export function tryBeginRun(ctx: Ctx, verbCardId: bigint): void {
   const s = ctx.db.situation.cardId.find(verbCardId);
   const verb = ctx.db.card.id.find(verbCardId);
   if (!s || !verb) return;
@@ -59,7 +57,7 @@ export function tryBeginRun(ctx: any, verbCardId: bigint): void {
   if (cap > 0 && outputCount(ctx, verbCardId) >= cap) {
     ctx.db.situation.cardId.update({
       ...s,
-      state: "stalled",
+      state: { tag: "stalled" },
       endsAt: undefined,
     });
     return;
@@ -69,7 +67,7 @@ export function tryBeginRun(ctx: any, verbCardId: bigint): void {
   const endMicros = ctx.timestamp.microsSinceUnixEpoch + dur;
   ctx.db.situation.cardId.update({
     ...s,
-    state: "ongoing",
+    state: { tag: "ongoing" },
     endsAt: new Timestamp(endMicros),
   });
   ctx.db.situationTimer.insert({
@@ -83,21 +81,21 @@ export function tryBeginRun(ctx: any, verbCardId: bigint): void {
 // The tabletop gate is what makes "grows once planted" work: a no-hole verb
 // like a Seed won't run while it sits in an output tray, and repositioning an
 // already-running card is a no-op rather than a double-fire.
-export function maybeAutostart(ctx: any, verbCardId: bigint): void {
+export function maybeAutostart(ctx: Ctx, verbCardId: bigint): void {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb || verb.location.tag !== "tabletop") return;
   const s = ctx.db.situation.cardId.find(verbCardId);
-  if (!s || s.state !== "assembling") return;
+  if (!s || s.state.tag !== "assembling") return;
   if (verbReady(ctx, verbCardId)) tryBeginRun(ctx, verbCardId);
 }
 
 export function spawnCard(
-  ctx: any,
+  ctx: Ctx,
   boardId: bigint,
   defId: string,
   x: number,
   y: number,
-): any {
+): Card {
   const def = ctx.db.cardDef.defId.find(defId);
   const c = ctx.db.card.insert({
     id: 0n,
@@ -109,7 +107,7 @@ export function spawnCard(
     ctx.db.situation.insert({
       cardId: c.id,
       boardId,
-      state: "assembling",
+      state: { tag: "assembling" },
       endsAt: undefined,
     });
     maybeAutostart(ctx, c.id);
@@ -118,7 +116,7 @@ export function spawnCard(
 }
 
 export function spawnOutput(
-  ctx: any,
+  ctx: Ctx,
   boardId: bigint,
   defId: string,
   verbCardId: bigint,
@@ -137,7 +135,7 @@ export function spawnOutput(
     ctx.db.situation.insert({
       cardId: c.id,
       boardId,
-      state: "assembling",
+      state: { tag: "assembling" },
       endsAt: undefined,
     });
   }

@@ -8,7 +8,7 @@
 // def still renders something sensible.
 // ──────────────────────────────────────────────────────────────────────────
 
-import type { Card } from "../module_bindings/types";
+import type { Card, Situation } from "../module_bindings/types";
 
 export type Visual = { color: string; glyph: string };
 
@@ -70,6 +70,14 @@ export type Place = "tabletop" | "slotted" | "output";
 
 export function placeOf(card: Card): Place {
   return card.location.tag.toLowerCase() as Place;
+}
+
+// Same codegen-casing caveat as placeOf: the generated `SituationState` tag may
+// arrive "Ongoing" or "ongoing", so normalise rather than `=== "Ongoing"`.
+export type RunState = "assembling" | "ongoing" | "stalled";
+
+export function stateOf(s: Situation): RunState {
+  return s.state.tag.toLowerCase() as RunState;
 }
 
 // ── Time formatting ────────────────────────────────────────────────────────

@@ -22,7 +22,9 @@ export const BoardMember = __t.object("BoardMember", {
   id: __t.u64(),
   boardId: __t.u64(),
   userId: __t.u64(),
-  role: __t.string(),
+  get role() {
+    return MemberRole;
+  },
 });
 export type BoardMember = __Infer<typeof BoardMember>;
 
@@ -89,6 +91,13 @@ export type MeRow = __Infer<typeof MeRow>;
 export const MeView = __t.object("MeView", {});
 export type MeView = __Infer<typeof MeView>;
 
+// The tagged union or sum type for the algebraic type `MemberRole`.
+export const MemberRole = __t.enum("MemberRole", {
+  Player: __t.unit(),
+  Spectator: __t.unit(),
+});
+export type MemberRole = __Infer<typeof MemberRole>;
+
 export const MyBoardMembers = __t.object("MyBoardMembers", {});
 export type MyBoardMembers = __Infer<typeof MyBoardMembers>;
 
@@ -112,10 +121,20 @@ export type Output = __Infer<typeof Output>;
 export const Situation = __t.object("Situation", {
   cardId: __t.u64(),
   boardId: __t.u64(),
-  state: __t.string(),
+  get state() {
+    return SituationState;
+  },
   endsAt: __t.option(__t.timestamp()),
 });
 export type Situation = __Infer<typeof Situation>;
+
+// The tagged union or sum type for the algebraic type `SituationState`.
+export const SituationState = __t.enum("SituationState", {
+  Assembling: __t.unit(),
+  Ongoing: __t.unit(),
+  Stalled: __t.unit(),
+});
+export type SituationState = __Infer<typeof SituationState>;
 
 export const SituationTimer = __t.object("SituationTimer", {
   scheduledId: __t.u64(),

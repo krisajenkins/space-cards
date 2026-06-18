@@ -9,10 +9,13 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
+import { SituationState } from "./types";
 
 export default __t.row({
   cardId: __t.u64().primaryKey().name("card_id"),
   boardId: __t.u64().name("board_id"),
-  state: __t.string(),
+  get state() {
+    return SituationState;
+  },
   endsAt: __t.option(__t.timestamp()).name("ends_at"),
 });

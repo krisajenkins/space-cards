@@ -9,10 +9,13 @@ import {
   type AlgebraicTypeType as __AlgebraicTypeType,
   type Infer as __Infer,
 } from "spacetimedb";
+import { MemberRole } from "./types";
 
 export default __t.row({
   id: __t.u64().primaryKey(),
   boardId: __t.u64().name("board_id"),
   userId: __t.u64().name("user_id"),
-  role: __t.string(),
+  get role() {
+    return MemberRole;
+  },
 });

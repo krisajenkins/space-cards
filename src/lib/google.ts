@@ -88,12 +88,37 @@ function setToken(token: string): void {
 }
 
 // ── GIS script loading ────────────────────────────────────────────────────
+// A minimal typing of the slice of Google Identity Services we touch. The full
+// `google.accounts.id` surface is large; we declare only the four calls used
+// here so the rest of the file is `any`-free.
+interface GoogleIdConfig {
+  client_id: string;
+  callback: (response: { credential?: string }) => void;
+  auto_select?: boolean;
+}
+interface GoogleButtonOptions {
+  theme?: "outline" | "filled_blue" | "filled_black";
+  size?: "large" | "medium" | "small";
+  type?: "standard" | "icon";
+}
+interface GoogleIdApi {
+  initialize(config: GoogleIdConfig): void;
+  renderButton(parent: HTMLElement, options: GoogleButtonOptions): void;
+  prompt(): void;
+  disableAutoSelect(): void;
+}
+declare global {
+  interface Window {
+    google?: { accounts?: { id?: GoogleIdApi } };
+  }
+}
+
 let gisReady: Promise<void> | null = null;
 
 function loadGis(): Promise<void> {
   if (gisReady) return gisReady;
   gisReady = new Promise((resolve, reject) => {
-    if (typeof window !== "undefined" && (window as any).google?.accounts?.id) {
+    if (typeof window !== "undefined" && window.google?.accounts?.id) {
       resolve();
       return;
     }
@@ -109,8 +134,10 @@ function loadGis(): Promise<void> {
   return gisReady;
 }
 
-function gisId(): any {
-  return (window as any).google?.accounts?.id;
+// Safe to call only once `loadGis()` has resolved (every caller awaits
+// `ensureInitialised` first); the assertion encodes that precondition.
+function gisId(): GoogleIdApi {
+  return window.google!.accounts!.id!;
 }
 
 let initialised = false;
@@ -158,7 +185,9 @@ export function signOutGoogle(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(STDB_TOKEN_KEY);
   googleToken.set(undefined);
-  gisId()?.disableAutoSelect?.(); // don't silently re-pick the account next time
+  // Reached straight from the UI, possibly before GIS ever loaded, so go
+  // through the optional chain rather than gisId()'s load-or-throw assertion.
+  window.google?.accounts?.id?.disableAutoSelect(); // don't silently re-pick the account next time
   // Reload to rebuild the connection anonymously — the SDK won't swap the token
   // on the live (singleton) connection.
   window.location.reload();

@@ -7,6 +7,7 @@ import spacetimedb, {
   user,
 } from "./schema";
 import { MeRow } from "./types";
+import type { Board, BoardMember, User, Card, Situation } from "./types";
 import { lookupCaller } from "./auth";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ export const myBoards = spacetimedb.view(
   (ctx) => {
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
-    const out: any[] = [];
+    const out: Board[] = [];
     for (const m of ctx.db.boardMember.userId.filter(caller.user.id)) {
       const b = ctx.db.board.id.find(m.boardId);
       if (b) out.push(b);
@@ -61,7 +62,7 @@ export const myBoardMembers = spacetimedb.view(
   (ctx) => {
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
-    const out: any[] = [];
+    const out: BoardMember[] = [];
     for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const peer of ctx.db.boardMember.boardId.filter(mine.boardId))
         out.push(peer);
@@ -79,7 +80,7 @@ export const myPlayers = spacetimedb.view(
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
     const seen = new Set<bigint>();
-    const out: any[] = [];
+    const out: User[] = [];
     for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const peer of ctx.db.boardMember.boardId.filter(mine.boardId)) {
         if (seen.has(peer.userId)) continue;
@@ -98,7 +99,7 @@ export const myCards = spacetimedb.view(
   (ctx) => {
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
-    const out: any[] = [];
+    const out: Card[] = [];
     for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const c of ctx.db.card.boardId.filter(mine.boardId)) out.push(c);
     }
@@ -112,7 +113,7 @@ export const mySituations = spacetimedb.view(
   (ctx) => {
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
-    const out: any[] = [];
+    const out: Situation[] = [];
     for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const s of ctx.db.situation.boardId.filter(mine.boardId))
         out.push(s);

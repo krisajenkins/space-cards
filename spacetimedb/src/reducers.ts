@@ -2,6 +2,7 @@ import { t, SenderError } from "spacetimedb/server";
 import spacetimedb from "./schema";
 import { holeCards, maybeAutostart, spawnCard, tryBeginRun } from "./engine";
 import { requireCaller, requireMember } from "./auth";
+import type { Ctx, Card } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Reducers
@@ -20,7 +21,7 @@ export const newGame = spacetimedb.reducer((ctx) => {
     id: 0n,
     boardId: b.id,
     userId: me.id,
-    role: "player",
+    role: { tag: "player" },
   });
   // Lay the opening table out with room to breathe — the verb cards are wide
   // (trays, sockets), so these are spaced for their real footprints: the three
@@ -45,7 +46,12 @@ export const newGame = spacetimedb.reducer((ctx) => {
 // wood while it sells). Single-hole verbs are still effectively locked while
 // running — their one hole is occupied, so the "hole already filled" check below
 // rejects the drop anyway.
-function assertSlottable(ctx: any, c: any, verb: any, slotIndex: number): void {
+function assertSlottable(
+  ctx: Ctx,
+  c: Card,
+  verb: Card,
+  slotIndex: number,
+): void {
   if (c.boardId !== verb.boardId)
     throw new SenderError("cards are on different boards");
   const def = ctx.db.cardDef.defId.find(verb.defId);
@@ -54,7 +60,7 @@ function assertSlottable(ctx: any, c: any, verb: any, slotIndex: number): void {
   if (!s) throw new SenderError("target is not a verb");
 
   const slot = [...ctx.db.slotDef.defId.filter(verb.defId)].find(
-    (sl: any) => sl.slotIndex === slotIndex,
+    (sl) => sl.slotIndex === slotIndex,
   );
   if (!slot) throw new SenderError("no such hole");
   const cdef = ctx.db.cardDef.defId.find(c.defId);
@@ -63,7 +69,7 @@ function assertSlottable(ctx: any, c: any, verb: any, slotIndex: number): void {
     throw new SenderError("that card is not accepted here");
   if (
     holeCards(ctx, verb.id).some(
-      (h: any) => h.location.value.slotIndex === slotIndex,
+      (h) => h.location.value.slotIndex === slotIndex,
     )
   )
     throw new SenderError("hole already filled");
@@ -107,7 +113,7 @@ export const collectAndSlot = spacetimedb.reducer(
     // A card bound to a verb that's mid-run can't be pulled out.
     if (old.tag === "slotted") {
       const src = ctx.db.situation.cardId.find(old.value.verbCardId);
-      if (src && src.state !== "assembling")
+      if (src && src.state.tag !== "assembling")
         throw new SenderError("cannot take a card out of a running verb");
     }
 
@@ -121,7 +127,7 @@ export const collectAndSlot = spacetimedb.reducer(
     // Vacating an output tray can un-stall the verb that produced this card.
     if (old.tag === "output") {
       const src = ctx.db.situation.cardId.find(old.value.verbCardId);
-      if (src && src.state === "stalled")
+      if (src && src.state.tag === "stalled")
         tryBeginRun(ctx, old.value.verbCardId);
     }
 
@@ -141,7 +147,7 @@ export const moveCard = spacetimedb.reducer(
     const old = c.location;
     if (old.tag === "slotted") {
       const s = ctx.db.situation.cardId.find(old.value.verbCardId);
-      if (s && s.state !== "assembling") {
+      if (s && s.state.tag !== "assembling") {
         throw new SenderError("cannot take a card out of a running verb");
       }
     }
@@ -154,7 +160,7 @@ export const moveCard = spacetimedb.reducer(
     if (old.tag === "output") {
       const v = old.value.verbCardId;
       const s = ctx.db.situation.cardId.find(v);
-      if (s && s.state === "stalled") tryBeginRun(ctx, v);
+      if (s && s.state.tag === "stalled") tryBeginRun(ctx, v);
     }
 
     // Planting: a card just placed on the table may now begin (a no-hole verb

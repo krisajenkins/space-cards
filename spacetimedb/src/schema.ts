@@ -1,5 +1,11 @@
 import { schema, table, t, SenderError } from "spacetimedb/server";
-import { Location, IdentityProvider, type Effects } from "./types";
+import {
+  Location,
+  IdentityProvider,
+  SituationState,
+  MemberRole,
+  type Effects,
+} from "./types";
 import { RESOLVERS } from "./resolvers";
 import {
   holeCards,
@@ -87,7 +93,7 @@ export const boardMember = table(
     id: t.u64().primaryKey().autoInc(),
     boardId: t.u64().index("btree"),
     userId: t.u64().index("btree"), // -> user.id
-    role: t.string(), // 'player' | 'spectator'
+    role: MemberRole,
   },
 );
 
@@ -110,7 +116,7 @@ export const situation = table(
   {
     cardId: t.u64().primaryKey(),
     boardId: t.u64().index("btree"),
-    state: t.string(), // 'assembling' | 'ongoing' | 'stalled'
+    state: SituationState,
     endsAt: t.option(t.timestamp()),
   },
 );
@@ -165,7 +171,7 @@ export const completeSituation = spacetimedb.reducer(
 
     const verbCardId = timer.verbCardId;
     const s = ctx.db.situation.cardId.find(verbCardId);
-    if (!s || s.state !== "ongoing") return; // cancelled/changed → no-op
+    if (!s || s.state.tag !== "ongoing") return; // cancelled/changed → no-op
     const verb = ctx.db.card.id.find(verbCardId);
     if (!verb) {
       ctx.db.situation.cardId.delete(verbCardId);
@@ -208,7 +214,7 @@ export const completeSituation = spacetimedb.reducer(
     } else {
       ctx.db.situation.cardId.update({
         ...s,
-        state: "assembling",
+        state: { tag: "assembling" },
         endsAt: undefined,
       });
     }

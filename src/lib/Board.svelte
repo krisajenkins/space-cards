@@ -8,8 +8,16 @@
 // only tells us when a call ends (`situation.endsAt`), so we animate toward it.
 import { useTable, useReducer } from "spacetimedb/svelte";
 import { tables, reducers } from "../module_bindings";
-import type { Card, CardDef, SlotDef, Situation } from "../module_bindings/types";
-import { placeOf, microsToMillis } from "./catalogue";
+import type {
+  Card,
+  CardDef,
+  SlotDef,
+  Situation,
+  Slotted,
+  Tabletop,
+  Output,
+} from "../module_bindings/types";
+import { placeOf, stateOf, microsToMillis, type RunState } from "./catalogue";
 import CardToken from "./CardToken.svelte";
 import VerbStation from "./VerbStation.svelte";
 
@@ -59,11 +67,16 @@ const situationsByCard = $derived(
   ),
 );
 
-// Location-value accessors (the sum type's payload varies by tag).
-const verbOf = (c: Card) => (c.location.value as any).verbCardId as bigint;
-const slotOf = (c: Card) => (c.location.value as any).slotIndex as number;
-const txOf = (c: Card) => (c.location.value as any).x as number;
-const tyOf = (c: Card) => (c.location.value as any).y as number;
+// Location-value accessors (the sum type's payload varies by tag). The caller
+// guards on `placeOf(c)` first, so each accessor asserts the matching variant.
+// We assert rather than narrow on `location.tag` because the generated tag may
+// arrive capitalised or lower-cased (see catalogue's placeOf) — a `===` check
+// against either spelling is unreliable, so the typed cast carries the
+// invariant the call site has already established.
+const verbOf = (c: Card): bigint => (c.location.value as Slotted | Output).verbCardId;
+const slotOf = (c: Card): number => (c.location.value as Slotted).slotIndex;
+const txOf = (c: Card): number => (c.location.value as Tabletop).x;
+const tyOf = (c: Card): number => (c.location.value as Tabletop).y;
 
 function slottedFor(verbId: bigint): Map<number, Card> {
   const m = new Map<number, Card>();
@@ -92,14 +105,14 @@ $effect(() => {
 // fraction (the server only gives us the end time). Plain Map → not reactive.
 const runMeta = new Map<string, { end: number; total: number }>();
 function runInfo(verbId: bigint): {
-  state: string;
+  state: RunState;
   progress: number;
   remainingMs: number;
 } {
   const s = situationsByCard.get(verbId);
   if (!s) return { state: "assembling", progress: 0, remainingMs: 0 };
-  if (s.state !== "ongoing" || !s.endsAt)
-    return { state: s.state, progress: 0, remainingMs: 0 };
+  if (stateOf(s) !== "ongoing" || !s.endsAt)
+    return { state: stateOf(s), progress: 0, remainingMs: 0 };
   const end = microsToMillis(s.endsAt.microsSinceUnixEpoch);
   const key = `${verbId}:${end}`;
   let meta = runMeta.get(key);

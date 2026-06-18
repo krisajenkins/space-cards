@@ -1,4 +1,7 @@
 import { SenderError } from "spacetimedb/server";
+import type { Ctx, ReadCtx, IdentityRow, User } from "./types";
+
+type Caller = { identity: IdentityRow; user: User };
 
 // ──────────────────────────────────────────────────────────────────────────
 // Auth helpers. Resolve principal → identity → user. NOTE: `.find()` returns
@@ -11,7 +14,8 @@ export function normaliseEmail(raw: unknown): string | null {
   return e.length > 0 ? e : null;
 }
 
-export function lookupCaller(ctx: any): { identity: any; user: any } | null {
+// Read-only — runs from both reducers and views, hence ReadCtx.
+export function lookupCaller(ctx: ReadCtx): Caller | null {
   const ident = ctx.db.identity.id.find(ctx.sender);
   if (ident === null) return null; // unknown principal
   const u = ctx.db.user.id.find(ident.userId);
@@ -19,7 +23,7 @@ export function lookupCaller(ctx: any): { identity: any; user: any } | null {
   return { identity: ident, user: u };
 }
 
-export function requireCaller(ctx: any): { identity: any; user: any } {
+export function requireCaller(ctx: ReadCtx): Caller {
   const caller = lookupCaller(ctx);
   if (caller === null) {
     throw new SenderError(
@@ -30,11 +34,12 @@ export function requireCaller(ctx: any): { identity: any; user: any } {
 }
 
 // Resolve the caller and assert they are a member of the board. Returns the
-// caller's user so callers can use `me.id` for ownership checks.
-export function requireMember(ctx: any, boardId: bigint): { user: any } {
+// caller's user so callers can use `me.id` for ownership checks. Reducer-only:
+// the actions it guards (slotting, moving) all mutate.
+export function requireMember(ctx: Ctx, boardId: bigint): { user: User } {
   const { user: me } = requireCaller(ctx);
   const ok = [...ctx.db.boardMember.boardId.filter(boardId)].some(
-    (m: any) => m.userId === me.id,
+    (m) => m.userId === me.id,
   );
   if (!ok) throw new SenderError("not a member of this board");
   return { user: me };
