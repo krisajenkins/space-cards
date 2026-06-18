@@ -1,5 +1,13 @@
 # Possible Game Themes
 
+> **Decision (2026-06-18): "Escape the Moon" was chosen.** It's the only theme
+> that exercises every engine mechanic, has a concrete motivating endgame, and
+> matches the existing name/aesthetic. The full design lives in
+> `docs/ESCAPE_THE_MOON.md`. The alternatives below are kept for reference and as
+> a source of grafted ideas (e.g. D&D's divergent "classes" → alternate escape
+> routes).
+
+
 # Dungeons & Dragons
 
 "Find the dragon, kill the dragon, profit."
