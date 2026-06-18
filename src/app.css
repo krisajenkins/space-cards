@@ -27,14 +27,35 @@
   --astral-bright: #aef0fb;
   --ember: #ef7a52;
 
-  /* category tints */
-  --cat-health: #ef7a52;
-  --cat-wood: #c08a4c;
-  --cat-coin: #ecc35a;
-  --cat-lumberjack: #74b06a;
-  --cat-avatar: #b491e6;
-  --cat-station: #cba65a;
-  --cat-seed: #8fc97a;
+  /* category tints — "Escape the Moon".
+     Muted, harmonised hues: lunar greys for raw stock, steely blues for
+     refined metal/silicon, ambers for heat/fuel, cyans for power/water/gas,
+     blueprint-blue for schematics, and a bright astral-gold for `escape`. */
+
+  /* resources */
+  --cat-effort: #d8b27a; /* warm human toil */
+  --cat-power: #74c7d6; /* astral-cyan electricity */
+  --cat-raw: #9aa0ad; /* lunar grey dust & scrap */
+  --cat-salvage: #b3936a; /* tarnished reclaimed brass */
+  --cat-metal: #8fa3bd; /* steely ingot */
+  --cat-silicon: #7f97c2; /* indigo wafer */
+  --cat-glass: #a7d4d2; /* pale teal pane */
+  --cat-circuit: #6fb89a; /* board green */
+  --cat-component: #c0a878; /* machined brass-grey */
+  --cat-water: #6db4d8; /* clear blue */
+  --cat-hydrogen: #9ecbe6; /* pale gas blue */
+  --cat-oxygen: #79b9c7; /* cool oxygen teal */
+  --cat-fuel: #e08a4a; /* amber fuel */
+
+  /* structural / endgame */
+  --cat-subsystem: #b9c2d4; /* cold rocket alloy */
+  --cat-drone: #a89bd4; /* violet autonomy */
+  --cat-station: #cba65a; /* brass machinery */
+  --cat-avatar: #b491e6; /* the survivor — violet */
+  --cat-courier: #8fb6c4; /* slate-blue fleet */
+  --cat-launchpad: #d4ad63; /* gantry gold */
+  --cat-escape: #aef0fb; /* bright astral — triumph */
+  --cat-blueprint: #6f95d4; /* blueprint blue */
 
   /* type */
   --display: "Fraunces", Georgia, serif;
