@@ -29,26 +29,42 @@ export function outputCount(ctx: Ctx, verbCardId: bigint): number {
 
 // A verb is ready to run when every required hole is filled AND — if it has any
 // holes at all — at least one of them is filled. The second clause is what lets
-// a hole-less verb (the Survivor, a courier) fire while self-contained, yet
+// a hole-less verb (the Survivor, a drone) fire while self-contained, yet
 // stops a verb with optional holes from firing on nothing: a Refinery's raw
 // inbox holes are all optional, so it fires whenever raw is waiting and drains
 // the queue one per cycle, but sits idle when empty.
 export function verbReady(ctx: Ctx, verbCardId: bigint): boolean {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb) return false;
-  const slots = [...ctx.db.slotDef.defId.filter(verb.defId)];
-  const holes = holeCards(ctx, verbCardId);
-  const filled = new Set(holes.map((h) => h.location.value.slotIndex));
-  const requiredFilled = slots
+  const allSlots = [...ctx.db.slotDef.defId.filter(verb.defId)];
+  // A drone bay (droneLevel > 0) holds the machine's WORKER, not a consumed input.
+  // Every machine that HAS a bay needs that bay occupied to run (Effort or a
+  // drone) — emitters (no bay) self-run. Material inputs are the droneLevel-0
+  // slots; the bay is excluded from the input checks but required on its own.
+  const baySet = new Set(
+    allSlots.filter((s) => s.droneLevel > 0).map((s) => s.slotIndex),
+  );
+  const inputSlots = allSlots.filter((s) => s.droneLevel === 0);
+  const allHoles = holeCards(ctx, verbCardId);
+  if (
+    baySet.size > 0 &&
+    !allHoles.some((h) => baySet.has(h.location.value.slotIndex))
+  )
+    return false; // a bayed machine with no worker is idle
+  const inputHoles = allHoles.filter(
+    (h) => !baySet.has(h.location.value.slotIndex),
+  );
+  const filled = new Set(inputHoles.map((h) => h.location.value.slotIndex));
+  const requiredFilled = inputSlots
     .filter((s) => s.required)
     .every((s) => filled.has(s.slotIndex));
   if (!requiredFilled) return false;
-  if (slots.length > 0 && holes.length === 0) return false; // has holes, none filled
+  if (inputSlots.length > 0 && inputHoles.length === 0) return false; // has input holes, none filled
   // A verb may impose readiness the per-hole `required` flag can't express — an
   // Agency that fires on EITHER of two complete recipes, say. Its `ready` hook
-  // has the final say on top of the generic checks above.
+  // has the final say and sees ALL holes (the worker bay included).
   const r = RESOLVERS[verb.defId];
-  if (r?.ready && !r.ready(ctx, holes, verb)) return false;
+  if (r?.ready && !r.ready(ctx, allHoles, verb)) return false;
   return true;
 }
 
@@ -88,7 +104,16 @@ export function tryBeginRun(ctx: Ctx, verbCardId: bigint): void {
 // already-running card is a no-op rather than a double-fire.
 export function maybeAutostart(ctx: Ctx, verbCardId: bigint): void {
   const verb = ctx.db.card.id.find(verbCardId);
-  if (!verb || verb.location.tag !== "tabletop") return;
+  if (!verb) return;
+  // A verb runs on the tabletop (the "grows once planted" gate) — with ONE
+  // exception: a drone runs while slotted in a machine's bay, that being exactly
+  // where it does its work. A drone on the table has no host and stays dormant.
+  const def = ctx.db.cardDef.defId.find(verb.defId);
+  const baseDrone = !!def && def.category === "drone";
+  const runnable =
+    verb.location.tag === "tabletop" ||
+    (verb.location.tag === "slotted" && baseDrone);
+  if (!runnable) return;
   const s = ctx.db.situation.cardId.find(verbCardId);
   if (!s || s.state.tag !== "assembling") return;
   if (verbReady(ctx, verbCardId)) tryBeginRun(ctx, verbCardId);

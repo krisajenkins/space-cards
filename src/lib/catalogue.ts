@@ -17,8 +17,8 @@ export type Visual = { color: string; glyph: string };
 // lines, the occasional solid accent. Theme: "Escape the Moon".
 //
 // A shared drone silhouette (a rounded body slung under twin rotor arms) is
-// reused by the catalyst drones and every courier, varied only by the cargo it
-// carries — so the fleet reads as one family.
+// reused across the Mk I–IV drones, varied only by the count of level pips on
+// the body — so the fleet reads as one family.
 const G = {
   // ── Resources ────────────────────────────────────────────────────────────
   // Effort: a worked hand with a sweat-drop.
@@ -66,11 +66,14 @@ const G = {
   // Escape: a rocket lifting off, trailing exhaust and stars.
   escape: `<path d="M12 2c2.6 2.6 4 6 4 9.5L12 15l-4-3.5C8 8 9.4 4.6 12 2Z"/><circle cx="12" cy="9" r="1.6" fill="currentColor" stroke="none"/><path d="M8 11.5l-2.5 1 1.5 2M16 11.5l2.5 1-1.5 2"/><path d="M10.5 16.5l-1.5 4M13.5 16.5l1.5 4M12 16v5" stroke-linecap="round"/>`,
 
-  // ── Catalyst drones ──────────────────────────────────────────────────────
-  // Mining drone: a rover-drone with a digging scoop.
-  mining_drone: `<rect x="6" y="8" width="12" height="6" rx="2"/><path d="M8 14v2M16 14v2"/><circle cx="9" cy="17.5" r="1.6"/><circle cx="15" cy="17.5" r="1.6"/><path d="M6 11L2.5 8l2-2 3 3" stroke-linecap="round"/>`,
-  // Survey drone: a scanning eye-drone with rotor arms.
-  survey_drone: `<path d="M4 6h4M16 6h4M6 6v2M18 6v2"/><path d="M3.5 12c2.4-3.2 4.8-4.8 8.5-4.8s6.1 1.6 8.5 4.8c-2.4 3.2-4.8 4.8-8.5 4.8S5.9 15.2 3.5 12Z"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>`,
+  // ── Drones ─────────────────────────────────────────────────────────────────
+  // One shared silhouette (a body slung under twin rotor arms) reads as the drone
+  // family; the Mk is shown by the count of pips on the body.
+  drone: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/>`,
+  drone_1: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="12" cy="11" r="1" fill="currentColor" stroke="none"/>`,
+  drone_2: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="10.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="13.5" cy="11" r="1" fill="currentColor" stroke="none"/>`,
+  drone_3: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="1" fill="currentColor" stroke="none"/>`,
+  drone_4: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="8.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="10.8" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="13.2" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="11" r="1" fill="currentColor" stroke="none"/>`,
 
   // ── Blueprint ────────────────────────────────────────────────────────────
   // A rolled schematic sheet with grid + a drawn part.
@@ -108,18 +111,6 @@ const G = {
   // Rocket (launchpad): the pre-launch craft standing on a gantry.
   rocket: `<path d="M12 3c2.4 2.6 3.5 6 3.5 9.5V16h-7v-3.5C8.5 9 9.6 5.6 12 3Z"/><circle cx="12" cy="9.5" r="1.4" fill="currentColor" stroke="none"/><path d="M8.5 14H6v6M15.5 14H18v6"/><path d="M9 16l-1 4M15 16l1 4" stroke-linecap="round"/>`,
 
-  // ── Couriers (drone + cargo) ─────────────────────────────────────────────
-  // Hauler: drone carrying a lightning bolt.
-  hauler: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="5" rx="2"/><circle cx="9" cy="16" r="1.4"/><circle cx="15" cy="16" r="1.4"/><path d="M9 13l-1.5 3M15 13l1.5 3"/><path d="M12.5 8.6l-2 2.4h1.6l-.6 2 2-2.4h-1.6z" fill="currentColor" stroke="none"/>`,
-  // Feeder: drone carrying an ingot.
-  feeder: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="5" rx="2"/><circle cx="9" cy="16" r="1.4"/><circle cx="15" cy="16" r="1.4"/><path d="M9 13l-1.5 3M15 13l1.5 3"/><path d="M10 11l.8-1.4h2.4L14 11z" fill="currentColor" stroke="none"/>`,
-  // Fitter: drone carrying a cog.
-  fitter: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="5" rx="2"/><circle cx="9" cy="16" r="1.4"/><circle cx="15" cy="16" r="1.4"/><path d="M9 13l-1.5 3M15 13l1.5 3"/><circle cx="12" cy="10.5" r="1.3"/><path d="M12 8.6v.7M12 11.7v.7M10.1 10.5h.7M13.2 10.5h.7"/>`,
-  // Tanker: drone carrying a droplet / tank.
-  tanker: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="5" rx="2"/><circle cx="9" cy="16" r="1.4"/><circle cx="15" cy="16" r="1.4"/><path d="M9 13l-1.5 3M15 13l1.5 3"/><path d="M12 8.4c1 1.2 1.6 2 1.6 2.8a1.6 1.6 0 01-3.2 0c0-.8.6-1.6 1.6-2.8Z" fill="currentColor" stroke="none"/>`,
-  // Cargo: drone carrying a finished-goods box.
-  cargo: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="5" rx="2"/><circle cx="9" cy="16" r="1.4"/><circle cx="15" cy="16" r="1.4"/><path d="M9 13l-1.5 3M15 13l1.5 3"/><path d="M10 9.5h4v2.6h-4zM10 10.6h4" stroke-linecap="round"/>`,
-
   // Generic fallback.
   token: `<rect x="5" y="5" width="14" height="14" rx="3"/>`,
 };
@@ -138,13 +129,10 @@ const BLUEPRINT_FAMILY: Record<string, string> = {
   chem_reactor: "station",
   assembler: "station",
   rocket: "launchpad",
-  mining_drone: "drone",
-  survey_drone: "drone",
-  hauler: "drone",
-  feeder: "drone",
-  fitter: "drone",
-  tanker: "drone",
-  cargo: "drone",
+  drone_1: "drone",
+  drone_2: "drone",
+  drone_3: "drone",
+  drone_4: "drone",
 };
 
 const BLUEPRINT_DEFS: Record<string, Visual> = Object.fromEntries(
@@ -181,9 +169,11 @@ const BY_DEF: Record<string, Visual> = {
   // Win token
   escape: { color: "var(--cat-escape)", glyph: G.escape },
 
-  // Catalyst drones
-  mining_drone: { color: "var(--cat-drone)", glyph: G.mining_drone },
-  survey_drone: { color: "var(--cat-drone)", glyph: G.survey_drone },
+  // Drones (one family, Mk shown by pip count)
+  drone_1: { color: "var(--cat-drone)", glyph: G.drone_1 },
+  drone_2: { color: "var(--cat-drone)", glyph: G.drone_2 },
+  drone_3: { color: "var(--cat-drone)", glyph: G.drone_3 },
+  drone_4: { color: "var(--cat-drone)", glyph: G.drone_4 },
 
   // Machine verbs
   survivor: { color: "var(--cat-avatar)", glyph: G.survivor },
@@ -201,13 +191,6 @@ const BY_DEF: Record<string, Visual> = {
   chem_reactor: { color: "var(--cat-fuel)", glyph: G.chem_reactor },
   assembler: { color: "var(--cat-station)", glyph: G.assembler },
   rocket: { color: "var(--cat-launchpad)", glyph: G.rocket },
-
-  // Couriers
-  hauler: { color: "var(--cat-power)", glyph: G.hauler },
-  feeder: { color: "var(--cat-metal)", glyph: G.feeder },
-  fitter: { color: "var(--cat-component)", glyph: G.fitter },
-  tanker: { color: "var(--cat-water)", glyph: G.tanker },
-  cargo: { color: "var(--cat-courier)", glyph: G.cargo },
 
   // Blueprints (colour-coded by the family they build)
   ...BLUEPRINT_DEFS,
@@ -231,10 +214,9 @@ const BY_CATEGORY: Record<string, Visual> = {
 
   // Structural / endgame categories
   subsystem: { color: "var(--cat-subsystem)", glyph: G.hull },
-  drone: { color: "var(--cat-drone)", glyph: G.survey_drone },
+  drone: { color: "var(--cat-drone)", glyph: G.drone },
   station: { color: "var(--cat-station)", glyph: G.workshop },
   avatar: { color: "var(--cat-avatar)", glyph: G.survivor },
-  courier: { color: "var(--cat-courier)", glyph: G.cargo },
   launchpad: { color: "var(--cat-launchpad)", glyph: G.rocket },
   endgame: { color: "var(--cat-escape)", glyph: G.escape },
   blueprint: { color: "var(--cat-blueprint)", glyph: G.blueprint },

@@ -17,4 +17,5 @@ export default __t.row({
   isVerb: __t.bool().name("is_verb"),
   reusable: __t.bool(),
   outputCap: __t.u32().name("output_cap"),
+  droneLevel: __t.u32().name("drone_level"),
 });

@@ -16,4 +16,5 @@ export default __t.row({
   slotIndex: __t.u32().name("slot_index"),
   accepts: __t.array(__t.string()),
   required: __t.bool(),
+  droneLevel: __t.u32().name("drone_level"),
 });

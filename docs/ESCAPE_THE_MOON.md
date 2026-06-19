@@ -25,7 +25,7 @@ workbench" name and aesthetic with near-zero re-theming.
 
 The fantasy is **gather → refine → fabricate → automate → escape**, which is
 exactly the shape of the engine: recipe-verbs with typed holes, self-firing
-emitters, queues with back-pressure, probabilistic discovery, and couriers that
+emitters, queues with back-pressure, probabilistic discovery, and drones that
 automate your own hands.
 
 ---
@@ -40,30 +40,47 @@ done by hand fifty times is a bigger dopamine hit than yet another recipe.
 So the tree is built as a **two-beat rhythm**, tier by tier:
 
 > **(a) Novelty** — a new recipe/resource to figure out (you do it by hand).
-> **(b) Automation** — a drone or catalyst that *retires that manual step*, so
+> **(b) Automation** — a drone that *retires that manual step*, so
 > your attention is freed for the next novelty. The act of automating is itself
 > the progression reward.
 
 This means **every manual step must eventually become automatable**, and the
 automation should arrive about one tier *after* the chore stops being novel —
 late enough that you've felt the grind, early enough that you're not sick of it.
-The engine gives us exactly two automation shapes to spend on this:
 
-- **Catalyst** (the `Lumberjack` pattern) — an inert card slotted into a
-  dual-mode station that makes it *self-run continuously*. Automates **production
-  at a station** (e.g. a Mining Drone slotted into the Regolith Field).
-- **Courier** (the `Worker` pattern, `moves` effect) — a no-hole verb that
-  shuttles cards from one station's output into another's hole. Automates
-  **logistics between stations** (e.g. a Hauler Drone carrying Power).
+Automation is **one mechanic: the worker bay.** Every machine except the pure
+emitters (Survivor, Solar Array) has a **bay** (rendered top-right) and needs a
+**worker** in it to run. A worker is one of two things:
 
-A complete production line is therefore *built up* in stages the player can feel:
-build the station (hand-feed it) → drop in a catalyst (it self-runs) → add a
-courier (it feeds the next station). Three escalating "I made it run itself"
-moments per line.
+- **Effort — the universal worker (you, by hand).** Emitted by the Survivor, it's
+  a *drone too*: drop it in any bay and it cranks that machine **one cycle, then
+  is spent.** Its level fits every bay, even the choice machines'.
+- **A mechanical drone (Mk I–IV).** Bound to its one host, it works **continuously**
+  *and*, every two seconds, fetches the host's material inputs (Power included)
+  from the table or any output tray into the host's empty holes.
+
+So the same slot expresses both halves of the rhythm: early game you *are* the
+worker (spend Effort per cycle); later you drop a drone in the bay and the chore
+retires itself. Because a drone is bound to one host, two drones never fight over
+work. Pure gatherers (Regolith Field, Wreck) have no material input at all — the
+worker *is* the input.
+
+The **two choice machines** (Workshop, Assembler) have a **worker-only bay**:
+Effort fits, but no buildable Mk does, so a drone can never auto-crank them — you
+always pick the blueprint / load the recipe yourself.
+
+The Mk level is a pure **access gate**: a higher-tier machine's bay demands a
+higher Mk, so automating a new tier is a fresh build (and a fresh investment).
+One generic drone does any job at its level. Effort, being universal, fits all.
+
+A production line is therefore *built up* in stages the player can feel: build
+the machine and work it by hand (Effort) → drop a drone in its bay (it runs and
+feeds itself) → the upstream machines get drones too (the whole line runs
+unattended). Each bay you fill is an "I made it run itself" moment.
 
 The end-state power fantasy is a base that runs **without you** while you sip
-your (metaphorical) coffee and design the rocket — culminating in a **Foreman
-Drone** that even builds *other* drones, so automation begins automating itself.
+your (metaphorical) coffee and design the rocket — with a Mk IV drone even flying
+finished subsystems into the Rocket so the final assembly runs itself.
 
 ---
 
@@ -86,20 +103,21 @@ goes quiet until power returns.
 > and keeps the opening light. Power is consumed **one card per cycle** by each
 > big machine.
 
-Crucially, **ferrying Power from the Array to the machines is what the Hauler
-Drone does** (`Worker` courier). The survival clock and the automation mechanic
-are therefore the *same* mechanic: keeping the base powered is a logistics puzzle
-you first solve by hand and later automate. As the base grows, power *demand*
-outruns one Array — so scaling power generation and its delivery network is a
-through-line that never fully "completes".
+Crucially, **ferrying Power from the Array to the machines is just a drone in the
+machine's bay** (it pulls a Power card into the power hole alongside the input).
+The survival clock and the automation mechanic are therefore the *same* mechanic:
+keeping the base powered is a logistics puzzle you first solve by hand and later
+automate. As the base grows, power *demand* outruns one Array — so scaling power
+generation is a through-line that never fully "completes".
 
 ### A currency ladder — Effort → Power → Fuel
 
 The game runs on an **escalating series of energy currencies**, each unlocking a
 tier of machine and each more precious than the last:
 
-- **Effort** (Tier 0) — your own hands. Emitted by the Survivor; feeds free
-  gathering. Cheap, slow, always available.
+- **Effort** (Tier 0) — your own hands; the **universal worker** every machine's
+  bay accepts. Emitted by the Survivor. Spent one cycle at a time — cheap, slow,
+  always available — until a mechanical drone takes the bay over.
 - **Power** (Tier 2) — electricity. Emitted by the Solar Array; gates the big
   refining/fabricating machines. The first real logistics economy.
 - **Fuel** (Tier 5) — refined chemical energy. Primarily the rocket consumable,
@@ -160,7 +178,7 @@ late tiers.
 
 | Tier | Cards | Notes |
 | --- | --- | --- |
-| Hands | **Effort**, **Regolith**, **Scrap**, **Salvage** | Effort = manual labour; Salvage = a ready-made part from the Wreck (counts as a Component) |
+| Hands | **Effort**, **Regolith**, **Scrap**, **Salvage** | Effort = the universal *worker* (a drone you spend, placed in any bay); Salvage = a ready-made part from the Wreck (counts as a Component) |
 | Power | **Power**, **Metal** | Power = the gate token |
 | Electronics | **Silicon**, **Glass**, **Circuit**, **Component** | Component = the universal part |
 | Construction | **Blueprint: X** | one per buildable machine/drone; seeded as manuals |
@@ -171,50 +189,58 @@ late tiers.
 ### 5.2 Verb cards — machines
 
 As built. Seeded stations (Tier 0) are hand-cranked; everything below the Solar
-Array is built at the Workshop and needs Power.
+Array is built at the Workshop and needs Power. **Every machine except the two
+pure emitters (Survivor, Solar Array) needs a worker in its bay to run** — Effort
+(spent per cycle) or a mechanical drone of the listed Mk (continuous + fetches the
+material holes). The **Bay** column gives the required Mk; *worker* = a worker-only
+bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 
-| Verb | Re-skins | Power? | Holes (accepts) | Behaviour |
+| Verb | Power? | Material holes | Bay | Behaviour |
 | --- | --- | --- | --- | --- |
-| **Survivor** | `You` | — | none | emits 1 Effort / cycle, cap 5 |
-| **Regolith Field** | `Forest` | — | `effort`\|`mining_drone` | Effort→consume→Regolith; Drone→keep→Regolith each cycle |
-| **Wreck** | `Forest` odds | — | `effort`\|`survey_drone` | Effort/Drone → Scrap (~80%) or Salvage (~20%) |
-| **Printer** | `Market` queue | — | `raw` inbox | crude bootstrap: raw → Component, no power, slow |
-| **Workshop** | `Agency` `ready` | — | `blueprint` + `effort` + `component` inbox | Blueprint selects the output: + Components + Effort → that machine/drone, dormant in tray |
-| **Solar Array** | `You` | — | none | emits 1 Power / cycle, cap 5; build more to scale |
-| **Refinery** | `Market` queue | **yes** | `power` + `raw` inbox | 1 raw + 1 Power → Metal |
-| **Fabricator** | `Market` | **yes** | `power` + `metal` inbox | Metal + Power → Component |
-| **Kiln** | `Market` | **yes** | `power` + `raw` inbox | raw + Power → Silicon (50%) or Glass |
-| **Electronics Fab** | `Market` | **yes** | `power` + `silicon` inbox | Silicon + Power → Circuit |
-| **Ice Mine** | `You`-emitter | **yes** | `power` | Power → Water (a power-gated emitter) |
-| **Electrolysis** | `Market` | **yes** | `power` + `water` inbox | Water + Power → Hydrogen + Oxygen |
-| **Chem Reactor** | `Market` `ready` | **yes** | `power` + `hydrogen` + `oxygen` inboxes | H₂ + O₂ + Power → Fuel (slow; the bottleneck) |
-| **Assembler** | `Agency` `ready` | **yes** | `power` + `component`/`circuit`/`glass`/`water` inboxes | recipe choice → the Subsystem whose ingredients you loaded |
-| **Rocket** | new (final) | — | `engine`+`hull`+`avionics`+`life_support`+`heat_shield`+`fuel`×3 (all required, consumed) | all filled → countdown → **`become` Escape**. Win |
+| **Survivor** | — | none | — | self-runs; emits 1 Effort / cycle, cap 5 |
+| **Solar Array** | — | none | — | self-runs; emits 1 Power / cycle, cap 5; build more to scale |
+| **Regolith Field** | — | none | Mk I | worker → Regolith (worker is the input) |
+| **Wreck** | — | none | Mk I | worker → Scrap (~80%) or Salvage (~20%) |
+| **Printer** | — | `raw` inbox | Mk I | crude bootstrap: raw → Component, no power, slow |
+| **Workshop** | — | `blueprint` + `component` inbox | worker | Blueprint selects the output: + Components + an Effort worker → that machine/drone, dormant in tray |
+| **Refinery** | **yes** | `power` + `raw` inbox | Mk II | 1 raw + 1 Power → Metal |
+| **Fabricator** | **yes** | `power` + `metal` inbox | Mk II | Metal + Power → Component |
+| **Kiln** | **yes** | `power` + `raw` inbox | Mk II | raw + Power → Silicon (50%) or Glass |
+| **Ice Mine** | **yes** | `power` | Mk II | Power → Water |
+| **Electronics Fab** | **yes** | `power` + `silicon` inbox | Mk III | Silicon + Power → Circuit |
+| **Electrolysis** | **yes** | `power` + `water` inbox | Mk III | Water + Power → Hydrogen + Oxygen |
+| **Chem Reactor** | **yes** | `power` + `hydrogen` + `oxygen` inboxes | Mk III | H₂ + O₂ + Power → Fuel (slow; the bottleneck) |
+| **Assembler** | **yes** | `power` + `component`/`circuit`/`glass`/`water` inboxes | worker | recipe choice → the Subsystem whose ingredients you loaded |
+| **Rocket** | — | `engine`+`hull`+`avionics`+`life_support`+`heat_shield`+`fuel`×3 (all required, consumed) | Mk IV | all filled + a worker → countdown → **`become` Escape**. Win |
 
 ### 5.3 Verb cards — drones (the automation layer, as built)
 
-Seven drones, each built at the Workshop (blueprint + components) and each
-retiring a specific chore. The engine gives exactly two automation shapes:
-**C** = catalyst (an inert card slotted into a station to make it self-run,
-Lumberjack-style) and **K** = courier (a hole-less verb that `moves` cards
-between stations, Worker-style). Couriers carry **disjoint** category sets so two
-never fight over the same card.
+**Effort + four marks of mechanical drone.** A mechanical drone is a hole-less
+verb built at the Workshop (blueprint + components; the blueprint is *kept*, so
+one manual builds a whole fleet). Dropped into a machine's **bay** it binds to
+that machine and is its worker: it runs continuously *and*, every two seconds,
+pulls a material the machine accepts (from the table or any output tray) into one
+of its empty input holes. It can be lifted out and reassigned at any time — even
+while its host is mid-cycle. **Effort is the universal Mk 0 worker** — it fits
+every bay but is spent one cycle at a time and fetches nothing (you place the
+materials). Mk is a **pure access gate**: a bay accepts its minimum Mk or higher
+(and always Effort); behaviour is identical at every level.
 
-| Drone | Type | Retires the chore of… | Carries / works on |
-| --- | --- | --- | --- |
-| **Mining Drone** | C | feeding Effort into a gatherer | Regolith Field / Ice Mine |
-| **Survey Drone** | C | hand-scavenging the Wreck | the Wreck |
-| **Hauler Drone** | K | carrying Power to the machines | `power` (from Solar only) |
-| **Feeder Drone** | K | feeding the smelting line | `raw`, `metal` |
-| **Fitter Drone** | K | feeding the parts line | `silicon`, `glass`, `circuit`, `component` |
-| **Tanker Drone** | K | hauling the chemistry branch | `water`, `hydrogen`, `oxygen`, `fuel` |
-| **Cargo Drone** | K | delivering finished goods | `subsystem`, `blueprint` |
+| Worker | Built from | Bays it fits |
+| --- | --- | --- |
+| **Effort** | emitted by the Survivor | **any** bay (universal; spent per cycle) |
+| **Drone Mk I** | `blueprint_drone_1` + 2 Components | Regolith Field, Wreck, Printer |
+| **Drone Mk II** | `blueprint_drone_2` + 3 Components | Refinery, Fabricator, Kiln, Ice Mine |
+| **Drone Mk III** | `blueprint_drone_3` + 4 Components | Electronics Fab, Electrolysis, Chem Reactor |
+| **Drone Mk IV** | `blueprint_drone_4` + 5 Components | Rocket |
 
-The Cargo Drone is the late-game capstone: it carries Subsystems straight into
-the Rocket's holes, so the final assembly runs itself while you watch the
-countdown. (The doc's earlier Lab-Assistant / Assembly-Arm / Foreman concepts
-folded away: couriers already automate the Lab-less build chain, and "automation
-building automation" is just a Workshop fed by a Feeder + Fitter.)
+The Mk IV is the late-game capstone: parked in the Rocket's bay it flies finished
+Subsystems and Fuel straight into the launchpad, so the final assembly runs
+itself while you watch the countdown. The two **choice** machines have a
+**worker-only bay** — the Workshop (a blueprint selects its output) and the
+Assembler (you load the ingredients for the subsystem you want) accept only
+Effort, never a mechanical drone, so automation can never blindly force a choice:
+you spend Effort to crank each build/assembly and stay in charge of what's made.
 
 ---
 
@@ -223,28 +249,29 @@ building automation" is just a Workshop fed by a Feeder + Fitter.)
 Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then the
 **automation** that retires it and unlocks the next act.
 
-1. **Crash (hands).** Survivor + Regolith Field + Wreck + a crude Printer. Hand-
-   feed Effort into everything. *Novelty: the basic gather→make loop. Goal: build
-   a Solar Array.*
+1. **Crash (hands).** Survivor + Regolith Field + Wreck + a crude Printer. Drop
+   your Effort into each machine's bay to work it, one cycle at a time. *Novelty:
+   the basic gather→make loop. Goal: build a Solar Array.*
 2. **Power up.** Build a Solar Array at the Workshop and plant it; electrify the
    Refinery & Fabricator (faster, but Power-gated — first logistics puzzle).
-   *Automation: a **Mining Drone** + **Hauler Drone** retire hand-gathering and
+   *Automation: **Mk I** drones in the gatherers retire hand-gathering; **Mk II**
+   drones in the Refinery & Fabricator pull both Power and raw, retiring
    hand-power.*
-3. **The line.** Add the **Feeder Drone** so refine→fabricate runs unattended.
-   *Novelty + automation together: you now watch a self-running line for the
-   first time. Goal: a fully hands-off metal→component line.*
+3. **The line.** Drone the rest of the smelting line so refine→fabricate runs
+   unattended. *Novelty + automation together: you now watch a self-running line
+   for the first time. Goal: a fully hands-off metal→component line.*
 4. **Electronics.** Kiln → Silicon/Glass, Electronics Fab → Circuit; the
    subsystems need Circuits and Glass. *Novelty: the electronics sub-tree.
-   Automation: the **Survey Drone** works the Wreck and the **Fitter Drone** runs
-   the parts line.*
+   Automation: **Mk III** drones run the Electronics Fab and the wider parts
+   line.*
 5. **Chemistry.** Ice Mine → Water → **Electrolysis** → H₂ + O₂ → **Chem
-   Reactor** → Fuel (the deliberate bottleneck). *Automation: the **Tanker
-   Drone** tames the liquid/fuel logistics.*
+   Reactor** → Fuel (the deliberate bottleneck). *Automation: **Mk III** drones
+   in Electrolysis & the Chem Reactor tame the liquid/fuel logistics.*
 6. **Liftoff.** The **Assembler** builds Engine, Hull, Avionics, Life-Support and
    Heat-Shield from Components, Circuits, Glass and Water (recipe choice — load
-   for the part you want). Grind Fuel. Let the **Cargo Drone** carry finished
-   subsystems straight into the **Rocket**; once all five subsystems + three Fuel
-   are in, it `become`s **Escape**. *Win.*
+   for the part you want, by hand: it has no bay). Grind Fuel. Park a **Mk IV**
+   drone in the **Rocket** to fly finished subsystems + Fuel straight in; once all
+   five subsystems + three Fuel are loaded, it `become`s **Escape**. *Win.*
 
 ---
 

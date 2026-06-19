@@ -45,6 +45,7 @@ export const CardDef = __t.object("CardDef", {
   isVerb: __t.bool(),
   reusable: __t.bool(),
   outputCap: __t.u32(),
+  droneLevel: __t.u32(),
 });
 export type CardDef = __Infer<typeof CardDef>;
 
@@ -160,6 +161,7 @@ export const SlotDef = __t.object("SlotDef", {
   slotIndex: __t.u32(),
   accepts: __t.array(__t.string()),
   required: __t.bool(),
+  droneLevel: __t.u32(),
 });
 export type SlotDef = __Infer<typeof SlotDef>;
 

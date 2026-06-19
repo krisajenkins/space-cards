@@ -48,13 +48,12 @@ function tabletopXY(c: Card): { x: number; y: number } | null {
 function footprint(ctx: Ctx, c: Card): { w: number; h: number } {
   const def = ctx.db.cardDef.defId.find(c.defId);
   if (!def || !def.isVerb) return { w: TOKEN_W, h: TOKEN_H };
-  // Couriers have no holes and no tray, but they grow a "carrying" row while a
-  // card is in transit (held cards, see VerbStation.svelte) — and they're almost
-  // always mid-delivery. Size them for that carrying max so they don't overlap
-  // when active. (Output-tray growth and carry-row growth are two separate
-  // dynamic sections; both must be covered by the constant max footprint.)
-  if (def.category === "courier") return { w: 260, h: 210 };
-  const slotCount = [...ctx.db.slotDef.defId.filter(def.defId)].length;
+  // Input holes only count toward the holes grid; a drone bay (droneLevel > 0)
+  // renders separately, top-right of the header, so it adds to the header band,
+  // not the .holes row.
+  const allSlots = [...ctx.db.slotDef.defId.filter(def.defId)];
+  const hasBay = allSlots.some((s) => s.droneLevel > 0);
+  const slotCount = allSlots.filter((s) => s.droneLevel === 0).length;
   const perRow = Math.min(slotCount, 5); // .holes wraps ~5 to a 430px row
   const holeRows = slotCount > 0 ? Math.ceil(slotCount / 5) : 0;
   const holesW = perRow > 0 ? perRow * 78 + (perRow - 1) * 8 : 0; // 78px holes
@@ -62,8 +61,11 @@ function footprint(ctx: Ctx, c: Card): { w: number; h: number } {
   const cap = def.outputCap;
   const trayW = cap > 0 ? cap * 64 + (cap - 1) * 5 : 0; // full cells are 64px
   const trayH = cap > 0 ? 80 + 30 : 0; // full cell + label/border
-  const w = Math.max(220, holesW, trayW) + 32; // station min-width + padding
-  const h = 64 + (holesH ? holesH + 14 : 0) + (trayH ? trayH + 14 : 0) + 28;
+  // A drone bay adds a card-wide column to the header (and makes the header taller
+  // when a drone is parked in it).
+  const header = hasBay ? 120 : 64;
+  const w = Math.max(220, holesW, trayW) + 32 + (hasBay ? 96 : 0);
+  const h = header + (holesH ? holesH + 14 : 0) + (trayH ? trayH + 14 : 0) + 28;
   return { w, h };
 }
 

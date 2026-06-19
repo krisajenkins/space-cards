@@ -1,9 +1,8 @@
 import {
-  COURIER_HOLD,
+  DRONE_TICK,
   EFFORT,
   SOLAR,
   GATHER,
-  DRONE_GATHER,
   PRINT,
   BUILD,
   REFINE,
@@ -21,7 +20,7 @@ import type { Ctx, Card, Effects, SlottedCard } from "./types";
 // ──────────────────────────────────────────────────────────────────────────
 // Verb behaviour ("code per verb"): duration + resolution decided at runtime
 // from whatever is in the holes. `resolve` also receives the verb card itself,
-// so a hole-less verb (a courier) can still find its own id / board.
+// so a hole-less verb (a drone) can still find its own id / board.
 // ──────────────────────────────────────────────────────────────────────────
 export type Resolver = {
   duration: (holes: SlottedCard[]) => bigint;
@@ -60,6 +59,32 @@ function take(
 const hasPower = (holes: SlottedCard[]) =>
   holes.some((h) => h.defId === "power");
 
+// The slotted INPUT cards — everything a verb actually consumes, excluding any
+// drone sitting in its drone bay. Single-input stations (gatherers, the Printer)
+// read `inputs(...)[0]`; without this filter a lone drone in the bay would be
+// mistaken for the input and consumed.
+const inputs = (ctx: Ctx, holes: SlottedCard[]): SlottedCard[] =>
+  holes.filter((h) => catOf(ctx, h) !== "drone");
+
+// The worker in a machine's bay — an Effort (inert) or a mechanical drone (verb),
+// both category "drone". `verbReady` already gates a bayed machine on having one,
+// so resolvers just need to know how to treat it: a mechanical drone is KEPT and
+// lets the machine re-fire continuously; an Effort is CONSUMED (one cycle, then
+// the machine idles until you place fresh labour). `workerCost` returns the ids to
+// consume (the Effort, or nothing for a drone); `workerIsDrone` is the re-fire flag.
+const theWorker = (ctx: Ctx, holes: SlottedCard[]): SlottedCard | undefined =>
+  holes.find((h) => catOf(ctx, h) === "drone");
+function workerIsDrone(ctx: Ctx, holes: SlottedCard[]): boolean {
+  const w = theWorker(ctx, holes);
+  if (!w) return false;
+  const d = ctx.db.cardDef.defId.find(w.defId);
+  return !!d && d.isVerb;
+}
+const workerCost = (ctx: Ctx, holes: SlottedCard[]): bigint[] => {
+  const w = theWorker(ctx, holes);
+  return w && !workerIsDrone(ctx, holes) ? [w.id] : [];
+};
+
 // A power-gated transformer: one Power + one `inputCat` card per cycle → one
 // `output`. Re-fires while both are present; consuming the Power leaves the
 // required power hole empty, so it idles the moment power runs out (the Power
@@ -67,12 +92,17 @@ const hasPower = (holes: SlottedCard[]) =>
 function poweredOne(dur: bigint, inputCat: string, output: string): Resolver {
   return {
     duration: () => dur,
+    // The worker is required by verbReady; here we just need power + the input.
     ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, inputCat) > 0,
     resolve: (ctx, holes) => {
       const power = take(ctx, holes, "power", 1);
       const input = take(ctx, holes, inputCat, 1);
       if (power.length === 0 || input.length === 0) return NOOP;
-      return { consume: [...power, ...input], produce: [output], again: true };
+      return {
+        consume: [...power, ...input, ...workerCost(ctx, holes)],
+        produce: [output],
+        again: workerIsDrone(ctx, holes),
+      };
     },
   };
 }
@@ -101,15 +131,13 @@ const BUILDS: Record<string, Build> = {
   blueprint_chem_reactor: { output: "chem_reactor", cost: 5 },
   blueprint_assembler: { output: "assembler", cost: 5 },
   blueprint_rocket: { output: "rocket", cost: 6 },
-  // Drones (the automation layer — built the same way, but blueprint is kept so
-  // the player can build a whole fleet from one manual)
-  blueprint_mining_drone: { output: "mining_drone", cost: 2, keep: true },
-  blueprint_survey_drone: { output: "survey_drone", cost: 2, keep: true },
-  blueprint_hauler: { output: "hauler", cost: 2, keep: true },
-  blueprint_feeder: { output: "feeder", cost: 3, keep: true },
-  blueprint_fitter: { output: "fitter", cost: 3, keep: true },
-  blueprint_tanker: { output: "tanker", cost: 3, keep: true },
-  blueprint_cargo: { output: "cargo", cost: 4, keep: true },
+  // Drones (the automation layer — built the same way, but the blueprint is kept
+  // so the player can build a whole fleet from one manual). Cost rises with the
+  // Mk so automating a higher tier is a bigger investment.
+  blueprint_drone_1: { output: "drone_1", cost: 2, keep: true },
+  blueprint_drone_2: { output: "drone_2", cost: 3, keep: true },
+  blueprint_drone_3: { output: "drone_3", cost: 4, keep: true },
+  blueprint_drone_4: { output: "drone_4", cost: 5, keep: true },
 };
 
 // Rocket subsystems. The Assembler offers a CHOICE of recipes (Agency-style
@@ -128,116 +156,75 @@ const recipeSatisfied = (ctx: Ctx, holes: SlottedCard[], r: Recipe) =>
   Object.entries(r.need).every(([cat, n]) => count(ctx, holes, cat) >= n);
 
 // ──────────────────────────────────────────────────────────────────────────
-// Couriers. A generalised Worker: a hole-less verb that each beat either grabs
-// a card it carries from an eligible output tray, or hands the one it's holding
-// to the first open hole that accepts it. Each courier type carries a DISJOINT
-// set of categories so two couriers never fight over the same card.
-//   from = null  → raid any verb's tray;  [defIds] → only those producers.
+// Drones. A drone is a hole-less verb that lives in a machine's DRONE BAY (a
+// slot with droneLevel > 0). Bound to that one host, every tick it tries to feed
+// one of the host's empty INPUT holes by pulling a card the host accepts from the
+// table or from any output tray — moving it straight in. Because each drone only
+// ever feeds its own host, two drones never fight over the work the way roaming
+// couriers did, and a machine with no bay (the choice machines) is never auto-
+// filled. This single behaviour subsumes the old catalyst + courier shapes.
 // ──────────────────────────────────────────────────────────────────────────
-type CourierSpec = { carries: string[]; from: string[] | null };
-const COURIERS: Record<string, CourierSpec> = {
-  hauler: { carries: ["power"], from: ["solar_array"] },
-  feeder: { carries: ["raw", "metal"], from: null },
-  fitter: { carries: ["silicon", "glass", "circuit", "component"], from: null },
-  tanker: { carries: ["water", "hydrogen", "oxygen", "fuel"], from: null },
-  cargo: { carries: ["subsystem", "blueprint"], from: null },
-};
 
-// The first card in an eligible output tray on this board that this courier is
-// willing to carry. Never hauls a verb card (a dormant machine/drone waiting to
-// be planted) — only resources.
-function firstCourierLoot(
-  ctx: Ctx,
-  boardId: bigint,
-  spec: CourierSpec,
-): Card | null {
+// The first card on the board this host could take in `accepts`: a loose tabletop
+// card or one sitting in any output tray. Never a verb card (a dormant
+// machine/drone waiting to be planted) — only resources.
+function firstLoot(ctx: Ctx, boardId: bigint, accepts: string[]): Card | null {
   for (const c of ctx.db.card.boardId.filter(boardId)) {
-    if (c.location.tag !== "output") continue;
-    const producer = ctx.db.card.id.find(c.location.value.verbCardId);
-    if (!producer) continue;
-    if (spec.from !== null && !spec.from.includes(producer.defId)) continue;
+    if (c.location.tag !== "tabletop" && c.location.tag !== "output") continue;
     const def = ctx.db.cardDef.defId.find(c.defId);
     if (!def || def.isVerb) continue;
-    if (!spec.carries.includes(def.category)) continue;
-    return c;
+    if (accepts.includes(c.defId) || accepts.includes(def.category)) return c;
   }
   return null;
 }
 
-// An empty hole anywhere on the board that accepts `card` — where a courier
-// hands off what it carries. Scans tabletop verbs (a tray-bound verb can't take
-// inputs) and skips `excludeVerbId` (the courier itself).
-function firstOpenSlot(
-  ctx: Ctx,
-  boardId: bigint,
-  card: Card,
-  excludeVerbId: bigint,
-): { verbCardId: bigint; slotIndex: number } | null {
-  const cat = catOf(ctx, card);
-  const boardCards = [...ctx.db.card.boardId.filter(boardId)];
-  for (const verb of boardCards) {
-    if (verb.id === excludeVerbId || verb.location.tag !== "tabletop") continue;
-    const def = ctx.db.cardDef.defId.find(verb.defId);
-    if (!def || !def.isVerb) continue;
-    const filled = new Set(
-      boardCards
-        .filter(
-          (c): c is SlottedCard =>
-            c.location.tag === "slotted" &&
-            c.location.value.verbCardId === verb.id,
-        )
-        .map((c) => c.location.value.slotIndex),
-    );
-    const slots = [...ctx.db.slotDef.defId.filter(verb.defId)].sort(
-      (a, b) => a.slotIndex - b.slotIndex,
-    );
-    for (const sl of slots) {
-      if (filled.has(sl.slotIndex)) continue;
-      if (sl.accepts.includes(card.defId) || sl.accepts.includes(cat))
-        return { verbCardId: verb.id, slotIndex: sl.slotIndex };
-    }
-  }
-  return null;
-}
+// One service tick for a drone (`verb`) sitting in some host's bay: find the
+// host's first empty input hole and a card to drop into it. The actual relocation
+// + its side-effects (un-stalling the source tray, autostarting the host) are run
+// by completeSituation's generic `moves` handling.
+function droneResolve(ctx: Ctx, verb: Card): Effects {
+  const idle: Effects = { consume: [], produce: [], again: false };
+  const tick: Effects = { consume: [], produce: [], again: true };
+  // Only a drone slotted into a live tabletop machine works; on the table (no
+  // host) it falls dormant until it's dropped into a bay.
+  if (verb.location.tag !== "slotted") return idle;
+  const host = ctx.db.card.id.find(verb.location.value.verbCardId);
+  if (!host || host.location.tag !== "tabletop") return idle;
 
-function courierResolve(
-  ctx: Ctx,
-  holes: SlottedCard[],
-  verb: Card,
-  spec: CourierSpec,
-): Effects {
-  const carried = holes[0];
-  if (carried) {
-    const dest = firstOpenSlot(ctx, verb.boardId, carried, verb.id);
-    if (!dest) return { consume: [], produce: [], again: true }; // keep holding
+  const filled = new Set(
+    [...ctx.db.card.boardId.filter(host.boardId)]
+      .filter(
+        (c) =>
+          c.location.tag === "slotted" &&
+          c.location.value.verbCardId === host.id,
+      )
+      .map((c) => (c.location.value as { slotIndex: number }).slotIndex),
+  );
+  // Input holes only (droneLevel 0); never the bay itself.
+  const slots = [...ctx.db.slotDef.defId.filter(host.defId)]
+    .filter((s) => s.droneLevel === 0)
+    .sort((a, b) => a.slotIndex - b.slotIndex);
+
+  for (const sl of slots) {
+    if (filled.has(sl.slotIndex)) continue;
+    const loot = firstLoot(ctx, host.boardId, sl.accepts);
+    if (!loot) continue;
     return {
       consume: [],
       produce: [],
       again: true,
       moves: [
         {
-          cardId: carried.id,
+          cardId: loot.id,
           to: {
             tag: "slotted",
-            value: { verbCardId: dest.verbCardId, slotIndex: dest.slotIndex },
+            value: { verbCardId: host.id, slotIndex: sl.slotIndex },
           },
         },
       ],
     };
   }
-  const loot = firstCourierLoot(ctx, verb.boardId, spec);
-  if (!loot) return { consume: [], produce: [], again: true }; // nothing to haul
-  return {
-    consume: [],
-    produce: [],
-    again: true,
-    moves: [
-      {
-        cardId: loot.id,
-        to: { tag: "slotted", value: { verbCardId: verb.id, slotIndex: 0 } },
-      },
-    ],
-  };
+  return tick; // nothing to feed right now — keep watching
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -252,50 +239,57 @@ export const RESOLVERS: Record<string, Resolver> = {
     resolve: () => ({ consume: [], produce: ["effort"], again: true }),
   },
 
-  // Regolith Field: dual-mode, like the old Forest.
-  //  - fed Effort: gather once, consuming it.
-  //  - fed a Mining Drone (catalyst): gather every cycle, keeping the drone.
+  // Regolith Field: a labour machine with no material input — the worker IS the
+  // input. A worker in the bay (required by verbReady) yields one Regolith;
+  // Effort is spent (one gather), a mechanical drone keeps gathering.
   regolith_field: {
-    duration: (holes) =>
-      holes[0]?.defId === "mining_drone" ? DRONE_GATHER : GATHER,
-    resolve: (_ctx, holes) => {
-      const input = holes[0];
-      if (!input) return NOOP;
-      if (input.defId === "mining_drone")
-        return { consume: [], produce: ["regolith"], again: true };
-      return { consume: [input.id], produce: ["regolith"], again: false };
+    duration: () => GATHER,
+    resolve: (ctx, holes) => {
+      if (!theWorker(ctx, holes)) return NOOP;
+      return {
+        consume: workerCost(ctx, holes),
+        produce: ["regolith"],
+        again: workerIsDrone(ctx, holes),
+      };
     },
   },
 
   // Wreck: the discovery node. Mostly Scrap; ~20% a Salvage (a ready-made part).
-  // Effort scavenges once; a Survey Drone scavenges continuously.
+  // Effort scavenges once; a drone keeps it worked.
   wreck: {
-    duration: (holes) =>
-      holes[0]?.defId === "survey_drone" ? DRONE_GATHER : GATHER,
+    duration: () => GATHER,
     resolve: (ctx, holes) => {
-      const input = holes[0];
-      if (!input) return NOOP;
+      if (!theWorker(ctx, holes)) return NOOP;
       const drop = ctx.random() < 0.2 ? "salvage" : "scrap";
-      if (input.defId === "survey_drone")
-        return { consume: [], produce: [drop], again: true };
-      return { consume: [input.id], produce: [drop], again: false };
+      return {
+        consume: workerCost(ctx, holes),
+        produce: [drop],
+        again: workerIsDrone(ctx, holes),
+      };
     },
   },
 
-  // Printer: the crude bootstrap fabricator — raw → Component, no power, slow.
-  // An inbox queue that drains one per cycle (like the old Market).
+  // Printer: the crude bootstrap fabricator — raw → Component, no power, slow. An
+  // inbox queue that drains one per cycle. `ready` guards against firing with a
+  // worker but no raw (the raw holes are optional, so the generic check can't).
   printer: {
     duration: () => PRINT,
-    resolve: (_ctx, holes) => {
-      const input = holes[0];
+    ready: (ctx, holes) => inputs(ctx, holes).length > 0,
+    resolve: (ctx, holes) => {
+      const input = inputs(ctx, holes)[0];
       if (!input) return NOOP;
-      return { consume: [input.id], produce: ["component"], again: true };
+      return {
+        consume: [input.id, ...workerCost(ctx, holes)],
+        produce: ["component"],
+        again: workerIsDrone(ctx, holes),
+      };
     },
   },
 
-  // Workshop: hand-cranked constructor. Blueprint (selects the output) + Effort
-  // + enough Components → the machine/drone, dormant in the tray to be planted.
-  // Cranked by Effort (not Power) so it works from turn one, before any Solar.
+  // Workshop: hand-cranked constructor. Blueprint (selects the output) + enough
+  // Components + an Effort worker in its bay → the machine/drone, dormant in the
+  // tray to be planted. The bay is WORKER-only, so a drone can't auto-build — you
+  // always pick the blueprint. Cranked by Effort (not Power): works from turn one.
   workshop: {
     duration: () => BUILD,
     ready: (ctx, holes) => {
@@ -343,18 +337,26 @@ export const RESOLVERS: Record<string, Resolver> = {
       const input = take(ctx, holes, "raw", 1);
       if (power.length === 0 || input.length === 0) return NOOP;
       const out = ctx.random() < 0.5 ? "silicon" : "glass";
-      return { consume: [...power, ...input], produce: [out], again: true };
+      return {
+        consume: [...power, ...input, ...workerCost(ctx, holes)],
+        produce: [out],
+        again: workerIsDrone(ctx, holes),
+      };
     },
   },
 
-  // Ice Mine: a power-gated emitter — Power in, Water out, no other input.
+  // Ice Mine: Power + a worker → Water (no material input besides Power).
   ice_mine: {
     duration: () => MINE_ICE,
     ready: (_ctx, holes) => hasPower(holes),
     resolve: (ctx, holes) => {
       const power = take(ctx, holes, "power", 1);
       if (power.length === 0) return NOOP;
-      return { consume: power, produce: ["water"], again: true };
+      return {
+        consume: [...power, ...workerCost(ctx, holes)],
+        produce: ["water"],
+        again: workerIsDrone(ctx, holes),
+      };
     },
   },
 
@@ -367,9 +369,9 @@ export const RESOLVERS: Record<string, Resolver> = {
       const water = take(ctx, holes, "water", 1);
       if (power.length === 0 || water.length === 0) return NOOP;
       return {
-        consume: [...power, ...water],
+        consume: [...power, ...water, ...workerCost(ctx, holes)],
         produce: ["hydrogen", "oxygen"],
-        again: true,
+        again: workerIsDrone(ctx, holes),
       };
     },
   },
@@ -388,9 +390,9 @@ export const RESOLVERS: Record<string, Resolver> = {
       const o2 = take(ctx, holes, "oxygen", 1);
       if (power.length === 0 || h2.length === 0 || o2.length === 0) return NOOP;
       return {
-        consume: [...power, ...h2, ...o2],
+        consume: [...power, ...h2, ...o2, ...workerCost(ctx, holes)],
         produce: ["fuel"],
-        again: true,
+        again: workerIsDrone(ctx, holes),
       };
     },
   },
@@ -406,10 +408,14 @@ export const RESOLVERS: Record<string, Resolver> = {
       if (power.length === 0) return NOOP;
       const recipe = SUBSYSTEMS.find((r) => recipeSatisfied(ctx, holes, r));
       if (!recipe) return NOOP;
-      const consume = [...power];
+      const consume = [...power, ...workerCost(ctx, holes)];
       for (const [cat, n] of Object.entries(recipe.need))
         consume.push(...take(ctx, holes, cat, n));
-      return { consume, produce: [recipe.output], again: true };
+      return {
+        consume,
+        produce: [recipe.output],
+        again: workerIsDrone(ctx, holes),
+      };
     },
   },
 
@@ -418,38 +424,37 @@ export const RESOLVERS: Record<string, Resolver> = {
   // and metamorphoses into Escape where it stood. One-shot. You're home.
   rocket: {
     duration: () => LAUNCH,
-    resolve: (_ctx, holes) => ({
-      consume: holes.map((h) => h.id),
+    resolve: (ctx, holes) => ({
+      // Consume the loaded craft (subsystems + fuel) plus an Effort worker if
+      // that's who pressed the button; a mechanical Mk IV in the bay is left be
+      // (the launchpad becomes Escape and the drone simply goes with it).
+      consume: [
+        ...inputs(ctx, holes).map((h) => h.id),
+        ...workerCost(ctx, holes),
+      ],
       produce: [],
       again: false,
       become: "escape",
     }),
   },
 
-  // ── The automation layer: couriers ───────────────────────────────────────
-  hauler: {
-    duration: () => COURIER_HOLD,
-    resolve: (ctx, holes, verb) =>
-      courierResolve(ctx, holes, verb, COURIERS.hauler),
+  // ── The automation layer: drones ─────────────────────────────────────────
+  // One generic behaviour per Mk; the level is enforced by the host's bay, not
+  // here. Each ticks every DRONE_TICK while bayed and feeds its host.
+  drone_1: {
+    duration: () => DRONE_TICK,
+    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
   },
-  feeder: {
-    duration: () => COURIER_HOLD,
-    resolve: (ctx, holes, verb) =>
-      courierResolve(ctx, holes, verb, COURIERS.feeder),
+  drone_2: {
+    duration: () => DRONE_TICK,
+    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
   },
-  fitter: {
-    duration: () => COURIER_HOLD,
-    resolve: (ctx, holes, verb) =>
-      courierResolve(ctx, holes, verb, COURIERS.fitter),
+  drone_3: {
+    duration: () => DRONE_TICK,
+    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
   },
-  tanker: {
-    duration: () => COURIER_HOLD,
-    resolve: (ctx, holes, verb) =>
-      courierResolve(ctx, holes, verb, COURIERS.tanker),
-  },
-  cargo: {
-    duration: () => COURIER_HOLD,
-    resolve: (ctx, holes, verb) =>
-      courierResolve(ctx, holes, verb, COURIERS.cargo),
+  drone_4: {
+    duration: () => DRONE_TICK,
+    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
   },
 };

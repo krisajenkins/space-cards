@@ -29,6 +29,7 @@ export const cardDef = table(
     isVerb: t.bool(),
     reusable: t.bool(), // verb only: survive completion?
     outputCap: t.u32(), // verb only: max cards the output tray holds (0 = inert)
+    droneLevel: t.u32(), // drone verb only: its Mk level (0 = not a drone)
   },
 );
 
@@ -40,6 +41,8 @@ export const slotDef = table(
     slotIndex: t.u32(),
     accepts: t.array(t.string()), // category names and/or defIds
     required: t.bool(),
+    droneLevel: t.u32(), // >0 marks a DRONE SLOT taking a drone of >= this level;
+    // 0 is an ordinary input hole. A drone slot is never an input the verb consumes.
   },
 );
 

@@ -40,6 +40,23 @@ let {
 
 const v = $derived(visualFor(def.defId, def.category));
 
+// A drone bay (droneLevel > 0) renders separately, top-right; the input holes
+// fill the main grid. Splitting them keeps the bay out of the .holes flow and
+// lets it accept only a drone of sufficient Mk.
+const inputSlots = $derived(slots.filter((s) => s.droneLevel === 0));
+const droneBay = $derived(slots.find((s) => s.droneLevel > 0));
+const bayDrone = $derived(droneBay ? slotted.get(droneBay.slotIndex) : undefined);
+// Mechanical drones top out at Mk IV; a higher requirement is a worker-only bay
+// (the choice machines), which only Effort can fill. Label bays by what they take.
+const MAX_MK = 4;
+const bayLabel = $derived(
+  !droneBay
+    ? ""
+    : droneBay.droneLevel > MAX_MK
+      ? "Effort"
+      : `Mk ${droneBay.droneLevel}+`,
+);
+
 // Countdown ring geometry.
 const R = 30;
 const CIRC = 2 * Math.PI * R;
@@ -54,6 +71,11 @@ const isStalled = $derived(state === "stalled");
 function accepts(slot: SlotDef): boolean {
   if (!dragDefId) return false;
   if (slotted.has(slot.slotIndex)) return false;
+  // A drone bay takes a drone only if its Mk meets the bay's minimum.
+  if (slot.droneLevel > 0) {
+    const dd = defsById.get(dragDefId);
+    return !!dd && dd.category === "drone" && dd.droneLevel >= slot.droneLevel;
+  }
   return (
     slot.accepts.includes(dragDefId) ||
     (dragCategory !== null && slot.accepts.includes(dragCategory))
@@ -61,7 +83,7 @@ function accepts(slot: SlotDef): boolean {
 }
 
 // The whole card is the drop target, so it lights up as a unit when any open
-// socket would take the dragged card.
+// socket (input hole or drone bay) would take the dragged card.
 const armed = $derived(dragDefId !== null && slots.some(accepts));
 
 function nameOf(defId: string): string {
@@ -80,15 +102,6 @@ const stateLabel = $derived(
   isOngoing ? "running" : isStalled ? "tray full" : "ready",
 );
 
-// Cards slotted into this verb that don't map to a declared hole — a card the
-// Worker has stolen and is carrying in transit (it holds with no slot_def of its
-// own). Shown read-only: it's locked into the running verb until it's deposited.
-const held = $derived(
-  [...slotted.entries()]
-    .filter(([idx]) => !slots.some((s) => s.slotIndex === idx))
-    .sort((a, b) => a[0] - b[0])
-    .map(([, card]) => card),
-);
 </script>
 
 <div
@@ -96,6 +109,7 @@ const held = $derived(
   class:ongoing={isOngoing}
   class:stalled={isStalled}
   class:armed
+  class:has-bay={!!droneBay}
   style="--tint: {v.color}"
 >
   <header>
@@ -132,11 +146,40 @@ const held = $derived(
         {/if}
       </div>
     </div>
+
+    {#if droneBay}
+      <div
+        class="drone-bay"
+        class:filled={!!bayDrone}
+        class:open={accepts(droneBay)}
+        title="Worker bay · {bayLabel}"
+      >
+        {#if bayDrone}
+          <div
+            class="slotted-card"
+            class:reject={rejectingId === bayDrone.id}
+            role="button"
+            tabindex="0"
+            onpointerdown={(e) => onSlottedPointerDown(e, bayDrone)}
+          >
+            <CardToken
+              defId={bayDrone.defId}
+              name={nameOf(bayDrone.defId)}
+              category={categoryOf(bayDrone.defId)}
+              size="sm"
+            />
+          </div>
+        {:else}
+          <span class="bay-mark">⬡</span>
+          <span class="bay-label">{bayLabel}</span>
+        {/if}
+      </div>
+    {/if}
   </header>
 
-  {#if slots.length > 0}
+  {#if inputSlots.length > 0}
     <div class="holes">
-      {#each slots as slot (slot.id)}
+      {#each inputSlots as slot (slot.id)}
         {@const card = slotted.get(slot.slotIndex)}
         <div class="hole" class:filled={!!card} class:open={accepts(slot)}>
           {#if card}
@@ -166,24 +209,6 @@ const held = $derived(
           {/if}
         </div>
       {/each}
-    </div>
-  {/if}
-
-  {#if held.length > 0}
-    <div class="carry">
-      <span class="carry-label">carrying</span>
-      <div class="carry-cards">
-        {#each held as card (card.id)}
-          <div class="carry-card">
-            <CardToken
-              defId={card.defId}
-              name={nameOf(card.defId)}
-              category={categoryOf(card.defId)}
-              size="sm"
-            />
-          </div>
-        {/each}
-      </div>
     </div>
   {/if}
 
@@ -274,6 +299,12 @@ header {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+}
+/* With a drone bay present, top-align the row so the badge/heading sit at the top
+   and the (taller) bay defines the header height — the input holes then flow
+   safely below it instead of tucking under the bay. */
+.has-bay header {
+  align-items: flex-start;
 }
 
 .badge {
@@ -446,33 +477,48 @@ header {
   animation: reject 0.46s cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
 
-.carry {
-  margin-top: 0.8rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid rgba(203, 166, 90, 0.16);
+/* the drone bay — a single socket sitting at the card's top-right, in the header
+   flow so the header grows to contain it and the holes never tuck underneath */
+.drone-bay {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 72px;
+  min-height: 84px;
+  border-radius: 12px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 4px;
+  border: 1.5px dashed rgba(116, 199, 214, 0.3);
+  background: rgba(7, 10, 20, 0.5);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
-.carry-label {
+.drone-bay.filled {
+  border-style: solid;
+  border-color: rgba(203, 166, 90, 0.3);
+  background: rgba(7, 10, 20, 0.2);
+}
+.drone-bay.open {
+  border-color: var(--astral-bright);
+  box-shadow:
+    0 0 0 1px rgba(116, 199, 214, 0.3),
+    0 0 20px -3px rgba(116, 199, 214, 0.6);
+}
+.bay-mark {
+  font-size: 1.2rem;
+  line-height: 1;
+  color: rgba(116, 199, 214, 0.5);
+}
+.bay-label {
   font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.12em;
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-faint);
-}
-.carry-cards {
-  display: flex;
-  gap: 5px;
-}
-/* a parcel in transit — gently bob so it reads as "being carried", not slotted */
-.carry-card {
-  animation: bob 1.6s ease-in-out infinite;
-}
-@keyframes bob {
-  50% {
-    transform: translateY(-3px);
-  }
 }
 
 .tray {

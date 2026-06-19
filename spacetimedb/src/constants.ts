@@ -3,16 +3,15 @@
 //
 // Kept short so the whole gather → refine → fabricate → assemble → launch chain
 // is observable in a live session within a minute or two. The chemistry branch
-// (CHEM) is the deliberate late bottleneck; the courier heartbeat (COURIER_HOLD)
-// is the fastest clock so logistics keep up with production.
+// (CHEM) is the deliberate late bottleneck; the drone heartbeat (DRONE_TICK) is
+// the fastest clock so a drone keeps its machine fed faster than it consumes.
 // ──────────────────────────────────────────────────────────────────────────
 export const MINUTE = 60_000_000n; // engine default fallback for an unknown verb
 
-export const COURIER_HOLD = 2_000_000n; // a drone carrying one card before it deposits it
+export const DRONE_TICK = 2_000_000n; // a bay drone feeds its machine one card per tick
 export const EFFORT = 6_000_000n; // the Survivor producing one Effort
 export const SOLAR = 5_000_000n; // the Solar Array producing one Power
-export const GATHER = 4_000_000n; // hand-gathering one raw (Field / Wreck) with Effort
-export const DRONE_GATHER = 5_000_000n; // a catalyst drone gathering one raw, continuously
+export const GATHER = 4_000_000n; // gathering one raw (Field / Wreck) per Effort
 export const PRINT = 6_000_000n; // the crude Printer turning raw into a Component
 export const BUILD = 6_000_000n; // the Workshop assembling one machine from a blueprint
 

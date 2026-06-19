@@ -20,7 +20,12 @@ function seedCatalogue(ctx: Ctx) {
     ctx.db.cardDef.defId.delete(d.defId);
 
   // ── Catalogue authoring helpers ──────────────────────────────────────────
-  const inert = (defId: string, name: string, category: string) =>
+  const inert = (
+    defId: string,
+    name: string,
+    category: string,
+    droneLevel = 0,
+  ) =>
     ctx.db.cardDef.insert({
       defId,
       name,
@@ -28,6 +33,7 @@ function seedCatalogue(ctx: Ctx) {
       isVerb: false,
       reusable: false,
       outputCap: 0,
+      droneLevel,
     });
   const verb = (
     defId: string,
@@ -35,6 +41,7 @@ function seedCatalogue(ctx: Ctx) {
     category: string,
     outputCap: number,
     reusable = true,
+    droneLevel = 0,
   ) =>
     ctx.db.cardDef.insert({
       defId,
@@ -43,13 +50,29 @@ function seedCatalogue(ctx: Ctx) {
       isVerb: true,
       reusable,
       outputCap,
+      droneLevel,
     });
   const slot = (
     defId: string,
     slotIndex: number,
     accepts: string[],
     required: boolean,
-  ) => ctx.db.slotDef.insert({ id: 0n, slotIndex, defId, accepts, required });
+    droneLevel = 0,
+  ) =>
+    ctx.db.slotDef.insert({
+      id: 0n,
+      slotIndex,
+      defId,
+      accepts,
+      required,
+      droneLevel,
+    });
+  // A drone slot (rendered top-right of the card): takes any drone of >= minLevel.
+  // It is optional and is NOT an input the verb consumes — the slotted drone's job
+  // is to feed the verb's OTHER (input) holes. Choice machines (Workshop,
+  // Assembler) deliberately get no drone slot, so a drone can never force a recipe.
+  const droneSlot = (defId: string, slotIndex: number, minLevel: number) =>
+    slot(defId, slotIndex, ["drone"], false, minLevel);
   // A run of optional inbox holes accepting one category (a drainable queue).
   const inbox = (
     defId: string,
@@ -64,7 +87,13 @@ function seedCatalogue(ctx: Ctx) {
     inert(`blueprint_${target}`, `Blueprint: ${name}`, "blueprint");
 
   // ── Resources ────────────────────────────────────────────────────────────
-  inert("effort", "Effort", "effort"); // your hands (Survivor)
+  // Effort IS a drone — the universal worker. It's the labour every non-emitter
+  // machine needs in its bay to run: an inert worker spent one cycle at a time
+  // (you, by hand), the manual counterpart to a reusable mechanical drone. Its
+  // WORKER-level fits any bay (it's >= every machine's required Mk), and the two
+  // choice machines use a WORKER-only bay so only Effort — never a mechanical
+  // drone — can crank them. See WORKER below.
+  inert("effort", "Effort", "drone", 99); // your hands; universal bay worker
   inert("power", "Power", "power"); // machine fuel (Solar Array)
   inert("regolith", "Regolith", "raw");
   inert("scrap", "Scrap", "raw");
@@ -88,10 +117,6 @@ function seedCatalogue(ctx: Ctx) {
 
   inert("escape", "Escape", "endgame"); // the win token
 
-  // Catalyst drones — inert cards that slot into a gatherer to make it self-run.
-  inert("mining_drone", "Mining Drone", "drone");
-  inert("survey_drone", "Survey Drone", "drone");
-
   // Blueprints — one per buildable machine/drone. Seeded as cards in newGame.
   blueprint("solar", "Solar Array");
   blueprint("refinery", "Refinery");
@@ -103,13 +128,10 @@ function seedCatalogue(ctx: Ctx) {
   blueprint("chem_reactor", "Chem Reactor");
   blueprint("assembler", "Assembler");
   blueprint("rocket", "Rocket");
-  blueprint("mining_drone", "Mining Drone");
-  blueprint("survey_drone", "Survey Drone");
-  blueprint("hauler", "Hauler Drone");
-  blueprint("feeder", "Feeder Drone");
-  blueprint("fitter", "Fitter Drone");
-  blueprint("tanker", "Tanker Drone");
-  blueprint("cargo", "Cargo Drone");
+  blueprint("drone_1", "Drone Mk I");
+  blueprint("drone_2", "Drone Mk II");
+  blueprint("drone_3", "Drone Mk III");
+  blueprint("drone_4", "Drone Mk IV");
 
   // ── Verbs (machines) ─────────────────────────────────────────────────────
   // Tier 0 — the crash site, hand-cranked (no Power):
@@ -133,26 +155,43 @@ function seedCatalogue(ctx: Ctx) {
   // The Rocket: one-shot — it metamorphoses into Escape, it doesn't recycle.
   verb("rocket", "Rocket", "launchpad", 0, false);
 
-  // Couriers — hole-less, outputCap 0 (they carry in transit, never tray).
-  verb("hauler", "Hauler Drone", "courier", 0);
-  verb("feeder", "Feeder Drone", "courier", 0);
-  verb("fitter", "Fitter Drone", "courier", 0);
-  verb("tanker", "Tanker Drone", "courier", 0);
-  verb("cargo", "Cargo Drone", "courier", 0);
+  // Drones — hole-less verbs (outputCap 0). Slotted into a machine's drone slot,
+  // a drone services that one machine: every tick it pulls a card the machine can
+  // use (from the table or any output tray) into one of its empty input holes.
+  // Level is a pure access gate — a higher-tier machine's slot demands a higher
+  // Mk. One generic drone does any feeding job; binding to a host is what stops
+  // two drones fighting over a card (each only feeds its own machine).
+  verb("drone_1", "Drone Mk I", "drone", 0, true, 1);
+  verb("drone_2", "Drone Mk II", "drone", 0, true, 2);
+  verb("drone_3", "Drone Mk III", "drone", 0, true, 3);
+  verb("drone_4", "Drone Mk IV", "drone", 0, true, 4);
 
   // ── Holes (slot_defs) ────────────────────────────────────────────────────
-  // Gatherers: one required hole taking Effort OR the matching catalyst drone.
-  slot("regolith_field", 0, ["effort", "mining_drone"], true);
-  slot("wreck", 0, ["effort", "survey_drone"], true);
+  // The drone-slot index, kept clear of every machine's input range so it never
+  // collides and the client can always find "the drone bay" by its droneLevel.
+  const DRONE = 90;
+  // Every non-emitter machine has a bay and needs a WORKER in it to run — Effort
+  // (manual, one cycle) or a mechanical drone of sufficient Mk (continuous + it
+  // fetches the machine's material inputs). Emitters (Survivor, Solar) need no
+  // worker; they self-run. The two CHOICE machines (Workshop, Assembler) use a
+  // WORKER-level bay: Effort (level 99) fits, but no buildable Mk does, so a drone
+  // can never auto-crank them and force a build/recipe choice.
+  const WORKER = 99;
 
-  // Printer: a raw inbox queue, no power.
+  // Gatherers (Mk I bay): no material input — the worker IS the input. Effort →
+  // one gather; a drone → continuous.
+  droneSlot("regolith_field", DRONE, 1);
+  droneSlot("wreck", DRONE, 1);
+
+  // Printer (Mk I bay): a raw inbox queue, no power.
   inbox("printer", 0, 3, ["raw"]);
+  droneSlot("printer", DRONE, 1);
 
-  // Workshop: a Blueprint + Effort (both required) + a Component inbox deep
-  // enough for the costliest build (the Rocket needs 6 Components).
+  // Workshop: a Blueprint (required) + a Component inbox deep enough for the
+  // costliest build (the Rocket needs 6) + a WORKER-only bay (Effort cranks it).
   slot("workshop", 0, ["blueprint"], true);
-  slot("workshop", 1, ["effort"], true);
   inbox("workshop", 2, 6, ["component"]);
+  droneSlot("workshop", DRONE, WORKER);
 
   // Power-gated machines: slot 0 is the required Power hole; the rest is the
   // input inbox. Consuming the Power each cycle is what idles them when the
@@ -173,6 +212,17 @@ function seedCatalogue(ctx: Ctx) {
   inbox("chem_reactor", 1, 2, ["hydrogen"]);
   inbox("chem_reactor", 3, 2, ["oxygen"]);
 
+  // Drone bays on the power line. Mk II for the first powered tier, Mk III for the
+  // electronics + chemistry tier. The Assembler gets a WORKER-only bay (below) —
+  // it's a choice machine, so only Effort cranks it.
+  droneSlot("refinery", DRONE, 2);
+  droneSlot("fabricator", DRONE, 2);
+  droneSlot("kiln", DRONE, 2);
+  droneSlot("ice_mine", DRONE, 2);
+  droneSlot("electronics_fab", DRONE, 3);
+  droneSlot("electrolysis", DRONE, 3);
+  droneSlot("chem_reactor", DRONE, 3);
+
   // Assembler: Power + roomy inboxes for every subsystem ingredient. Sized to
   // the hungriest recipe per category: Hull wants 5 Components, Avionics 4
   // Circuits, Heat Shield 2 Glass, Life Support 1 Water.
@@ -181,6 +231,7 @@ function seedCatalogue(ctx: Ctx) {
   inbox("assembler", 7, 4, ["circuit"]);
   inbox("assembler", 11, 2, ["glass"]);
   slot("assembler", 13, ["water"], false);
+  droneSlot("assembler", DRONE, WORKER); // WORKER-only: you crank each assembly
 
   // Rocket: all five subsystems plus three Fuel, every hole required — it only
   // fires when the whole craft is complete.
@@ -192,6 +243,9 @@ function seedCatalogue(ctx: Ctx) {
   slot("rocket", 5, ["fuel"], true);
   slot("rocket", 6, ["fuel"], true);
   slot("rocket", 7, ["fuel"], true);
+  // The capstone bay (Mk IV): a top-tier drone flies finished subsystems + fuel
+  // into the launchpad so the final assembly runs itself.
+  droneSlot("rocket", DRONE, 4);
 }
 
 export const init = spacetimedb.init((ctx) => seedCatalogue(ctx));

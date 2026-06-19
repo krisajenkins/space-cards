@@ -53,13 +53,10 @@ const BLUEPRINTS = [
   "chem_reactor",
   "assembler",
   "rocket",
-  "mining_drone",
-  "survey_drone",
-  "hauler",
-  "feeder",
-  "fitter",
-  "tanker",
-  "cargo",
+  "drone_1",
+  "drone_2",
+  "drone_3",
+  "drone_4",
 ];
 
 // Start a fresh board: the crash site. Survivor + the hand-cranked stations
@@ -138,6 +135,10 @@ function assertSlottable(
   const cat = cdef ? cdef.category : "";
   if (!slot.accepts.includes(c.defId) && !slot.accepts.includes(cat))
     throw new SenderError("that card is not accepted here");
+  // A drone bay (droneLevel > 0) additionally enforces the drone's Mk: the client
+  // already greys out under-spec drones, but never trust that — gate it here too.
+  if (slot.droneLevel > 0 && (!cdef || cdef.droneLevel < slot.droneLevel))
+    throw new SenderError("that drone's Mk is too low for this bay");
   if (
     holeCards(ctx, verb.id).some(
       (h) => h.location.value.slotIndex === slotIndex,
@@ -163,7 +164,10 @@ export const slotCard = spacetimedb.reducer(
       ...c,
       location: { tag: "slotted", value: { verbCardId, slotIndex } },
     });
+    // Start the host (a freshly-filled input hole may complete its recipe) and —
+    // if the dropped card is itself a drone — start the drone's service loop.
     maybeAutostart(ctx, verbCardId);
+    maybeAutostart(ctx, cardId);
   },
 );
 
@@ -180,9 +184,14 @@ export const collectAndSlot = spacetimedb.reducer(
     if (!c || !verb) throw new SenderError("card not found");
     requireMember(ctx, c.boardId);
 
+    const cdef = ctx.db.cardDef.defId.find(c.defId);
+    const isDrone = !!cdef && cdef.category === "drone";
+
     const old = c.location;
-    // A card bound to a verb that's mid-run can't be pulled out.
-    if (old.tag === "slotted") {
+    // A card bound to a verb that's mid-run can't be pulled out — EXCEPT a drone,
+    // which lives in a drone bay (not an input hole) and is freely reassignable
+    // even while its host machine is working.
+    if (old.tag === "slotted" && !isDrone) {
       const src = ctx.db.situation.cardId.find(old.value.verbCardId);
       if (src && src.state.tag !== "assembling")
         throw new SenderError("cannot take a card out of a running verb");
@@ -203,6 +212,7 @@ export const collectAndSlot = spacetimedb.reducer(
     }
 
     maybeAutostart(ctx, verbCardId);
+    maybeAutostart(ctx, cardId);
   },
 );
 
@@ -215,8 +225,13 @@ export const moveCard = spacetimedb.reducer(
     if (!c) throw new SenderError("card not found");
     requireMember(ctx, c.boardId);
 
+    const cdef = ctx.db.cardDef.defId.find(c.defId);
+    const isDrone = !!cdef && cdef.category === "drone";
+
     const old = c.location;
-    if (old.tag === "slotted") {
+    // Drones are exempt: a drone in a bay can be lifted out for reassignment even
+    // while its host runs. Any other card locked into a running verb stays put.
+    if (old.tag === "slotted" && !isDrone) {
       const s = ctx.db.situation.cardId.find(old.value.verbCardId);
       if (s && s.state.tag !== "assembling") {
         throw new SenderError("cannot take a card out of a running verb");
@@ -227,6 +242,18 @@ export const moveCard = spacetimedb.reducer(
       ...c,
       location: { tag: "tabletop", value: { x, y } },
     });
+
+    // Pulling a drone out of its bay stops its service loop: reset it to idle so
+    // the in-flight 2s tick no-ops. On the table it has no host and stays dormant.
+    if (old.tag === "slotted" && isDrone) {
+      const ds = ctx.db.situation.cardId.find(c.id);
+      if (ds)
+        ctx.db.situation.cardId.update({
+          ...ds,
+          state: { tag: "assembling" },
+          endsAt: undefined,
+        });
+    }
 
     if (old.tag === "output") {
       const v = old.value.verbCardId;

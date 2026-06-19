@@ -28,7 +28,7 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
   focused files re-exported from `index.ts`: `schema.ts` (tables + the scheduled
   `completeSituation`), `engine.ts` (the generic verb engine — assembly, runs,
   output caps, spawning), `resolvers.ts` (the `RESOLVERS` map: per-verb behaviour,
-  the generalised courier, the build/subsystem recipe maps), `lifecycle.ts`
+  the bay-drone feeder, the build/subsystem recipe maps), `lifecycle.ts`
   (`init` authors the catalogue; connect/disconnect; admin bootstrap),
   `layout.ts` (the authoritative tabletop layout — VPSC overlap removal via the
   `webcola` dep; see `docs/LAYOUT.md`), `reducers.ts` (player actions: `newGame`,
@@ -94,7 +94,7 @@ There is no test suite. Type-check the client with `svelte-check`.
   client just renders them. It is one-shot per mutation — never a timer/loop (an
   earlier client-side watchdog that round-tripped through the async DB was
   unstable and ran cards off-screen). A card's packing footprint is its **maximum**
-  rendered size (output tray full, courier carry-row shown), computed from
+  rendered size (output tray full, drone bay reserved), computed from
   `outputCap` + slot count, so the layout stays put as cards grow. **If you add a
   card UI section that changes a card's size, update `footprint()` or it will
   overlap.** See `docs/LAYOUT.md`.

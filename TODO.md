@@ -26,7 +26,7 @@ One interesting thing this will power - the end! When you first create an escape
 
 You might want to make more than one of a drone. This requires that a recipe that consumes a drone blueprint produces the same blueprint.
 
-# [ ] We have a drone design flaw.
+# [x] We have a drone design flaw.
 
 In the current game, drones should not be able to drop to an assembler, because
 it makes different kinds of things - if it's auto-filled the player can't make
@@ -42,6 +42,28 @@ Let's try this approach:
 Obviously this will require reworking existing drones, and it will need a drone-building machine.
 
 Before implementing, consider this design and we'll discuss it first.
+
+DONE. The old catalyst + courier drones are gone, unified into one **drone bay**
+mechanic. Each machine (except the choice machines — Workshop, Assembler — and
+the pure emitters) has a `droneLevel`-tagged bay slot. A bayed drone is a
+hole-less verb that ticks every 2s, pulling a card its host accepts (from the
+table or any output tray) into an empty input hole. Drones are generic **Mk
+I–IV**; level is a pure access gate (a bay demands a minimum Mk). Built at the
+Workshop from `blueprint_drone_1..4` (kept, so one manual builds a fleet).
+Reassignable any time, even while the host runs; level enforced client- AND
+server-side. Ladder: Mk I = gatherers/Printer, Mk II = Refinery/Fabricator/
+Kiln/Ice Mine, Mk III = Electronics Fab/Electrolysis/Chem Reactor, Mk IV =
+Rocket. Levels are easy to re-tune in `lifecycle.ts` after playtesting.
+
+REFINED after first playtest: the bay is a **worker bay**, and **Effort is the
+universal worker** (a Mk-0 drone that fits any bay, spent one cycle at a time —
+narratively *you* working the machine, instead of a drone fetching the player).
+Every non-emitter machine now needs a worker (Effort or a sufficient-Mk drone) to
+run; emitters (Survivor, Solar) self-run. Gatherers lost their Effort input hole
+(the worker IS the input). The two choice machines (Workshop, Assembler) get a
+**worker-only bay** — Effort cranks them, no mechanical drone qualifies, so you
+keep the build/recipe choice. Also fixed: the card header now grows to contain
+the bay (it was overlapping the input holes).
 
 # [ ] Blueprints shouldn't all appear at the start.
 

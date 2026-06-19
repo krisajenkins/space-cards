@@ -140,10 +140,14 @@ let ghostEl = $state<HTMLDivElement>();
 let rejecting = $state<bigint | null>(null);
 let rejectTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Any non-verb card can be slotted now (output/slotted cards collect first), so
-// arm the highlight for whatever resource card is in hand.
+// Any non-verb card can be slotted (output/slotted cards collect first), and so
+// can a drone — itself a verb, but one that belongs in a machine's bay. Arm the
+// highlight for whichever of those is in hand. Other verbs (machines) only
+// reposition, so they don't arm any sockets.
 const dragDefId = $derived(
-  drag && !drag.def?.isVerb ? drag.card.defId : null,
+  drag && (!drag.def?.isVerb || drag.def?.category === "drone")
+    ? drag.card.defId
+    : null,
 );
 const dragCategory = $derived(
   dragDefId ? (defsById.get(dragDefId)?.category ?? null) : null,
@@ -189,6 +193,13 @@ function firstValidSlot(verbId: bigint, card: Card): number | null {
   const cdef = defsById.get(card.defId);
   for (const slot of slotsByDef.get(verbCard.defId) ?? []) {
     if (filled.has(slot.slotIndex)) continue;
+    // A drone bay (droneLevel > 0) takes a drone of sufficient Mk and nothing
+    // else; ordinary input holes never take a drone.
+    if (slot.droneLevel > 0) {
+      if (cdef && cdef.category === "drone" && cdef.droneLevel >= slot.droneLevel)
+        return slot.slotIndex;
+      continue;
+    }
     if (
       slot.accepts.includes(card.defId) ||
       (cdef ? slot.accepts.includes(cdef.category) : false)
@@ -254,9 +265,10 @@ function onUp(e: PointerEvent) {
   d.px = e.clientX;
   d.py = e.clientY;
 
-  // The whole verb card is the drop target: a resource dropped anywhere on it
-  // auto-fills the first open socket. Verb cards never slot — they reposition.
-  if (!d.def?.isVerb) {
+  // The whole verb card is the drop target: a resource (or a drone, bound for the
+  // bay) dropped anywhere on it auto-fills the first open socket. Machines never
+  // slot — they reposition.
+  if (!d.def?.isVerb || d.def?.category === "drone") {
     const stationEl = document
       .elementsFromPoint(d.px, d.py)
       .find((el) => (el as HTMLElement).dataset?.station) as
