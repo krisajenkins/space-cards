@@ -181,6 +181,26 @@ export async function promptGoogle(): Promise<void> {
   gisId().prompt();
 }
 
+// True if any persisted auth token exists. Lets the connection layer tell a
+// stale-token rejection (clear + reload) apart from a server-down error (where
+// there'd be nothing to clear, so reloading would just spin).
+export function hasStoredToken(): boolean {
+  return (
+    localStorage.getItem(TOKEN_KEY) !== null ||
+    localStorage.getItem(STDB_TOKEN_KEY) !== null
+  );
+}
+
+// Drop all persisted auth — the Google JWT and the SpacetimeDB session token —
+// and reset the in-memory store to anonymous. Used when the server rejects a
+// stored token on connect (e.g. the dev DB was recreated, so our session token
+// is no longer recognised). The caller reloads to rebuild the connection.
+export function clearStoredTokens(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(STDB_TOKEN_KEY);
+  googleToken.set(undefined);
+}
+
 export function signOutGoogle(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(STDB_TOKEN_KEY);

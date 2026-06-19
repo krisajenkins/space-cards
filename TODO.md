@@ -1,4 +1,4 @@
-# [ ] Login Bug
+# [x] Login Bug
 
 Sometimes when I recreate the database my UI gets stuck on a "auth token we don't recognise" state. I have to clear cookies to get back in. It probably won't happen in production because we won't recreate the database, but it's still annoying for dev. Here's the console:
 
