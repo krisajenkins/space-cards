@@ -4,18 +4,12 @@ import spacetimedb, {
   boardMember,
   card,
   cardHistory,
+  achievement,
   situation,
   user,
 } from "./schema";
 import { MeRow } from "./types";
-import type {
-  Board,
-  BoardMember,
-  User,
-  Card,
-  CardHistory,
-  Situation,
-} from "./types";
+import type { Board, BoardMember, User, Card, Situation } from "./types";
 import { lookupCaller } from "./auth";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -124,12 +118,35 @@ export const myCardHistory = spacetimedb.view(
   (ctx) => {
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
-    const out: CardHistory[] = [];
-    for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
-      for (const h of ctx.db.cardHistory.by_board_def.filter(mine.boardId))
-        out.push(h);
-    }
-    return out;
+    const boards = new Set(
+      [...ctx.db.boardMember.userId.filter(caller.user.id)].map(
+        (m) => m.boardId,
+      ),
+    );
+    // Iterate-and-filter rather than a prefix scan on by_board_def: a one-column
+    // prefix (bare value) on a multi-column index panics in serializeRange under
+    // SDK 2.5.0; only the full key is safe. History is small, so this is cheap.
+    return [...ctx.db.cardHistory.iter()].filter((h) => boards.has(h.boardId));
+  },
+);
+
+// Achievements earned on any board the caller is on (earned + seen state). The
+// display text comes from the public achievement_def catalogue — the client
+// joins on achId. No row for an unearned milestone.
+export const myAchievements = spacetimedb.view(
+  { name: "my_achievements", public: true },
+  t.array(achievement.rowType),
+  (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
+    const boards = new Set(
+      [...ctx.db.boardMember.userId.filter(caller.user.id)].map(
+        (m) => m.boardId,
+      ),
+    );
+    // Iterate-and-filter (not a by_board_ach prefix scan) — see my_card_history
+    // for why the bare-value multi-column prefix is unsafe under SDK 2.5.0.
+    return [...ctx.db.achievement.iter()].filter((a) => boards.has(a.boardId));
   },
 );
 

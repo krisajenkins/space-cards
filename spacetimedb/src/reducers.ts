@@ -271,3 +271,17 @@ export const moveCard = spacetimedb.reducer(
     relayout(ctx, c.boardId, cardId);
   },
 );
+
+// Dismiss an achievement toaster: flip its `seen` flag so it stops popping. The
+// award itself is one-shot (awardAchievements never re-inserts), so this just
+// silences the notification — the earned row stays for stats/UI.
+export const markAchievementSeen = spacetimedb.reducer(
+  { achievementId: t.u64() },
+  (ctx, { achievementId }) => {
+    const row = ctx.db.achievement.id.find(achievementId);
+    if (!row) return; // already gone — nothing to dismiss
+    requireMember(ctx, row.boardId);
+    if (row.seen) return;
+    ctx.db.achievement.id.update({ ...row, seen: true });
+  },
+);

@@ -3,6 +3,7 @@ import { useSpacetimeDB, useTable, useReducer } from "spacetimedb/svelte";
 import { tables, reducers } from "./module_bindings";
 import SignIn from "./lib/SignIn.svelte";
 import Board from "./lib/Board.svelte";
+import Achievements from "./lib/Achievements.svelte";
 
 const conn = useSpacetimeDB();
 
@@ -53,6 +54,7 @@ const board = $derived($boards[0]);
     </header>
 
     <main class="stage">
+      <Achievements />
       {#if board}
         <Board boardId={board.id} />
       {:else if $boardsReady}

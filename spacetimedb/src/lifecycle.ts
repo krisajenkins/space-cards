@@ -18,6 +18,8 @@ function seedCatalogue(ctx: Ctx) {
   for (const s of [...ctx.db.slotDef.iter()]) ctx.db.slotDef.id.delete(s.id);
   for (const d of [...ctx.db.cardDef.iter()])
     ctx.db.cardDef.defId.delete(d.defId);
+  for (const a of [...ctx.db.achievementDef.iter()])
+    ctx.db.achievementDef.achId.delete(a.achId);
 
   // ── Catalogue authoring helpers ──────────────────────────────────────────
   const inert = (
@@ -246,6 +248,45 @@ function seedCatalogue(ctx: Ctx) {
   // The capstone bay (Mk IV): a top-tier drone flies finished subsystems + fuel
   // into the launchpad so the final assembly runs itself.
   droneSlot("rocket", DRONE, 4);
+
+  // ── Achievements ───────────────────────────────────────────────────────
+  // The display content of each milestone. The condition that earns it is code
+  // (achievements.ts), keyed by the same achId; `sort` orders the trophy shelf
+  // roughly along the gather → refine → fabricate → automate → escape arc.
+  const achievement = (
+    achId: string,
+    title: string,
+    description: string,
+    sort: number,
+  ) => ctx.db.achievementDef.insert({ achId, title, description, sort });
+
+  achievement("prospector", "Prospector", "Gather your first Regolith.", 0);
+  achievement(
+    "power_up",
+    "Let There Be Light",
+    "Generate your first Power.",
+    1,
+  );
+  achievement("industrialist", "Industrialist", "Build your first machine.", 2);
+  achievement(
+    "automation",
+    "Hands Off",
+    "Build your first drone and let it work for you.",
+    3,
+  );
+  achievement("chemist", "Rocket Fuel", "Refine your first Fuel.", 4);
+  achievement(
+    "launch_ready",
+    "All Systems Go",
+    "Fabricate all five rocket subsystems.",
+    5,
+  );
+  achievement(
+    "escape",
+    "Escape the Moon",
+    "Launch the rocket and escape. You win.",
+    6,
+  );
 }
 
 export const init = spacetimedb.init((ctx) => seedCatalogue(ctx));

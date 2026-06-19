@@ -9,6 +9,7 @@ import { type Infer as __Infer } from "spacetimedb";
 import BootstrapFirstAdminReducer from "../bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "../collect_and_slot_reducer";
 import DevGrantReducer from "../dev_grant_reducer";
+import MarkAchievementSeenReducer from "../mark_achievement_seen_reducer";
 import MoveCardReducer from "../move_card_reducer";
 import NewGameReducer from "../new_game_reducer";
 import RelayoutBoardReducer from "../relayout_board_reducer";
@@ -20,6 +21,9 @@ export type BootstrapFirstAdminParams = __Infer<
 >;
 export type CollectAndSlotParams = __Infer<typeof CollectAndSlotReducer>;
 export type DevGrantParams = __Infer<typeof DevGrantReducer>;
+export type MarkAchievementSeenParams = __Infer<
+  typeof MarkAchievementSeenReducer
+>;
 export type MoveCardParams = __Infer<typeof MoveCardReducer>;
 export type NewGameParams = __Infer<typeof NewGameReducer>;
 export type RelayoutBoardParams = __Infer<typeof RelayoutBoardReducer>;

@@ -74,10 +74,26 @@ There should be a "research" card. It takes 1 effort, and can create a blueprint
 
 I think this will lean heavily on the card history view - it's how we know what cards you've found.
 
-# [ ] We need achievements
+# [x] We need achievements
 
 A reducer on the card history view should record certain achievements. The UI
 should pop them up as toasters top-left. Be careful that they're only triggered
 once by give a click-to-dismiss workflow and a 'seen' flag and reducer.
+
+DONE. `awardAchievements` (achievements.ts) runs from `tally` — the single
+card-birth funnel — and inserts an `achievement` row the first time a milestone's
+condition holds, never again (the `by_board_ach` lookup makes it idempotent, so
+each fires exactly once). Conditions are code (predicates over the board's
+card-history counts); the display text lives in the public `achievement_def`
+catalogue, authored in `init`/`seedCatalogue`. Seven milestones along the
+gather→refine→fabricate→automate→escape arc, each keyed off a card *never in the
+opening deal* so it fires on real progress, not the initial layout. Earned rows
+start `seen:false`; `Achievements.svelte` pops unseen ones as top-left toasters,
+click-to-dismiss → `mark_achievement_seen`. The Escape toaster doubles as the win
+banner. Read via the membership-scoped `my_achievements` view.
+
+(Note: the bare-value prefix scan on a multi-column index panics in
+`serializeRange` under SDK 2.5.0 — `my_card_history` had this latent bug too, now
+both views iterate-and-filter instead.)
 
 # [ ] We need an About button and popup.

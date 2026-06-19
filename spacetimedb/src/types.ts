@@ -13,6 +13,8 @@ import type spacetimedb from "./schema";
 import type {
   card,
   cardHistory,
+  achievement,
+  achievementDef,
   situation,
   user,
   board,
@@ -107,6 +109,8 @@ export type ReadCtx = Ctx | ViewContext;
 
 export type Card = Infer<typeof card.rowType>;
 export type CardHistory = Infer<typeof cardHistory.rowType>;
+export type Achievement = Infer<typeof achievement.rowType>;
+export type AchievementDef = Infer<typeof achievementDef.rowType>;
 export type Situation = Infer<typeof situation.rowType>;
 export type User = Infer<typeof user.rowType>;
 export type Board = Infer<typeof board.rowType>;

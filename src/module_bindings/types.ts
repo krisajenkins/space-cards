@@ -10,6 +10,23 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const Achievement = __t.object("Achievement", {
+  id: __t.u64(),
+  boardId: __t.u64(),
+  achId: __t.string(),
+  earnedAt: __t.timestamp(),
+  seen: __t.bool(),
+});
+export type Achievement = __Infer<typeof Achievement>;
+
+export const AchievementDef = __t.object("AchievementDef", {
+  achId: __t.string(),
+  title: __t.string(),
+  description: __t.string(),
+  sort: __t.u32(),
+});
+export type AchievementDef = __Infer<typeof AchievementDef>;
+
 export const Board = __t.object("Board", {
   id: __t.u64(),
   name: __t.string(),
@@ -106,6 +123,9 @@ export const MemberRole = __t.enum("MemberRole", {
   Spectator: __t.unit(),
 });
 export type MemberRole = __Infer<typeof MemberRole>;
+
+export const MyAchievements = __t.object("MyAchievements", {});
+export type MyAchievements = __Infer<typeof MyAchievements>;
 
 export const MyBoardMembers = __t.object("MyBoardMembers", {});
 export type MyBoardMembers = __Infer<typeof MyBoardMembers>;

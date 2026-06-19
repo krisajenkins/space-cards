@@ -37,6 +37,7 @@ import {
 import BootstrapFirstAdminReducer from "./bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "./collect_and_slot_reducer";
 import DevGrantReducer from "./dev_grant_reducer";
+import MarkAchievementSeenReducer from "./mark_achievement_seen_reducer";
 import MoveCardReducer from "./move_card_reducer";
 import NewGameReducer from "./new_game_reducer";
 import RelayoutBoardReducer from "./relayout_board_reducer";
@@ -46,8 +47,10 @@ import SlotCardReducer from "./slot_card_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import AchievementDefRow from "./achievement_def_table";
 import CardDefRow from "./card_def_table";
 import MeViewRow from "./me_view_table";
+import MyAchievementsRow from "./my_achievements_table";
 import MyBoardMembersRow from "./my_board_members_table";
 import MyBoardsRow from "./my_boards_table";
 import MyCardHistoryRow from "./my_card_history_table";
@@ -60,6 +63,27 @@ import SlotDefRow from "./slot_def_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  achievementDef: __table(
+    {
+      name: "achievement_def",
+      indexes: [
+        {
+          accessor: "achId",
+          name: "achievement_def_ach_id_idx_btree",
+          algorithm: "btree",
+          columns: ["achId"],
+        },
+      ],
+      constraints: [
+        {
+          name: "achievement_def_ach_id_key",
+          constraint: "unique",
+          columns: ["achId"],
+        },
+      ],
+    },
+    AchievementDefRow,
+  ),
   cardDef: __table(
     {
       name: "card_def",
@@ -111,6 +135,14 @@ const tablesSchema = __schema({
       constraints: [],
     },
     MeViewRow,
+  ),
+  myAchievements: __table(
+    {
+      name: "my_achievements",
+      indexes: [],
+      constraints: [],
+    },
+    MyAchievementsRow,
   ),
   myBoardMembers: __table(
     {
@@ -167,6 +199,7 @@ const reducersSchema = __reducers(
   __reducerSchema("bootstrap_first_admin", BootstrapFirstAdminReducer),
   __reducerSchema("collect_and_slot", CollectAndSlotReducer),
   __reducerSchema("dev_grant", DevGrantReducer),
+  __reducerSchema("mark_achievement_seen", MarkAchievementSeenReducer),
   __reducerSchema("move_card", MoveCardReducer),
   __reducerSchema("new_game", NewGameReducer),
   __reducerSchema("relayout_board", RelayoutBoardReducer),

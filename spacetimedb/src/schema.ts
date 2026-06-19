@@ -46,6 +46,20 @@ export const slotDef = table(
   },
 );
 
+// The achievement catalogue (public): the *display* content of each milestone —
+// title + blurb + display order. The *condition* that earns it is code, keyed by
+// the same `achId`, in achievements.ts (same split as card_def vs RESOLVERS).
+// Authored in init/seedCatalogue alongside the card catalogue.
+export const achievementDef = table(
+  { name: "achievement_def", public: true },
+  {
+    achId: t.string().primaryKey(), // 'prospector', 'power_up', ...
+    title: t.string(),
+    description: t.string(),
+    sort: t.u32(), // display order, roughly the act it belongs to
+  },
+);
+
 // ──────────────────────────────────────────────────────────────────────────
 // Ownership. PRIVATE: clients never read these tables directly — they read the
 // per-player `my_*` views below, scoped to board membership. See §2 of the doc.
@@ -141,6 +155,32 @@ export const cardHistory = table(
   },
 );
 
+// One row per achievement a board has earned (private; read via my_achievements).
+// Inserted by awardAchievements (achievements.ts) the moment its condition first
+// holds, then never again — the `by_board_ach` lookup makes the award idempotent,
+// so each milestone fires exactly once. `seen` starts false; the client pops an
+// unseen row as a toaster and calls mark_achievement_seen to flip it true. No row
+// for an unearned achievement.
+export const achievement = table(
+  {
+    name: "achievement",
+    indexes: [
+      {
+        accessor: "by_board_ach",
+        algorithm: "btree",
+        columns: ["boardId", "achId"],
+      },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    boardId: t.u64(),
+    achId: t.string(),
+    earnedAt: t.timestamp(),
+    seen: t.bool(),
+  },
+);
+
 // Runtime state of an active verb-card. 1:1 with the verb card, keyed by its id.
 export const situation = table(
   { name: "situation" },
@@ -165,12 +205,14 @@ export const situationTimer = table(
 const spacetimedb = schema({
   cardDef,
   slotDef,
+  achievementDef,
   user,
   identity,
   board,
   boardMember,
   card,
   cardHistory,
+  achievement,
   situation,
   situationTimer,
 });

@@ -1,6 +1,7 @@
 import { ScheduleAt, Timestamp } from "spacetimedb";
 import { MINUTE } from "./constants";
 import { RESOLVERS } from "./resolvers";
+import { awardAchievements } from "./achievements";
 import type { Ctx, Card, SlottedCard } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -131,6 +132,8 @@ export function tally(ctx: Ctx, boardId: bigint, defId: string): void {
   } else {
     ctx.db.cardHistory.insert({ id: 0n, boardId, defId, count: 1n });
   }
+  // History just changed — re-check milestones that key off it.
+  awardAchievements(ctx, boardId);
 }
 
 export function spawnCard(
