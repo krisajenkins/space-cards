@@ -84,7 +84,11 @@ function poweredOne(dur: bigint, inputCat: string, output: string): Resolver {
 // ORDER is enforced by the resource graph (you can't build a Subsystem without
 // an Assembler + components + power), not by gating the manuals.
 // ──────────────────────────────────────────────────────────────────────────
-type Build = { output: string; cost: number }; // cost = Components consumed
+// `keep` marks a blueprint the Workshop hands back on completion (produced into
+// the tray alongside the build) instead of consuming. Drones are deliberately
+// reusable — you'll want a whole fleet — so a drone blueprint is a permanent
+// manual, not a one-shot. Machine blueprints stay one-and-done.
+type Build = { output: string; cost: number; keep?: boolean }; // cost = Components consumed
 const BUILDS: Record<string, Build> = {
   // Machines
   blueprint_solar: { output: "solar_array", cost: 2 },
@@ -97,14 +101,15 @@ const BUILDS: Record<string, Build> = {
   blueprint_chem_reactor: { output: "chem_reactor", cost: 5 },
   blueprint_assembler: { output: "assembler", cost: 5 },
   blueprint_rocket: { output: "rocket", cost: 6 },
-  // Drones (the automation layer — built the same way)
-  blueprint_mining_drone: { output: "mining_drone", cost: 2 },
-  blueprint_survey_drone: { output: "survey_drone", cost: 2 },
-  blueprint_hauler: { output: "hauler", cost: 2 },
-  blueprint_feeder: { output: "feeder", cost: 3 },
-  blueprint_fitter: { output: "fitter", cost: 3 },
-  blueprint_tanker: { output: "tanker", cost: 3 },
-  blueprint_cargo: { output: "cargo", cost: 4 },
+  // Drones (the automation layer — built the same way, but blueprint is kept so
+  // the player can build a whole fleet from one manual)
+  blueprint_mining_drone: { output: "mining_drone", cost: 2, keep: true },
+  blueprint_survey_drone: { output: "survey_drone", cost: 2, keep: true },
+  blueprint_hauler: { output: "hauler", cost: 2, keep: true },
+  blueprint_feeder: { output: "feeder", cost: 3, keep: true },
+  blueprint_fitter: { output: "fitter", cost: 3, keep: true },
+  blueprint_tanker: { output: "tanker", cost: 3, keep: true },
+  blueprint_cargo: { output: "cargo", cost: 4, keep: true },
 };
 
 // Rocket subsystems. The Assembler offers a CHOICE of recipes (Agency-style
@@ -308,9 +313,11 @@ export const RESOLVERS: Record<string, Resolver> = {
       if (!recipe) return NOOP;
       const comps = take(ctx, holes, "component", recipe.cost);
       if (comps.length < recipe.cost) return NOOP;
+      // A kept blueprint is consumed-and-reproduced: it lands back in the tray
+      // for the player to re-slot, so the Workshop frees up for the next build.
       return {
         consume: [bp.id, effort.id, ...comps],
-        produce: [recipe.output],
+        produce: recipe.keep ? [recipe.output, bp.defId] : [recipe.output],
         again: false,
       };
     },

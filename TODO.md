@@ -22,7 +22,7 @@ I want to create a view that shows, for the connected player, how many of each c
 
 One interesting thing this will power - the end! When you first create an escape card, that's the win condition. Trigger some celebratory message or cutscene.
 
-# [ ] Drone Blueprints should not be consumed.
+# [x] Drone Blueprints should not be consumed.
 
 You might want to make more than one of a drone. This requires that a recipe that consumes a drone blueprint produces the same blueprint.
 
