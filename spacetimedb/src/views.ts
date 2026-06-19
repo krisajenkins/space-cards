@@ -4,11 +4,10 @@ import spacetimedb, {
   boardMember,
   card,
   cardHistory,
-  achievement,
   situation,
   user,
 } from "./schema";
-import { MeRow } from "./types";
+import { MeRow, MyAchievementRow } from "./types";
 import type { Board, BoardMember, User, Card, Situation } from "./types";
 import { lookupCaller } from "./auth";
 
@@ -130,12 +129,14 @@ export const myCardHistory = spacetimedb.view(
   },
 );
 
-// Achievements earned on any board the caller is on (earned + seen state). The
-// display text comes from the public achievement_def catalogue — the client
-// joins on achId. No row for an unearned milestone.
+// Achievements earned on any board the caller is on (earned + seen state), each
+// joined to its catalogue text. achievement_def is private — you mustn't read
+// the blurb of a milestone you haven't unlocked — so the view folds title +
+// description in here rather than exposing the catalogue. No row for an unearned
+// milestone.
 export const myAchievements = spacetimedb.view(
   { name: "my_achievements", public: true },
-  t.array(achievement.rowType),
+  t.array(MyAchievementRow),
   (ctx) => {
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
@@ -146,7 +147,20 @@ export const myAchievements = spacetimedb.view(
     );
     // Iterate-and-filter (not a by_board_ach prefix scan) — see my_card_history
     // for why the bare-value multi-column prefix is unsafe under SDK 2.5.0.
-    return [...ctx.db.achievement.iter()].filter((a) => boards.has(a.boardId));
+    return [...ctx.db.achievement.iter()]
+      .filter((a) => boards.has(a.boardId))
+      .map((a) => {
+        const def = ctx.db.achievementDef.achId.find(a.achId);
+        return {
+          id: a.id,
+          boardId: a.boardId,
+          achId: a.achId,
+          earnedAt: a.earnedAt,
+          seen: a.seen,
+          title: def?.title ?? a.achId,
+          description: def?.description ?? "",
+        };
+      });
   },
 );
 

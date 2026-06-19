@@ -2,24 +2,22 @@
 import { useTable, useReducer } from "spacetimedb/svelte";
 import { tables, reducers } from "../module_bindings";
 
-// Earned milestones (id + achId + seen) joined to the public catalogue
-// (title/description) for display. Only UNSEEN rows pop as toasters; clicking
-// one calls mark_achievement_seen to silence it (the earned row stays).
+// Earned milestones (id + achId + seen + title/description). The catalogue text
+// is folded into the view because achievement_def is private — you can't read
+// the blurb of a milestone you haven't unlocked. Only UNSEEN rows pop as
+// toasters; clicking one calls mark_achievement_seen to silence it (the earned
+// row stays).
 const [earned] = useTable(tables.myAchievements);
-const [defs] = useTable(tables.achievementDef);
 const markSeen = useReducer(reducers.markAchievementSeen);
-
-const defById = $derived(new Map($defs.map((d) => [d.achId, d])));
 
 // Newest first, so a freshly-earned milestone stacks on top.
 const toasts = $derived(
   $earned
     .filter((a) => !a.seen)
-    .map((a) => ({ row: a, def: defById.get(a.achId) }))
     .sort(
       (x, y) =>
-        Number(y.row.earnedAt.microsSinceUnixEpoch) -
-        Number(x.row.earnedAt.microsSinceUnixEpoch),
+        Number(y.earnedAt.microsSinceUnixEpoch) -
+        Number(x.earnedAt.microsSinceUnixEpoch),
     ),
 );
 
@@ -29,19 +27,19 @@ function dismiss(id: bigint) {
 </script>
 
 <div class="toasts" aria-live="polite">
-  {#each toasts as t (t.row.id)}
+  {#each toasts as t (t.id)}
     <button
       class="toast"
-      class:win={t.row.achId === "escape"}
-      onclick={() => dismiss(t.row.id)}
+      class:win={t.achId === "escape"}
+      onclick={() => dismiss(t.id)}
       title="Dismiss"
     >
-      <span class="trophy">{t.row.achId === "escape" ? "✦" : "🏆"}</span>
+      <span class="trophy">{t.achId === "escape" ? "✦" : "🏆"}</span>
       <span class="body">
         <span class="eyebrow">Achievement unlocked</span>
-        <span class="title">{t.def?.title ?? t.row.achId}</span>
-        {#if t.def?.description}
-          <span class="desc">{t.def.description}</span>
+        <span class="title">{t.title || t.achId}</span>
+        {#if t.description}
+          <span class="desc">{t.description}</span>
         {/if}
       </span>
       <span class="dismiss" aria-hidden="true">×</span>

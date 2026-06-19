@@ -51,7 +51,7 @@ export const slotDef = table(
 // the same `achId`, in achievements.ts (same split as card_def vs RESOLVERS).
 // Authored in init/seedCatalogue alongside the card catalogue.
 export const achievementDef = table(
-  { name: "achievement_def", public: true },
+  { name: "achievement_def", public: false },
   {
     achId: t.string().primaryKey(), // 'prospector', 'power_up', ...
     title: t.string(),

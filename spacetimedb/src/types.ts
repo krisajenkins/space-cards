@@ -94,6 +94,20 @@ export const MeRow = t.object("MeRow", {
   isAdmin: t.bool(),
 });
 
+// An earned achievement joined to its catalogue text. achievement_def is private
+// (you mustn't read the blurb of a milestone you haven't unlocked), so the view
+// folds title + description into each earned row rather than letting the client
+// join against the public catalogue.
+export const MyAchievementRow = t.object("MyAchievementRow", {
+  id: t.u64(),
+  boardId: t.u64(),
+  achId: t.string(),
+  earnedAt: t.timestamp(),
+  seen: t.bool(),
+  title: t.string(),
+  description: t.string(),
+});
+
 // ──────────────────────────────────────────────────────────────────────────
 // Schema-derived types. `Ctx` / `ViewContext` are what the framework hands a
 // reducer / view callback; the row types are the concrete shape of each table.

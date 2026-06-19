@@ -47,7 +47,6 @@ import SlotCardReducer from "./slot_card_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
-import AchievementDefRow from "./achievement_def_table";
 import CardDefRow from "./card_def_table";
 import MeViewRow from "./me_view_table";
 import MyAchievementsRow from "./my_achievements_table";
@@ -63,27 +62,6 @@ import SlotDefRow from "./slot_def_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
-  achievementDef: __table(
-    {
-      name: "achievement_def",
-      indexes: [
-        {
-          accessor: "achId",
-          name: "achievement_def_ach_id_idx_btree",
-          algorithm: "btree",
-          columns: ["achId"],
-        },
-      ],
-      constraints: [
-        {
-          name: "achievement_def_ach_id_key",
-          constraint: "unique",
-          columns: ["achId"],
-        },
-      ],
-    },
-    AchievementDefRow,
-  ),
   cardDef: __table(
     {
       name: "card_def",

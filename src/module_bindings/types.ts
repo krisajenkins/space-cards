@@ -124,6 +124,17 @@ export const MemberRole = __t.enum("MemberRole", {
 });
 export type MemberRole = __Infer<typeof MemberRole>;
 
+export const MyAchievementRow = __t.object("MyAchievementRow", {
+  id: __t.u64(),
+  boardId: __t.u64(),
+  achId: __t.string(),
+  earnedAt: __t.timestamp(),
+  seen: __t.bool(),
+  title: __t.string(),
+  description: __t.string(),
+});
+export type MyAchievementRow = __Infer<typeof MyAchievementRow>;
+
 export const MyAchievements = __t.object("MyAchievements", {});
 export type MyAchievements = __Infer<typeof MyAchievements>;
 

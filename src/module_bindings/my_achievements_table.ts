@@ -11,9 +11,11 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.u64().primaryKey(),
+  id: __t.u64(),
   boardId: __t.u64().name("board_id"),
   achId: __t.string().name("ach_id"),
   earnedAt: __t.timestamp().name("earned_at"),
   seen: __t.bool(),
+  title: __t.string(),
+  description: __t.string(),
 });
