@@ -39,6 +39,7 @@ import CollectAndSlotReducer from "./collect_and_slot_reducer";
 import DevGrantReducer from "./dev_grant_reducer";
 import MoveCardReducer from "./move_card_reducer";
 import NewGameReducer from "./new_game_reducer";
+import RelayoutBoardReducer from "./relayout_board_reducer";
 import ReseedCatalogueReducer from "./reseed_catalogue_reducer";
 import SlotCardReducer from "./slot_card_reducer";
 
@@ -159,6 +160,7 @@ const reducersSchema = __reducers(
   __reducerSchema("dev_grant", DevGrantReducer),
   __reducerSchema("move_card", MoveCardReducer),
   __reducerSchema("new_game", NewGameReducer),
+  __reducerSchema("relayout_board", RelayoutBoardReducer),
   __reducerSchema("reseed_catalogue", ReseedCatalogueReducer),
   __reducerSchema("slot_card", SlotCardReducer),
 );

@@ -10,7 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "spacetimedb": "2.5.*"
+    "spacetimedb": "2.5.*",
+    "webcola": "^3.4.0"
   },
   "devDependencies": {
     "typescript": "~5.6.2"

@@ -15,6 +15,7 @@ import {
   tryBeginRun,
   verbReady,
 } from "./engine";
+import { relayout } from "./layout";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Catalogue (public). Authored content describing what cards exist.
@@ -212,7 +213,10 @@ export const completeSituation = spacetimedb.reducer(
         verb.location.tag === "tabletop" ? verb.location.value : { x: 0, y: 0 };
       ctx.db.situation.cardId.delete(verbCardId);
       ctx.db.card.id.delete(verbCardId);
-      spawnCard(ctx, verb.boardId, eff.become, pos.x, pos.y);
+      const grown = spawnCard(ctx, verb.boardId, eff.become, pos.x, pos.y);
+      // The new card holds the old verb's spot (pinned); its larger footprint
+      // nudges neighbours aside if it now needs more room.
+      relayout(ctx, verb.boardId, grown.id);
       return;
     }
 

@@ -1,6 +1,7 @@
 import { t, SenderError } from "spacetimedb/server";
 import spacetimedb from "./schema";
 import { holeCards, maybeAutostart, spawnCard, tryBeginRun } from "./engine";
+import { relayout } from "./layout";
 import { requireCaller, requireMember } from "./auth";
 import type { Ctx, Card } from "./types";
 
@@ -15,7 +16,21 @@ export const devGrant = spacetimedb.reducer(
     requireMember(ctx, boardId);
     if (!ctx.db.cardDef.defId.find(defId))
       throw new SenderError("no such card def");
-    spawnCard(ctx, boardId, defId, x, y);
+    const c = spawnCard(ctx, boardId, defId, x, y);
+    relayout(ctx, boardId, c.id);
+  },
+);
+
+// Admin-only: re-tidy a whole board (size-aware, overlap-free) with nothing
+// pinned. The migration path for a board left messy by an old layout, and a
+// handy "clean up the table" operational tool.
+export const relayoutBoard = spacetimedb.reducer(
+  { boardId: t.u64() },
+  (ctx, { boardId }) => {
+    const { user: me } = requireCaller(ctx);
+    if (!me.isAdmin) throw new SenderError("admin only");
+    requireMember(ctx, boardId);
+    relayout(ctx, boardId);
   },
 );
 
@@ -85,6 +100,11 @@ export const newGame = spacetimedb.reducer((ctx) => {
     const y = 520 + Math.floor(i / 9) * 140;
     spawnCard(ctx, b.id, `blueprint_${target}`, x, y);
   });
+
+  // Tidy the deal: the hand-placed coordinates above are rough; let the
+  // size-aware layout space everything cleanly (and account for the stations'
+  // full footprints) before the player sees it.
+  relayout(ctx, b.id);
 });
 
 // Shared gate for slotting card `c` into verb `verb`'s hole `slotIndex`: the
@@ -218,5 +238,9 @@ export const moveCard = spacetimedb.reducer(
     // like a Seed starts growing the moment it's on the tabletop). Inert cards
     // and verbs with unfilled holes are no-ops inside maybeAutostart.
     maybeAutostart(ctx, cardId);
+
+    // Tidy the board around where the player dropped this card: pin it (it stays
+    // exactly where they put it) and let any cards it overlaps give way.
+    relayout(ctx, c.boardId, cardId);
   },
 );

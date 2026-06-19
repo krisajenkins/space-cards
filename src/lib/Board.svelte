@@ -232,6 +232,15 @@ function flashReject(cardId: bigint) {
   rejectTimer = setTimeout(() => (rejecting = null), 480);
 }
 
+// ── Tabletop layout ────────────────────────────────────────────────────────
+// The client does NO automatic layout: a drop moves only the dropped card.
+// Tidying the whole board (size-aware, overlap-free) is done authoritatively on
+// the server via VPSC overlap removal — see docs/LAYOUT.md. This component is a
+// pure renderer + drag→reducer translator. We snap the dropped card to the
+// felt's 26px grid purely for visual rhythm.
+const GRID = 26;
+const snap = (v: number): number => Math.round(v / GRID) * GRID;
+
 function onUp(e: PointerEvent) {
   window.removeEventListener("pointermove", onMove);
   window.removeEventListener("pointerup", onUp);
@@ -268,9 +277,11 @@ function onUp(e: PointerEvent) {
     }
   }
 
-  // Free drop on the table (reposition / unslot / collect).
+  // Free drop on the table (reposition / unslot / collect): move just this card,
+  // snapped to the grid. Nothing else moves on the client — the server tidies
+  // the board.
   const { x, y } = dropCoords(d, ghostW, ghostH);
-  moveCard({ cardId: d.card.id, x, y });
+  moveCard({ cardId: d.card.id, x: snap(x), y: snap(y) });
 }
 </script>
 
@@ -294,6 +305,7 @@ function onUp(e: PointerEvent) {
         aria-label="{def.name} (drag to reposition)"
         data-station="1"
         data-verb-id={vc.id}
+        data-card-id={vc.id}
         class:lifted={drag?.card.id === vc.id}
         style="left: {txOf(vc) + PAD}px; top: {tyOf(vc) + PAD}px"
         onpointerdown={(e) => startDrag(e, vc)}
@@ -328,6 +340,7 @@ function onUp(e: PointerEvent) {
         aria-label="{def.name} (drag onto a verb card or across the table)"
         class:lifted={drag?.card.id === c.id}
         class:reject={rejecting === c.id}
+        data-card-id={c.id}
         style="left: {txOf(c) + PAD}px; top: {tyOf(c) + PAD}px"
         onpointerdown={(e) => startDrag(e, c)}
       >
@@ -377,7 +390,11 @@ function onUp(e: PointerEvent) {
 .placed {
   position: absolute;
   cursor: grab;
+  /* left/top animate so a card settling onto the grid — or being nudged aside
+     by a neighbour's drop — slides into place rather than jumping. */
   transition:
+    left 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+    top 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
     filter 0.15s ease,
     transform 0.12s ease;
 }

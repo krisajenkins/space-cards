@@ -30,17 +30,19 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
   output caps, spawning), `resolvers.ts` (the `RESOLVERS` map: per-verb behaviour,
   the generalised courier, the build/subsystem recipe maps), `lifecycle.ts`
   (`init` authors the catalogue; connect/disconnect; admin bootstrap),
-  `reducers.ts` (player actions: `newGame`, `slotCard`, `collectAndSlot`,
-  `moveCard`, and admin `devGrant`), `views.ts` (the `my_*` read views),
-  `constants.ts`, `types.ts`, `auth.ts`. Reducer names are snake_cased on the
-  wire (`new_game`, `slot_card`, …).
+  `layout.ts` (the authoritative tabletop layout — VPSC overlap removal via the
+  `webcola` dep; see `docs/LAYOUT.md`), `reducers.ts` (player actions: `newGame`,
+  `slotCard`, `collectAndSlot`, `moveCard`, and admin `devGrant` / `relayoutBoard`),
+  `views.ts` (the `my_*` read views), `constants.ts`, `types.ts`, `auth.ts`.
+  Reducer names are snake_cased on the wire (`new_game`, `slot_card`, …).
 - `src/` — Svelte client. `main.ts` (imports global `app.css`) → `Root.svelte`
   (sets up `SpacetimeDBProvider`) → `App.svelte`. `App.svelte` shows a sign-in
   hero when signed out, and otherwise drops the player straight into their one
   board (`my_boards[0]`) — v1 deliberately does **not** list boards even though
   the schema allows many. The tabletop UI lives in `src/lib/`: `Board.svelte`
   (freeform pointer-drag surface; turns drops into `slot_card` / `move_card`,
-  runs the rAF countdown clock), `VerbStation.svelte` (a verb card — sockets,
+  runs the rAF countdown clock — it does **no** layout itself, just renders the
+  server-settled positions), `VerbStation.svelte` (a verb card — sockets,
   countdown ring, output tray), `CardToken.svelte` (a resource card), and
   `catalogue.ts` (per-card colours + SVG glyphs, `Location`-tag + time helpers).
   Aesthetic: a dark "celestial workbench" (Fraunces / Hanken Grotesk / Space
@@ -85,6 +87,17 @@ There is no test suite. Type-check the client with `svelte-check`.
 - **A card's place is a `Location` sum type** (`tabletop` / `slotted` / `output`),
   not separate nullable columns. There is no quantity anywhere — every card is a
   discrete row; "3 wood" is three cards / three holes.
+- **Tabletop layout is authoritative on the server, not the client.** `relayout`
+  (`layout.ts`) runs VPSC overlap removal inside the reducer that changed the
+  board (`moveCard` pins the dropped card; `newGame` / `become` / `devGrant` /
+  `relayoutBoard` too), so positions are settled once, atomically, and every
+  client just renders them. It is one-shot per mutation — never a timer/loop (an
+  earlier client-side watchdog that round-tripped through the async DB was
+  unstable and ran cards off-screen). A card's packing footprint is its **maximum**
+  rendered size (output tray full, courier carry-row shown), computed from
+  `outputCap` + slot count, so the layout stays put as cards grow. **If you add a
+  card UI section that changes a card's size, update `footprint()` or it will
+  overlap.** See `docs/LAYOUT.md`.
 - **Verb behaviour is code, not data.** The generic engine (assembly, recycling,
   output-cap stalls) is shared; per-verb resolution lives in the `RESOLVERS` map
   keyed by `defId`. A resolver decides duration, what to consume, and whether to
