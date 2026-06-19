@@ -22,15 +22,26 @@ I want to create a view that shows, for the connected player, how many of each c
 
 One interesting thing this will power - the end! When you first create an escape card, that's the win condition. Trigger some celebratory message or cutscene.
 
-# [ ] We should restrict where drones will drop to.
+# [ ] Drone Blueprints should not be consumed.
+
+You might want to make more than one of a drone. This requires that a recipe that consumes a drone blueprint produces the same blueprint.
+
+# [ ] We have a drone design flaw.
 
 In the current game, drones should not be able to drop to an assembler, because
 it makes different kinds of things - if it's auto-filled the player can't make
 a choice - the drone will jump in and blindly force a choice for them.
 
-# [ ] Drone Blueprints should not be consumed.
+Let's try this approach: 
 
-You might want to make more than one of a drone.
+* Drones have levels (I, II, III, IV...)
+* Some machines/mines/etc have a drone slot top-right of the card, which accepts a drone of a certain level or above.
+* Drones can be put into a drone slot, they can be taken out, they can be moved to a different card to be reassigned.
+* A drone will attempt, every two seconds, to fill an empty slot on its machine, by taking the next available card on the table or in an outbox.
+
+Obviously this will require reworking existing drones, and it will need a drone-building machine.
+
+Before implementing, consider this design and we'll discuss it first.
 
 # [ ] Blueprints shouldn't all appear at the start.
 
