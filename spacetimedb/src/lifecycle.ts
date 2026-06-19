@@ -1,12 +1,24 @@
 import { t, SenderError } from "spacetimedb/server";
 import { GOOGLE_ISSUERS, GOOGLE_CLIENT_ID } from "./constants";
-import { normaliseEmail } from "./auth";
+import { normaliseEmail, requireCaller } from "./auth";
 import spacetimedb from "./schema";
+import type { Ctx } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Lifecycle
 // ──────────────────────────────────────────────────────────────────────────
-export const init = spacetimedb.init((ctx) => {
+// Seed (or re-seed) the catalogue idempotently: wipe card_def + slot_def and
+// rebuild from scratch. Safe to re-run on a LIVE database — cards reference
+// card_defs by their string `defId` (not a row id) and a slotted card stores a
+// `slotIndex` (not a slot_def id), so a full catalogue refresh inside one
+// transaction never disturbs boards, cards or situations. This is the migration
+// path for any catalogue change after first publish: `init` runs only once, so
+// `reseed_catalogue` (below) re-applies this to an already-initialised DB.
+function seedCatalogue(ctx: Ctx) {
+  for (const s of [...ctx.db.slotDef.iter()]) ctx.db.slotDef.id.delete(s.id);
+  for (const d of [...ctx.db.cardDef.iter()])
+    ctx.db.cardDef.defId.delete(d.defId);
+
   // ── Catalogue authoring helpers ──────────────────────────────────────────
   const inert = (defId: string, name: string, category: string) =>
     ctx.db.cardDef.insert({
@@ -136,10 +148,11 @@ export const init = spacetimedb.init((ctx) => {
   // Printer: a raw inbox queue, no power.
   inbox("printer", 0, 3, ["raw"]);
 
-  // Workshop: a Blueprint + Effort (both required) + a Component inbox.
+  // Workshop: a Blueprint + Effort (both required) + a Component inbox deep
+  // enough for the costliest build (the Rocket needs 6 Components).
   slot("workshop", 0, ["blueprint"], true);
   slot("workshop", 1, ["effort"], true);
-  inbox("workshop", 2, 3, ["component"]);
+  inbox("workshop", 2, 6, ["component"]);
 
   // Power-gated machines: slot 0 is the required Power hole; the rest is the
   // input inbox. Consuming the Power each cycle is what idles them when the
@@ -160,12 +173,14 @@ export const init = spacetimedb.init((ctx) => {
   inbox("chem_reactor", 1, 2, ["hydrogen"]);
   inbox("chem_reactor", 3, 2, ["oxygen"]);
 
-  // Assembler: Power + roomy inboxes for every subsystem ingredient.
+  // Assembler: Power + roomy inboxes for every subsystem ingredient. Sized to
+  // the hungriest recipe per category: Hull wants 5 Components, Avionics 4
+  // Circuits, Heat Shield 2 Glass, Life Support 1 Water.
   slot("assembler", 0, ["power"], true);
   inbox("assembler", 1, 6, ["component"]);
-  inbox("assembler", 7, 3, ["circuit"]);
-  inbox("assembler", 10, 2, ["glass"]);
-  slot("assembler", 12, ["water"], false);
+  inbox("assembler", 7, 4, ["circuit"]);
+  inbox("assembler", 11, 2, ["glass"]);
+  slot("assembler", 13, ["water"], false);
 
   // Rocket: all five subsystems plus three Fuel, every hole required — it only
   // fires when the whole craft is complete.
@@ -177,6 +192,18 @@ export const init = spacetimedb.init((ctx) => {
   slot("rocket", 5, ["fuel"], true);
   slot("rocket", 6, ["fuel"], true);
   slot("rocket", 7, ["fuel"], true);
+}
+
+export const init = spacetimedb.init((ctx) => seedCatalogue(ctx));
+
+// Admin-only catalogue migration. `init` runs only on first publish, so after a
+// catalogue change a plain (data-preserving) republish leaves the old card_def /
+// slot_def rows in place. Calling this re-applies seedCatalogue idempotently —
+// the fix path for a live database without wiping anyone's game.
+export const reseedCatalogue = spacetimedb.reducer((ctx) => {
+  const { user: me } = requireCaller(ctx);
+  if (!me.isAdmin) throw new SenderError("admin only");
+  seedCatalogue(ctx);
 });
 
 // Auto-link trusted (Google) logins on connect. Connecting is permissive — any

@@ -11,6 +11,7 @@ import CollectAndSlotReducer from "../collect_and_slot_reducer";
 import DevGrantReducer from "../dev_grant_reducer";
 import MoveCardReducer from "../move_card_reducer";
 import NewGameReducer from "../new_game_reducer";
+import ReseedCatalogueReducer from "../reseed_catalogue_reducer";
 import SlotCardReducer from "../slot_card_reducer";
 
 export type BootstrapFirstAdminParams = __Infer<
@@ -20,4 +21,5 @@ export type CollectAndSlotParams = __Infer<typeof CollectAndSlotReducer>;
 export type DevGrantParams = __Infer<typeof DevGrantReducer>;
 export type MoveCardParams = __Infer<typeof MoveCardReducer>;
 export type NewGameParams = __Infer<typeof NewGameReducer>;
+export type ReseedCatalogueParams = __Infer<typeof ReseedCatalogueReducer>;
 export type SlotCardParams = __Infer<typeof SlotCardReducer>;
