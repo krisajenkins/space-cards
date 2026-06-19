@@ -124,6 +124,36 @@ const G = {
   token: `<rect x="5" y="5" width="14" height="14" rx="3"/>`,
 };
 
+// Blueprints are seeded as `blueprint_<target>` cards. They share the schematic
+// glyph but are colour-coded by the *family* they build — power, station, drone,
+// or the launchpad endgame — so the deck of plans reads by category at a glance.
+const BLUEPRINT_FAMILY: Record<string, string> = {
+  solar: "power",
+  refinery: "station",
+  fabricator: "station",
+  kiln: "station",
+  electronics_fab: "station",
+  ice_mine: "station",
+  electrolysis: "station",
+  chem_reactor: "station",
+  assembler: "station",
+  rocket: "launchpad",
+  mining_drone: "drone",
+  survey_drone: "drone",
+  hauler: "drone",
+  feeder: "drone",
+  fitter: "drone",
+  tanker: "drone",
+  cargo: "drone",
+};
+
+const BLUEPRINT_DEFS: Record<string, Visual> = Object.fromEntries(
+  Object.entries(BLUEPRINT_FAMILY).map(([target, family]) => [
+    `blueprint_${target}`,
+    { color: `var(--cat-${family})`, glyph: G.blueprint },
+  ]),
+);
+
 const BY_DEF: Record<string, Visual> = {
   // Resources
   effort: { color: "var(--cat-effort)", glyph: G.effort },
@@ -178,6 +208,9 @@ const BY_DEF: Record<string, Visual> = {
   fitter: { color: "var(--cat-component)", glyph: G.fitter },
   tanker: { color: "var(--cat-water)", glyph: G.tanker },
   cargo: { color: "var(--cat-courier)", glyph: G.cargo },
+
+  // Blueprints (colour-coded by the family they build)
+  ...BLUEPRINT_DEFS,
 };
 
 const BY_CATEGORY: Record<string, Visual> = {
