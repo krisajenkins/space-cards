@@ -16,7 +16,7 @@ Connection.svelte:38 Error connecting to SpacetimeDB: Error: Failed to verify to
 
 In those circumstances, let's just clear the auth tokens and force reauthentication.
 
-# [ ] Card History view
+# [x] Card History view
 
 I want to create a view that shows, for the connected player, how many of each card they have created over the lifetime of the game. (No entry for undiscovered/uncreated cards.) This will power achievements; stats; and a new type of card that generates blueprints _we know the player can use_. 
 

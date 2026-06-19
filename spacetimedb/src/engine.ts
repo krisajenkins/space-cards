@@ -94,6 +94,20 @@ export function maybeAutostart(ctx: Ctx, verbCardId: bigint): void {
   if (verbReady(ctx, verbCardId)) tryBeginRun(ctx, verbCardId);
 }
 
+// Record one more of `defId` being created on this board. Called from the two
+// birth sites below, so every card that ever exists is counted exactly once.
+// See card_history (schema.ts) and the my_card_history view.
+export function tally(ctx: Ctx, boardId: bigint, defId: string): void {
+  const existing = [
+    ...ctx.db.cardHistory.by_board_def.filter([boardId, defId]),
+  ][0];
+  if (existing) {
+    ctx.db.cardHistory.id.update({ ...existing, count: existing.count + 1n });
+  } else {
+    ctx.db.cardHistory.insert({ id: 0n, boardId, defId, count: 1n });
+  }
+}
+
 export function spawnCard(
   ctx: Ctx,
   boardId: bigint,
@@ -102,6 +116,7 @@ export function spawnCard(
   y: number,
 ): Card {
   const def = ctx.db.cardDef.defId.find(defId);
+  tally(ctx, boardId, defId);
   const c = ctx.db.card.insert({
     id: 0n,
     boardId,
@@ -126,6 +141,7 @@ export function spawnOutput(
   defId: string,
   verbCardId: bigint,
 ): void {
+  tally(ctx, boardId, defId);
   const c = ctx.db.card.insert({
     id: 0n,
     boardId,

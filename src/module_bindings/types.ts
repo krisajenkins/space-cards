@@ -48,6 +48,14 @@ export const CardDef = __t.object("CardDef", {
 });
 export type CardDef = __Infer<typeof CardDef>;
 
+export const CardHistory = __t.object("CardHistory", {
+  id: __t.u64(),
+  boardId: __t.u64(),
+  defId: __t.string(),
+  count: __t.u64(),
+});
+export type CardHistory = __Infer<typeof CardHistory>;
+
 export const Identity = __t.object("Identity", {
   id: __t.identity(),
   userId: __t.u64(),
@@ -103,6 +111,9 @@ export type MyBoardMembers = __Infer<typeof MyBoardMembers>;
 
 export const MyBoards = __t.object("MyBoards", {});
 export type MyBoards = __Infer<typeof MyBoards>;
+
+export const MyCardHistory = __t.object("MyCardHistory", {});
+export type MyCardHistory = __Infer<typeof MyCardHistory>;
 
 export const MyCards = __t.object("MyCards", {});
 export type MyCards = __Infer<typeof MyCards>;

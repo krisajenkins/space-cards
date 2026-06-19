@@ -50,6 +50,7 @@ import CardDefRow from "./card_def_table";
 import MeViewRow from "./me_view_table";
 import MyBoardMembersRow from "./my_board_members_table";
 import MyBoardsRow from "./my_boards_table";
+import MyCardHistoryRow from "./my_card_history_table";
 import MyCardsRow from "./my_cards_table";
 import MyPlayersRow from "./my_players_table";
 import MySituationsRow from "./my_situations_table";
@@ -126,6 +127,14 @@ const tablesSchema = __schema({
       constraints: [],
     },
     MyBoardsRow,
+  ),
+  myCardHistory: __table(
+    {
+      name: "my_card_history",
+      indexes: [],
+      constraints: [],
+    },
+    MyCardHistoryRow,
   ),
   myCards: __table(
     {

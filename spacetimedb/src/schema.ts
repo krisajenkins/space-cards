@@ -112,6 +112,32 @@ export const card = table(
   },
 );
 
+// Lifetime tally of cards created on a board, one row per (board, defId). A card
+// is "created" the moment it's born — every birth funnels through spawnCard /
+// spawnOutput (engine.ts), which call `tally`, so the opening deal, machine
+// outputs, and a Rocket's `become`-into-Escape all count. There is NO row for a
+// defId never created (the doc's "no entry for undiscovered cards"). PRIVATE —
+// read via the `my_card_history` view. This powers achievements, stats, the
+// "research what you can use" card, and the Escape-card win check.
+export const cardHistory = table(
+  {
+    name: "card_history",
+    indexes: [
+      {
+        accessor: "by_board_def",
+        algorithm: "btree",
+        columns: ["boardId", "defId"],
+      },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    boardId: t.u64(),
+    defId: t.string(),
+    count: t.u64(), // how many of this card have ever been created on this board
+  },
+);
+
 // Runtime state of an active verb-card. 1:1 with the verb card, keyed by its id.
 export const situation = table(
   { name: "situation" },
@@ -141,6 +167,7 @@ const spacetimedb = schema({
   board,
   boardMember,
   card,
+  cardHistory,
   situation,
   situationTimer,
 });

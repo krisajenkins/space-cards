@@ -3,11 +3,19 @@ import spacetimedb, {
   board,
   boardMember,
   card,
+  cardHistory,
   situation,
   user,
 } from "./schema";
 import { MeRow } from "./types";
-import type { Board, BoardMember, User, Card, Situation } from "./types";
+import type {
+  Board,
+  BoardMember,
+  User,
+  Card,
+  CardHistory,
+  Situation,
+} from "./types";
 import { lookupCaller } from "./auth";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -102,6 +110,24 @@ export const myCards = spacetimedb.view(
     const out: Card[] = [];
     for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
       for (const c of ctx.db.card.boardId.filter(mine.boardId)) out.push(c);
+    }
+    return out;
+  },
+);
+
+// The lifetime card-creation tally for every board the caller is on: one row
+// per (board, defId) that has ever been created, with its running count. No row
+// for a card never made, so iterating this view is "everything discovered".
+export const myCardHistory = spacetimedb.view(
+  { name: "my_card_history", public: true },
+  t.array(cardHistory.rowType),
+  (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
+    const out: CardHistory[] = [];
+    for (const mine of ctx.db.boardMember.userId.filter(caller.user.id)) {
+      for (const h of ctx.db.cardHistory.by_board_def.filter(mine.boardId))
+        out.push(h);
     }
     return out;
   },
