@@ -198,7 +198,7 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 | Verb | Power? | Material holes | Bay | Behaviour |
 | --- | --- | --- | --- | --- |
 | **Survivor** | — | none | — | self-runs; emits 1 Effort / cycle, cap 5 |
-| **Solar Array** | — | none | — | self-runs; emits 1 Power / cycle, cap 5; build more to scale |
+| **Solar Array** | — | none | — | self-runs; emits 1 Power / cycle, cap 5; build more to scale (its blueprint is *kept*, so one manual builds a whole solar farm) |
 | **Regolith Field** | — | none | Mk I | worker → Regolith (worker is the input) |
 | **Wreck** | — | none | Mk I | worker → Scrap (~80%) or Salvage (~20%) |
 | **Printer** | — | `raw` inbox | Mk I | crude bootstrap: raw → Component, no power, slow |

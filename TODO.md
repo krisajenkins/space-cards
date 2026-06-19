@@ -73,3 +73,11 @@ There should be a "research" card. It takes 1 effort, and can create a blueprint
 - If you've unlocked 1 of each of the ingredients for a new card, you can now research the blueprint for the thing that can be built with those ingredients. Note that it's one-of-each instead of the full recipe, because once you've got the blueprint, I still want you to have to work to make it.
 
 I think this will lean heavily on the card history view - it's how we know what cards you've found.
+
+# [ ] We need achievements
+
+A reducer on the card history view should record certain achievements. The UI
+should pop them up as toasters top-left. Be careful that they're only triggered
+once by give a click-to-dismiss workflow and a 'seen' flag and reducer.
+
+# [ ] We need an About button and popup.

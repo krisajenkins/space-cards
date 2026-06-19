@@ -117,11 +117,13 @@ function poweredOne(dur: bigint, inputCat: string, output: string): Resolver {
 // `keep` marks a blueprint the Workshop hands back on completion (produced into
 // the tray alongside the build) instead of consuming. Drones are deliberately
 // reusable — you'll want a whole fleet — so a drone blueprint is a permanent
-// manual, not a one-shot. Machine blueprints stay one-and-done.
+// manual, not a one-shot. The Solar Array is kept for the same reason: Power is
+// the spine of the whole game, you scale it by building more arrays, so its
+// manual stays permanent. Other machine blueprints are one-and-done.
 type Build = { output: string; cost: number; keep?: boolean }; // cost = Components consumed
 const BUILDS: Record<string, Build> = {
   // Machines
-  blueprint_solar: { output: "solar_array", cost: 2 },
+  blueprint_solar: { output: "solar_array", cost: 2, keep: true },
   blueprint_refinery: { output: "refinery", cost: 3 },
   blueprint_fabricator: { output: "fabricator", cost: 3 },
   blueprint_kiln: { output: "kiln", cost: 3 },
