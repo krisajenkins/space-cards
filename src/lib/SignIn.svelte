@@ -23,9 +23,8 @@ const profile = $derived($me[0]);
     <span class="muted">Connecting…</span>
   {:else if profile}
     {#if profile.pictureUrl}
-      <img class="avatar" src={profile.pictureUrl} alt="" referrerpolicy="no-referrer" />
+      <img class="avatar" src={profile.pictureUrl} alt={profile.displayName} title={profile.displayName} referrerpolicy="no-referrer" />
     {/if}
-    <span>Signed in as <strong>{profile.displayName}</strong></span>
     {#if profile.isAdmin}<span class="badge">admin</span>{/if}
     <button onclick={signOutGoogle}>Sign out</button>
   {:else}

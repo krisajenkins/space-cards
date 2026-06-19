@@ -74,6 +74,8 @@ There should be a "research" card. It takes 1 effort, and can create a blueprint
 
 I think this will lean heavily on the card history view - it's how we know what cards you've found.
 
+This also changes the starting state. You should just start with 4 things: Survivor, Regolith Field, Wreck, Printer.
+
 # [x] We need achievements
 
 A reducer on the card history view should record certain achievements. The UI
@@ -96,4 +98,4 @@ banner. Read via the membership-scoped `my_achievements` view.
 `serializeRange` under SDK 2.5.0 — `my_card_history` had this latent bug too, now
 both views iterate-and-filter instead.)
 
-# [ ] We need an About button and popup.
+# [x] We need an About button and popup.

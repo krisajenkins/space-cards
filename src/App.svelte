@@ -4,6 +4,7 @@ import { tables, reducers } from "./module_bindings";
 import SignIn from "./lib/SignIn.svelte";
 import Board from "./lib/Board.svelte";
 import Achievements from "./lib/Achievements.svelte";
+import About from "./lib/About.svelte";
 
 const conn = useSpacetimeDB();
 
@@ -50,7 +51,10 @@ const board = $derived($boards[0]);
         <span class="brand-mark">✦</span>
         <span class="brand-name">Space Cards</span>
       </div>
-      <SignIn />
+      <div class="topbar-right">
+        <About />
+        <SignIn />
+      </div>
     </header>
 
     <main class="stage">
@@ -202,6 +206,11 @@ const board = $derived($boards[0]);
   display: flex;
   align-items: center;
   gap: 0.55rem;
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }
 .brand-mark {
   color: var(--brass-bright);
