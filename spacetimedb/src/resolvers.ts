@@ -5,6 +5,7 @@ import {
   GATHER,
   PRINT,
   BUILD,
+  RESEARCH,
   REFINE,
   FABRICATE,
   KILN,
@@ -156,6 +157,88 @@ const SUBSYSTEMS: Recipe[] = [
 ];
 const recipeSatisfied = (ctx: Ctx, holes: SlottedCard[], r: Recipe) =>
   Object.entries(r.need).every(([cat, n]) => count(ctx, holes, cat) >= n);
+
+// ──────────────────────────────────────────────────────────────────────────
+// Research. Blueprints no longer all appear at the start — you EARN each one at
+// the Research bench (one Effort → the next blueprint you've qualified for). Two
+// unlock rules, both read off the board's lifetime card history (the same tally
+// that powers achievements), so "what you've discovered" gates "what you can
+// research" — exactly the resource-graph gating the seeded model used, now made
+// explicit:
+//   • a MACHINE blueprint unlocks once you've created ≥1 of EACH input category
+//     its machine consumes (so you must have discovered the inputs first; the
+//     tech-tree order falls straight out of the dependency graph). One-of-each,
+//     not the full recipe — you still build it at the Workshop afterwards.
+//   • a DRONE blueprint unlocks once you've done that tier's manual chore ≥3
+//     times (created ≥3 of a representative tier output) — the §2 "automate the
+//     work you've outgrown" rhythm.
+// The needs are CATEGORIES, summed over every defId in the category (so "raw"
+// counts Regolith + Scrap, "component" counts Salvage too). Easy to re-tune.
+type Research = { target: string; need: Record<string, number> };
+const RESEARCH_TREE: Research[] = [
+  // Automate gathering FIRST. Per §2 the reward is retiring the chore you're
+  // sick of doing by hand — and a Mk I drone (gatherers + Printer) is the first
+  // genuinely useful thing to unlock, well before you need Power. So drone_1
+  // outranks the Solar Array: as soon as you've worked the gatherers a few times
+  // (raw ≥ 3), this is what Research hands you.
+  { target: "drone_1", need: { raw: 3 } },
+  // Then Power — the spine that opens every big machine.
+  { target: "solar", need: { component: 1 } },
+  // The smelting line: refine raw → Metal, fabricate Metal → Component.
+  { target: "refinery", need: { raw: 1, power: 1 } },
+  { target: "fabricator", need: { metal: 1, power: 1 } },
+  { target: "kiln", need: { raw: 1, power: 1 } },
+  { target: "drone_2", need: { metal: 3 } },
+  // Electronics + chemistry sub-trees.
+  { target: "ice_mine", need: { power: 1 } },
+  { target: "electronics_fab", need: { silicon: 1, power: 1 } },
+  { target: "electrolysis", need: { water: 1, power: 1 } },
+  { target: "drone_3", need: { circuit: 3 } },
+  { target: "chem_reactor", need: { hydrogen: 1, oxygen: 1, power: 1 } },
+  // Assembly + liftoff.
+  {
+    target: "assembler",
+    need: { component: 1, circuit: 1, glass: 1, water: 1 },
+  },
+  { target: "rocket", need: { subsystem: 1, fuel: 1 } },
+  { target: "drone_4", need: { fuel: 3 } },
+];
+
+// Has this exact card ever been created on the board? (Discovered blueprints are
+// not offered again.) The full two-column key is the safe form of the index —
+// see the my_card_history view note on the bare-prefix panic under SDK 2.5.0.
+function discovered(ctx: Ctx, boardId: bigint, defId: string): boolean {
+  const h = [...ctx.db.cardHistory.by_board_def.filter([boardId, defId])][0];
+  return !!h && h.count > 0n;
+}
+
+// Lifetime count of every card in `category` ever created on the board. Iterate-
+// and-filter (category isn't indexed; per-board history is small).
+function histCategory(ctx: Ctx, boardId: bigint, category: string): bigint {
+  let total = 0n;
+  for (const h of ctx.db.cardHistory.iter()) {
+    if (h.boardId !== boardId) continue;
+    const d = ctx.db.cardDef.defId.find(h.defId);
+    if (d && d.category === category) total += h.count;
+  }
+  return total;
+}
+
+// The blueprint the Research bench should hand over next: the first entry in
+// priority order that the board has qualified for but not yet discovered. Null
+// when there's nothing left to research (the `ready` hook then keeps the bench
+// idle rather than spending Effort for nothing).
+function researchTarget(ctx: Ctx, boardId: bigint): string | null {
+  for (const r of RESEARCH_TREE) {
+    const bp = `blueprint_${r.target}`;
+    if (discovered(ctx, boardId, bp)) continue;
+    const ok = Object.entries(r.need).every(
+      ([cat, n]) => histCategory(ctx, boardId, cat) >= BigInt(n),
+    );
+    if (ok) return bp;
+  }
+  return null;
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 // Drones. A drone is a hole-less verb that lives in a machine's DRONE BAY (a
@@ -314,6 +397,25 @@ export const RESOLVERS: Record<string, Resolver> = {
       return {
         consume: [bp.id, effort.id, ...comps],
         produce: recipe.keep ? [recipe.output, bp.defId] : [recipe.output],
+        again: false,
+      };
+    },
+  },
+
+  // Research: hand-cranked discovery bench. A WORKER-only bay (Effort, like the
+  // Workshop) — one Effort yields the next blueprint you've earned (researchTarget
+  // reads your card history). `ready` keeps it idle when nothing's left to learn,
+  // so Effort is never spent for nothing. One blueprint per crank (Effort is no
+  // drone → no re-fire), which paces discovery against your scarce early labour.
+  research: {
+    duration: () => RESEARCH,
+    ready: (ctx, _holes, verb) => researchTarget(ctx, verb.boardId) !== null,
+    resolve: (ctx, holes, verb) => {
+      const target = researchTarget(ctx, verb.boardId);
+      if (!target) return NOOP;
+      return {
+        consume: workerCost(ctx, holes),
+        produce: [target],
         again: false,
       };
     },

@@ -128,7 +128,7 @@ tier of machine and each more precious than the last:
   Held as an explicit design option (the user is keen if it plays fun) — not yet
   wired into the recipe table.
 
-### Gate 2 — Blueprints + the Workshop (construction, no dynamic schema)
+### Gate 2 — Blueprints, Research + the Workshop (construction, no dynamic schema)
 
 All `card_def`s live in `init`; you acquire new *machines* by **building** them,
 not by unlocking schema. The **Workshop** (hand-cranked with Effort, so it works
@@ -137,15 +137,27 @@ machine/drone the blueprint names, dormant in its tray; you plant it to bring it
 to life (the same "grows once placed" gate a Seed used). The blueprint's `defId`
 is the unambiguous output selector — no fragile count-matching.
 
-> **Implementation note (resolved design Qs §8 #5/#6).** Blueprints are *seeded*
-> as "salvaged manuals" in `newGame`, so every machine is reachable and the game
-> is always completable. The **tech-tree ORDER is enforced by the resource
-> dependency graph** — you can't build a Subsystem without an Assembler +
-> components + power, can't power anything without a Solar Array, etc. — not by
-> withholding the manuals. The originally-sketched Lab/Data/salvage-reverse-
-> engineering research chain was dropped for v1 in favour of this simpler,
-> always-winnable model; reverse-engineering remains a natural future addition
-> (find salvage → research its blueprint) layered on top.
+> **Implementation note (resolved design Qs §8 #5/#6).** Blueprints are no longer
+> dealt up front — they are **earned at the Research bench** (a second hand-cranked
+> choice station): one Effort yields the next blueprint you've *qualified* for. Two
+> unlock rules read the board's lifetime card history (`my_card_history`):
+>
+> - a **machine** blueprint unlocks once you've created **≥1 of each input
+>   category** its machine consumes (so you must have *discovered* the inputs
+>   first); and
+> - a **drone** blueprint unlocks once you've done that tier's manual chore **≥3
+>   times** (created ≥3 of a representative tier output) — the §2 "automate the
+>   work you've outgrown" rhythm, now an explicit gate.
+>
+> The **tech-tree ORDER still falls out of the resource dependency graph** — you
+> can't research the Refinery before you have raw + power, can't research the
+> Assembler before the electronics + chemistry chain, etc. — so the game stays
+> always-winnable while the tree *unfurls through play* instead of sitting open
+> from turn one. Research auto-picks the lowest-priority undiscovered eligible
+> blueprint (`researchTarget` in `resolvers.ts`, table `RESEARCH_TREE`); a
+> per-card *choice* of what to research is a natural future refinement. This is
+> the "reverse-engineering" addition §8 #6 anticipated, leaning on the card-history
+> view exactly as planned.
 
 ---
 
@@ -181,7 +193,7 @@ late tiers.
 | Hands | **Effort**, **Regolith**, **Scrap**, **Salvage** | Effort = the universal *worker* (a drone you spend, placed in any bay); Salvage = a ready-made part from the Wreck (counts as a Component) |
 | Power | **Power**, **Metal** | Power = the gate token |
 | Electronics | **Silicon**, **Glass**, **Circuit**, **Component** | Component = the universal part |
-| Construction | **Blueprint: X** | one per buildable machine/drone; seeded as manuals |
+| Construction | **Blueprint: X** | one per buildable machine/drone; earned at the Research bench, then built at the Workshop |
 | Chemistry | **Water**, **Hydrogen**, **Oxygen**, **Fuel** | Ice Mine yields Water directly (no Ice card) |
 | Assembly | **Engine**, **Hull**, **Avionics**, **Life Support**, **Heat Shield** | rocket subsystems |
 | Win | **Escape** | produced by the Rocket via `become` |
@@ -203,6 +215,7 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 | **Wreck** | — | none | Mk I | worker → Scrap (~80%) or Salvage (~20%) |
 | **Printer** | — | `raw` inbox | Mk I | crude bootstrap: raw → Component, no power, slow |
 | **Workshop** | — | `blueprint` + `component` inbox | worker | Blueprint selects the output: + Components + an Effort worker → that machine/drone, dormant in tray |
+| **Research** | — | none | worker | an Effort worker → the next blueprint you've *earned* (machine: 1-of-each input discovered; drone: tier chore done ≥3×). Idles when there's nothing left to learn, so Effort is never spent for nothing |
 | **Refinery** | **yes** | `power` + `raw` inbox | Mk II | 1 raw + 1 Power → Metal |
 | **Fabricator** | **yes** | `power` + `metal` inbox | Mk II | Metal + Power → Component |
 | **Kiln** | **yes** | `power` + `raw` inbox | Mk II | raw + Power → Silicon (50%) or Glass |
@@ -249,9 +262,12 @@ you spend Effort to crank each build/assembly and stay in charge of what's made.
 Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then the
 **automation** that retires it and unlocks the next act.
 
-1. **Crash (hands).** Survivor + Regolith Field + Wreck + a crude Printer. Drop
-   your Effort into each machine's bay to work it, one cycle at a time. *Novelty:
-   the basic gather→make loop. Goal: build a Solar Array.*
+1. **Crash (hands).** Survivor + Regolith Field + Wreck + a crude Printer +
+   Workshop + Research — and *nothing else*: no resources, no blueprints. Drop
+   your Effort into each machine's bay to work it, one cycle at a time; gather,
+   print a Component, then **Research** your first blueprint (Solar Array) and
+   **build** it at the Workshop. *Novelty: the basic gather→print→research→build
+   loop. Goal: get the first blueprint and stand up a Solar Array.*
 2. **Power up.** Build a Solar Array at the Workshop and plant it; electrify the
    Refinery & Fabricator (faster, but Power-gated — first logistics puzzle).
    *Automation: **Mk I** drones in the gatherers retire hand-gathering; **Mk II**

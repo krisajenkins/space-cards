@@ -90,6 +90,8 @@ const G = {
   printer: `<rect x="5" y="4" width="14" height="3" rx="1"/><path d="M12 7v4"/><path d="M10 11h4l-1 3h-2z"/><path d="M8 19h8M8 19l1-2M16 19l-1-2"/>`,
   // Workshop: a workbench with a wrench crossing a gear.
   workshop: `<path d="M3 16h18v3H3z"/><circle cx="9" cy="9.5" r="2.6"/><path d="M9 6.9V9.5l1.8 1"/><path d="M13.5 6l4.5 4.5-1.5 1.5L12 7.5z" fill="currentColor" stroke="none"/>`,
+  // Research: a magnifier examining a schematic — discovering the next blueprint.
+  research: `<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.2 15.2l4.6 4.6" stroke-linecap="round"/><path d="M8 9.5h5M8 12h5M10.5 7.5v6" stroke-linecap="round"/>`,
   // Solar array: a tilted panel of cells on a post.
   solar_array: `<path d="M4 6h14l2 7H6z"/><path d="M8.7 6l-1 7M13.4 6l.6 7M4 9.5h16"/><path d="M12 13v6M9 19h6" stroke-linecap="round"/>`,
   // Refinery: a smelter / furnace pouring molten metal.
@@ -181,6 +183,7 @@ const BY_DEF: Record<string, Visual> = {
   wreck: { color: "var(--cat-station)", glyph: G.wreck },
   printer: { color: "var(--cat-station)", glyph: G.printer },
   workshop: { color: "var(--cat-station)", glyph: G.workshop },
+  research: { color: "var(--cat-blueprint)", glyph: G.research },
   solar_array: { color: "var(--cat-power)", glyph: G.solar_array },
   refinery: { color: "var(--cat-fuel)", glyph: G.refinery },
   fabricator: { color: "var(--cat-station)", glyph: G.fabricator },

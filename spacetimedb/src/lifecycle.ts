@@ -142,6 +142,7 @@ function seedCatalogue(ctx: Ctx) {
   verb("wreck", "Wreck", "station", 5);
   verb("printer", "Printer", "station", 5); // crude raw → Component
   verb("workshop", "Workshop", "station", 5); // blueprint → machine/drone
+  verb("research", "Research", "station", 5); // Effort → the next earned blueprint
 
   // Power, then the power-gated production line:
   verb("solar_array", "Solar Array", "station", 5); // emits Power
@@ -194,6 +195,11 @@ function seedCatalogue(ctx: Ctx) {
   slot("workshop", 0, ["blueprint"], true);
   inbox("workshop", 2, 6, ["component"]);
   droneSlot("workshop", DRONE, WORKER);
+
+  // Research: no material input — Effort in the WORKER-only bay is the whole cost.
+  // What it produces is decided from card history (resolvers.ts), not from holes,
+  // so the card itself is just a bay + an output tray for the blueprint it earns.
+  droneSlot("research", DRONE, WORKER);
 
   // Power-gated machines: slot 0 is the required Power hole; the rest is the
   // input inbox. Consuming the Power each cycle is what idles them when the
@@ -261,31 +267,32 @@ function seedCatalogue(ctx: Ctx) {
   ) => ctx.db.achievementDef.insert({ achId, title, description, sort });
 
   achievement("prospector", "Prospector", "Gather your first Regolith.", 0);
+  achievement("researcher", "Eureka", "Research your first blueprint.", 1);
   achievement(
     "power_up",
     "Let There Be Light",
     "Generate your first Power.",
-    1,
+    2,
   );
-  achievement("industrialist", "Industrialist", "Build your first machine.", 2);
+  achievement("industrialist", "Industrialist", "Build your first machine.", 3);
   achievement(
     "automation",
     "Hands Off",
     "Build your first drone and let it work for you.",
-    3,
+    4,
   );
-  achievement("chemist", "Rocket Fuel", "Refine your first Fuel.", 4);
+  achievement("chemist", "Rocket Fuel", "Refine your first Fuel.", 5);
   achievement(
     "launch_ready",
     "All Systems Go",
     "Fabricate all five rocket subsystems.",
-    5,
+    6,
   );
   achievement(
     "escape",
     "Escape the Moon",
     "Launch the rocket and escape. You win.",
-    6,
+    7,
   );
 }
 

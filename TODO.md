@@ -65,7 +65,7 @@ run; emitters (Survivor, Solar) self-run. Gatherers lost their Effort input hole
 keep the build/recipe choice. Also fixed: the card header now grows to contain
 the bay (it was overlapping the input holes).
 
-# [ ] Blueprints shouldn't all appear at the start.
+# [x] Blueprints shouldn't all appear at the start.
 
 There should be a "research" card. It takes 1 effort, and can create a blueprint. The rules here are a little tricky, because what I want is:
 
@@ -75,6 +75,24 @@ There should be a "research" card. It takes 1 effort, and can create a blueprint
 I think this will lean heavily on the card history view - it's how we know what cards you've found.
 
 This also changes the starting state. You should just start with 4 things: Survivor, Regolith Field, Wreck, Printer.
+
+DONE. New **Research** station (resolvers.ts `research` + `RESEARCH_TREE`): a
+worker-only bay like the Workshop — one Effort yields the next blueprint you've
+earned, auto-picked in tech-tree order. Two unlock rules read `my_card_history`:
+a machine blueprint needs **1-of-each input category discovered**; a drone
+blueprint needs that **tier's chore done ≥3×** (e.g. 3 raw → Drone Mk I). The
+`ready` hook keeps it idle (Effort un-spent) when there's nothing left to learn.
+Blueprints are no longer dealt — `newGame` now starts with **six** stations:
+Survivor, Regolith Field, Wreck, Printer, **Workshop, Research** (the Workshop is
+the only blueprint *consumer* and Research the only *producer*, so both must be
+present — the "4 things" plus the two meta-stations). Also added the **Eureka**
+achievement (research your first blueprint). Verified end-to-end on a scratch
+local DB: opening deal, both unlock rules, the produce path, and the idle guard.
+
+Known follow-ups (not done): a per-card *choice* of what to research (v1
+auto-picks the lowest-priority eligible blueprint); the Rocket unlock uses "any
+subsystem + fuel" rather than literally one-of-each subsystem; tunables (the ≥3
+drone threshold, research duration) live in `resolvers.ts` / `constants.ts`.
 
 # [x] We need achievements
 
@@ -98,4 +116,15 @@ banner. Read via the membership-scoped `my_achievements` view.
 `serializeRange` under SDK 2.5.0 — `my_card_history` had this latent bug too, now
 both views iterate-and-filter instead.)
 
-# [x] We need an About button and popup.
+# [x] We need an About button and popup
+
+# [ ] We need a way for an admin to visualise the whole progression tree.
+
+That's the only way we're going to design this in a satisfying way without
+playing through the whole game a million times. This would be easy if all our
+recipes were data... 🤔
+
+# [ ] We need sound effects.
+
+There should be a gentle whirring whenever timers are running, a ping whenver
+one completes, and a jingle when you get an achievement.

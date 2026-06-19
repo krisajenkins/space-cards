@@ -134,6 +134,15 @@ export function tally(ctx: Ctx, boardId: bigint, defId: string): void {
   }
   // History just changed — re-check milestones that key off it.
   awardAchievements(ctx, boardId);
+  // …and nudge any idle Research bench. Research keys off this history rather than
+  // its own holes, so a worker parked in its bay won't notice a freshly-met
+  // prerequisite on its own — without this, you'd have to lift the Effort out and
+  // drop it back to make it fire. maybeAutostart no-ops unless the bench is on the
+  // table, idle, has a worker, AND now has something to learn, so it's cheap.
+  for (const c of ctx.db.card.boardId.filter(boardId)) {
+    if (c.defId === "research" && c.location.tag === "tabletop")
+      maybeAutostart(ctx, c.id);
+  }
 }
 
 export function spawnCard(

@@ -14,6 +14,7 @@ export const SOLAR = 5_000_000n; // the Solar Array producing one Power
 export const GATHER = 4_000_000n; // gathering one raw (Field / Wreck) per Effort
 export const PRINT = 6_000_000n; // the crude Printer turning raw into a Component
 export const BUILD = 6_000_000n; // the Workshop assembling one machine from a blueprint
+export const RESEARCH = 8_000_000n; // the Research bench turning Effort into the next blueprint
 
 export const REFINE = 5_000_000n; // raw → Metal
 export const FABRICATE = 6_000_000n; // Metal → Component

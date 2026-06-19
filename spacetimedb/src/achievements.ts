@@ -9,9 +9,9 @@ import type { Ctx } from "./types";
 //
 // Each predicate reads `counts`: a map of defId → lifetime count for one board
 // (the my_card_history numbers). IMPORTANT: every milestone keys off a card that
-// is NEVER in the opening deal (newGame deals Component + Scrap + the tier-0
-// stations, so do not base an achievement on those) — otherwise it would fire
-// the instant a new game is dealt instead of when the player earns it.
+// is NEVER in the opening deal (newGame deals only the six tier-0 stations — no
+// resources, no blueprints — so do not base an achievement on those) — otherwise
+// it would fire the instant a new game is dealt instead of when the player earns it.
 // ──────────────────────────────────────────────────────────────────────────
 export type AchievementRule = {
   id: string;
@@ -22,7 +22,7 @@ const has = (counts: Map<string, bigint>, defId: string): boolean =>
   (counts.get(defId) ?? 0n) > 0n;
 
 // Machines the player *builds* (none are in the opening deal — the dealt
-// stations are survivor/regolith_field/wreck/printer/workshop).
+// stations are survivor/regolith_field/wreck/printer/workshop/research).
 const BUILT_MACHINES = [
   "solar_array",
   "refinery",
@@ -45,6 +45,12 @@ const DRONES = ["drone_1", "drone_2", "drone_3", "drone_4"];
 
 export const ACHIEVEMENTS: AchievementRule[] = [
   { id: "prospector", earned: (c) => has(c, "regolith") },
+  // Any blueprint discovered — none are in the opening deal now, so the first
+  // one can only come from the Research bench.
+  {
+    id: "researcher",
+    earned: (c) => [...c.keys()].some((k) => k.startsWith("blueprint_")),
+  },
   { id: "power_up", earned: (c) => has(c, "power") },
   { id: "industrialist", earned: (c) => BUILT_MACHINES.some((m) => has(c, m)) },
   { id: "automation", earned: (c) => DRONES.some((d) => has(c, d)) },

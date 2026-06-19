@@ -38,31 +38,13 @@ export const relayoutBoard = spacetimedb.reducer(
 // Reducers
 // ──────────────────────────────────────────────────────────────────────────
 
-// The Workshop's salvaged manuals — every machine and drone you can build. They
-// are all seeded so the game is always completable; the tech-tree order is
-// enforced by the resource graph, not by withholding the blueprints. See the
-// BUILDS map in resolvers.ts.
-const BLUEPRINTS = [
-  "solar",
-  "refinery",
-  "fabricator",
-  "kiln",
-  "electronics_fab",
-  "ice_mine",
-  "electrolysis",
-  "chem_reactor",
-  "assembler",
-  "rocket",
-  "drone_1",
-  "drone_2",
-  "drone_3",
-  "drone_4",
-];
-
-// Start a fresh board: the crash site. Survivor + the hand-cranked stations
-// (Regolith Field, Wreck, Printer, Workshop), a little bootstrap material, and
-// the shelf of blueprints. From here you build a Solar Array, electrify, and
-// climb the tech tree to a Rocket. See docs/ESCAPE_THE_MOON.md.
+// Start a fresh board: the crash site. Six hand-cranked tier-0 stations and
+// nothing else — no resources, no blueprints. Everything is earned: gather and
+// print by hand, then RESEARCH your first blueprint (the Research bench turns
+// Effort into the next plan you've qualified for — see researchTarget in
+// resolvers.ts), BUILD it at the Workshop, and climb the tree to a Rocket.
+// Blueprints used to be dealt up-front; now the tech tree unfurls through
+// research, gated by what you've discovered. See docs/ESCAPE_THE_MOON.md.
 export const newGame = spacetimedb.reducer((ctx) => {
   const { user: me } = requireCaller(ctx);
   const b = ctx.db.board.insert({
@@ -78,25 +60,15 @@ export const newGame = spacetimedb.reducer((ctx) => {
     role: { tag: "player" },
   });
 
-  // Tier-0 stations along the top.
+  // Tier-0 stations along the top: the Survivor (your hands), the two gatherers,
+  // the crude Printer, the Workshop (builds blueprints), and the Research bench
+  // (earns them). Rough coordinates — relayout tidies them below.
   spawnCard(ctx, b.id, "survivor", 40, 40);
   spawnCard(ctx, b.id, "regolith_field", 300, 40);
   spawnCard(ctx, b.id, "wreck", 560, 40);
-  spawnCard(ctx, b.id, "printer", 820, 40);
-  spawnCard(ctx, b.id, "workshop", 1080, 40);
-
-  // A handful of parts so the first Solar Array build isn't a cold start.
-  spawnCard(ctx, b.id, "component", 1080, 320);
-  spawnCard(ctx, b.id, "component", 1180, 320);
-  spawnCard(ctx, b.id, "scrap", 560, 320);
-  spawnCard(ctx, b.id, "scrap", 660, 320);
-
-  // The blueprint shelf, laid out in a grid in the lower band of the table.
-  BLUEPRINTS.forEach((target, i) => {
-    const x = 40 + (i % 9) * 150;
-    const y = 520 + Math.floor(i / 9) * 140;
-    spawnCard(ctx, b.id, `blueprint_${target}`, x, y);
-  });
+  spawnCard(ctx, b.id, "printer", 40, 340);
+  spawnCard(ctx, b.id, "workshop", 600, 340);
+  spawnCard(ctx, b.id, "research", 300, 340);
 
   // Tidy the deal: the hand-placed coordinates above are rough; let the
   // size-aware layout space everything cleanly (and account for the stations'
