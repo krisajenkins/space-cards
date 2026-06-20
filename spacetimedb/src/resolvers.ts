@@ -329,12 +329,29 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
 }
 
 // Does the board already hold a card of `defId` (anywhere — table, tray, or
-// slotted)? Used to decide which rocket subsystems the Assembler drone still
-// owes us: the Rocket wants exactly one of each.
+// slotted)? Used both to decide which rocket subsystems the Assembler drone still
+// owes us (the Rocket wants one of each) and to gate the Wreck's salvaged machines
+// (you only pull a Printer/Workshop while you don't already have one).
 function boardHas(ctx: Ctx, boardId: bigint, defId: string): boolean {
   for (const c of ctx.db.card.boardId.filter(boardId))
     if (c.defId === defId) return true;
   return false;
+}
+
+// What the Wreck yields this scavenge. Before it's picked clean you can still
+// salvage a key machine from the crash — a Printer first (so you can make
+// Components by hand), then a Workshop (to build from blueprints) — at 33% each
+// while you still lack that machine. newGame no longer hands these out, so the
+// Wreck is how the opening unfolds: a gentler ramp, and a little of the "you saved
+// a few things from the wreckage" story. Otherwise the usual haul: mostly Scrap,
+// ~20% a ready-made Salvage part (which counts as a Component).
+function wreckDrop(ctx: Ctx, boardId: bigint): string {
+  if (!boardHas(ctx, boardId, "printer")) {
+    if (ctx.random() < 0.33) return "printer";
+  } else if (!boardHas(ctx, boardId, "workshop")) {
+    if (ctx.random() < 0.33) return "workshop";
+  }
+  return ctx.random() < 0.2 ? "salvage" : "scrap";
 }
 
 // The next subsystem a Mk IV Assembler drone should build: the first recipe whose
@@ -414,16 +431,16 @@ export const RESOLVERS: Record<string, Resolver> = {
     },
   },
 
-  // Wreck: the discovery node. Mostly Scrap; ~20% a Salvage (a ready-made part).
+  // Wreck: the discovery node. Mostly Scrap; ~20% a Salvage (a ready-made part) —
+  // and, while you still lack them, a salvaged Printer then Workshop (wreckDrop).
   // Effort scavenges once; a drone keeps it worked.
   wreck: {
     duration: () => GATHER,
-    resolve: (ctx, holes) => {
+    resolve: (ctx, holes, verb) => {
       if (!theWorker(ctx, holes)) return NOOP;
-      const drop = ctx.random() < 0.2 ? "salvage" : "scrap";
       return {
         consume: workerCost(ctx, holes),
-        produce: [drop],
+        produce: [wreckDrop(ctx, verb.boardId)],
         again: workerIsDrone(ctx, holes),
       };
     },

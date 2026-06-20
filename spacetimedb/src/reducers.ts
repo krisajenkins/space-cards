@@ -38,9 +38,13 @@ export const relayoutBoard = spacetimedb.reducer(
 // Reducers
 // ──────────────────────────────────────────────────────────────────────────
 
-// Start a fresh board: the crash site. Six hand-cranked tier-0 stations and
-// nothing else — no resources, no blueprints. Everything is earned: gather and
-// print by hand, then RESEARCH your first blueprint (the Research bench turns
+// Start a fresh board: the crash site. Four hand-cranked tier-0 stations and
+// nothing else — no resources, no blueprints, and NOT the Printer or Workshop.
+// You crawl from the wreck with your hands and a Research bench; the Printer and
+// then the Workshop are dug out of the Wreck itself (33% each per scavenge while
+// you still lack them — see wreckDrop in resolvers.ts), which softens the opening
+// and tells the story of saving a few things from the crash. Everything else is
+// earned: gather by hand, RESEARCH your first blueprint (the Research bench turns
 // Effort into the next plan you've qualified for — see researchTarget in
 // resolvers.ts), BUILD it at the Workshop, and climb the tree to a Rocket.
 // Blueprints used to be dealt up-front; now the tech tree unfurls through
@@ -61,13 +65,12 @@ export const newGame = spacetimedb.reducer((ctx) => {
   });
 
   // Tier-0 stations along the top: the Survivor (your hands), the two gatherers,
-  // the crude Printer, the Workshop (builds blueprints), and the Research bench
-  // (earns them). Rough coordinates — relayout tidies them below.
+  // and the Research bench (earns blueprints). The Printer and Workshop are NOT
+  // dealt — you salvage them from the Wreck (resolvers.ts, wreckDrop). Rough
+  // coordinates — relayout tidies them below.
   spawnCard(ctx, b.id, "survivor", 40, 40);
   spawnCard(ctx, b.id, "regolith_field", 300, 40);
   spawnCard(ctx, b.id, "wreck", 560, 40);
-  spawnCard(ctx, b.id, "printer", 40, 340);
-  spawnCard(ctx, b.id, "workshop", 600, 340);
   spawnCard(ctx, b.id, "research", 300, 340);
 
   // Tidy the deal: the hand-placed coordinates above are rough; let the

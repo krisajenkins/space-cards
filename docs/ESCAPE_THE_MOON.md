@@ -215,7 +215,7 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 | **Survivor** | — | none | — | self-runs; emits 1 Effort / cycle, cap 5 |
 | **Solar Array** | — | none | — | self-runs; emits 1 Power / cycle, cap 5; build more to scale (its blueprint is *kept*, so one manual builds a whole solar farm) |
 | **Regolith Field** | — | none | Mk I | worker → Regolith (worker is the input) |
-| **Wreck** | — | none | Mk I | worker → Scrap (~80%) or Salvage (~20%) |
+| **Wreck** | — | none | Mk I | worker → Scrap (~80%) or Salvage (~20%); also **salvages a Printer** (33%) while you have none, then a **Workshop** (33%) while you have a Printer but no Workshop — these are no longer dealt at the start |
 | **Printer** | — | `raw` inbox | Mk I | crude bootstrap: raw → Component, no power, slow |
 | **Workshop** | — | `blueprint` + `component` inbox | worker | Blueprint selects the output: + Components + an Effort worker → that machine/drone, dormant in tray |
 | **Research** | — | none | worker | an Effort worker → the next blueprint you've *earned* (machine: 1-of-each input discovered; drone: tier chore done ≥3×). Idles when there's nothing left to learn, so Effort is never spent for nothing |
@@ -274,12 +274,16 @@ each build/research step and stay in charge of *what's unlocked and made*.
 Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then the
 **automation** that retires it and unlocks the next act.
 
-1. **Crash (hands).** Survivor + Regolith Field + Wreck + a crude Printer +
-   Workshop + Research — and *nothing else*: no resources, no blueprints. Drop
-   your Effort into each machine's bay to work it, one cycle at a time; gather,
-   print a Component, then **Research** your first blueprint (Solar Array) and
-   **build** it at the Workshop. *Novelty: the basic gather→print→research→build
-   loop. Goal: get the first blueprint and stand up a Solar Array.*
+1. **Crash (hands).** Survivor + Regolith Field + Wreck + Research — and *nothing
+   else*: no resources, no blueprints, and **not yet a Printer or Workshop**. Drop
+   your Effort into a machine's bay to work it, one cycle at a time. Work the
+   **Wreck** first: it yields Scrap and Salvage, and digs out a **Printer** (~33%
+   per scavenge) and then a **Workshop** (~33%) — the few things you save from the
+   crash — which you plant to bring to life. With the Printer you make Components
+   by hand (or use a Salvage, which counts as one); then **Research** your first
+   blueprint (Solar Array) and **build** it at the Workshop. *Novelty: the basic
+   scavenge→print→research→build loop. Goal: salvage the Printer + Workshop, get
+   your first blueprint, and stand up a Solar Array.*
 2. **Power up.** Build a Solar Array at the Workshop and plant it; electrify the
    Refinery & Fabricator (faster, but Power-gated — first logistics puzzle).
    *Automation: **Mk I** drones in the gatherers retire hand-gathering; **Mk II**
