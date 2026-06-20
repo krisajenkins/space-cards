@@ -236,11 +236,17 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
   // instead targets the subsystems we still need — see assemblerDroneResolve.
   if (host.defId === "assembler") return assemblerDroneResolve(ctx, host);
 
-  const filled = new Set(
-    hostHoles(ctx, host.id, host.boardId).map(
-      (c) => c.location.value.slotIndex,
-    ),
-  );
+  const holes = hostHoles(ctx, host.id, host.boardId);
+  // The Workshop keeps its hands off until you've chosen a blueprint: no pulling
+  // Components in for a build you haven't committed to. (You always pick the
+  // blueprint — the feeder skips the blueprint hole itself; this just makes the
+  // drone wait for one to appear before it bothers loading anything.)
+  if (
+    host.defId === "workshop" &&
+    !holes.some((c) => catOf(ctx, c) === "blueprint")
+  )
+    return tick;
+  const filled = new Set(holes.map((c) => c.location.value.slotIndex));
   // Input holes only (droneLevel 0); never the bay itself. Also never a blueprint
   // hole: a Mk I+ drone may crank the Workshop and load its Components, but choosing
   // WHAT to build stays a player decision — the drone never grabs a blueprint. (The
