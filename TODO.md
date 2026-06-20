@@ -174,6 +174,15 @@ references updated.
 - [ ] You shouldn't be able to research anything until you have a workshop. It's frustrating to have the blueprint and no way of using it.
 - [ ] Let's start the Survivor as containing 2 Effort.
 
+# [ ] The Workshop should accept a Mk I drone, not just Effort.
+
+The Workshop currently has a worker-only bay (Effort only) specifically so a
+drone can't auto-pick a blueprint for you. Let's relax that: a **Mk I drone**
+should be able to work the Workshop too — but the one thing a drone must *not*
+do is choose which blueprint you build. So the drone can provide the worker/turn
+the crank, while the blueprint choice stays the player's. (Needs a bit of design
+thought: how the choice is held when a drone, not Effort, is powering the bay.)
+
 # [ ] Card hole hints need improving
 
 - [ ] Holes seem to be identifiers at the moment, and that doesn't quite work when the text is SOMETHING_LONG - we really wanted that space in there so we can line break cleanly. We should be using the card's display name. (I do like the fact that holes' text is shown upper-case though. Keep that, but for style reasons.)
