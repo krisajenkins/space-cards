@@ -6,6 +6,8 @@ import Board from "./lib/Board.svelte";
 import Achievements from "./lib/Achievements.svelte";
 import About from "./lib/About.svelte";
 import ProgressionTree from "./lib/ProgressionTree.svelte";
+import SoundEffects from "./lib/SoundEffects.svelte";
+import { muted, toggleMute } from "./lib/audio";
 
 const conn = useSpacetimeDB();
 
@@ -59,6 +61,16 @@ const board = $derived($boards[0]);
         <span class="brand-name">Space Cards</span>
       </div>
       <div class="topbar-right">
+        <button
+          class="mute-trigger"
+          class:muted={$muted}
+          title={$muted ? "Unmute sound" : "Mute sound"}
+          aria-label={$muted ? "Unmute sound" : "Mute sound"}
+          aria-pressed={$muted}
+          onclick={toggleMute}
+        >
+          {$muted ? "🔇" : "🔊"}
+        </button>
         {#if isAdmin}
           <button
             class="tree-trigger"
@@ -78,6 +90,7 @@ const board = $derived($boards[0]);
     {/if}
 
     <main class="stage">
+      <SoundEffects />
       <Achievements />
       {#if board}
         <Board boardId={board.id} />
@@ -269,6 +282,33 @@ const board = $derived($boards[0]);
 .tree-trigger:hover {
   color: var(--brass-bright);
   border-color: rgba(201, 214, 255, 0.25);
+}
+
+/* The sound toggle, styled as a round pill to match the topbar's other pills. */
+.mute-trigger {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  background: rgba(20, 26, 46, 0.7);
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    opacity 0.12s ease;
+}
+.mute-trigger:hover {
+  border-color: rgba(201, 214, 255, 0.25);
+}
+.mute-trigger.muted {
+  opacity: 0.55;
 }
 
 .begin {

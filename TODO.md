@@ -206,12 +206,25 @@ unbreakable token) becomes `LIFE SUPPORT` that wraps cleanly. New
 renders **both** `MK N+` and `EFFORT` (Effort is the universal Mk-0 worker), and
 input holes map every accepted category through `acceptLabel`.
 
-# [ ] We need sound effects.
+# [x] We need sound effects.
 
 There should be a gentle whirring whenever timers are running, a ping whenver
 one completes, and a jingle when you get an achievement.
 
 And that also means we need a mute button in the top bar.
+
+DONE. Client-only, all sounds synthesised with the Web Audio API (no binary
+assets, no new deps). `audio.ts` is the synth + a localStorage-backed `muted`
+store; `SoundEffects.svelte` is a render-nothing conductor wired to the live
+`my_*` views. Whirr = a soft low hum + filtered-noise bed that fades in/out with
+`$derived` "any situation ongoing"; ping = a soft bell on `my_situations`
+onUpdate/onDelete (a run leaving Ongoing), coalesced through a 180ms debounce so
+a flurry of completions is one ping; jingle = an A-major arpeggio on
+`my_achievements` onInsert (gated on subscription-ready so reload backfill is
+silent). AudioContext is created suspended and armed on the first
+pointer/key/touch gesture (autoplay-safe, no load-time errors). A 🔊/🔇 pill in
+the top bar toggles mute (ramps master gain to 0 + suspends the context),
+persisted across reloads.
 
 # [ ] What is the order of revealed blueprints?
 
