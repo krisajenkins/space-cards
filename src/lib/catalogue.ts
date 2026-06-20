@@ -8,7 +8,8 @@
 // def still renders something sensible.
 // ──────────────────────────────────────────────────────────────────────────
 
-import type { Card, Situation } from "../module_bindings/types";
+import type { Card, CardDef, SlotDef } from "../module_bindings/types";
+import type { Situation } from "../module_bindings/types";
 
 export type Visual = { color: string; glyph: string };
 
@@ -234,6 +235,80 @@ export function visualFor(defId: string, category: string): Visual {
     BY_DEF[defId] ??
     BY_CATEGORY[category] ?? { color: "var(--brass)", glyph: G.token }
   );
+}
+
+// ── Hole hint labels ───────────────────────────────────────────────────────
+// A verb hole's `accepts` is a list of *tokens* — each is either a card `defId`
+// or a coarse `category` name (see slot_def.accepts in the server catalogue).
+// On the wire these are machine ids (lower-case, underscore-joined). For a hint
+// we want a HUMAN display name with real spaces, so it line-breaks cleanly
+// across the narrow socket instead of being one unbreakable WORD_LIKE_THIS
+// token. The uppercase *look* is kept purely as CSS (`text-transform`), not by
+// storing upper-cased ids.
+//
+// Categories have no `card_def` row, so they need their own copy here. Where a
+// category coincides with a single card (Metal, Engine…) we still spell it out
+// rather than depend on def lookup, since `accepts` is matched by category.
+const CATEGORY_LABELS: Record<string, string> = {
+  drone: "Drone",
+  effort: "Effort",
+  power: "Power",
+  raw: "Raw Material",
+  salvage: "Salvage",
+  metal: "Metal",
+  silicon: "Silicon",
+  glass: "Glass",
+  circuit: "Circuit",
+  component: "Component",
+  water: "Water",
+  hydrogen: "Hydrogen",
+  oxygen: "Oxygen",
+  fuel: "Fuel",
+  subsystem: "Subsystem",
+  engine: "Engine",
+  hull: "Hull",
+  avionics: "Avionics",
+  life_support: "Life Support",
+  heat_shield: "Heat Shield",
+  blueprint: "Blueprint",
+  station: "Station",
+  launchpad: "Launchpad",
+  avatar: "Survivor",
+  endgame: "Escape",
+};
+
+// Turn a single accepts-token into its display name: a card's own name wins,
+// then the category map, then a humanised fallback (split on underscores,
+// Title-Case) so a brand-new token still reads as words.
+export function acceptLabel(
+  token: string,
+  defsById: Map<string, CardDef>,
+): string {
+  const def = defsById.get(token);
+  if (def) return def.name;
+  if (CATEGORY_LABELS[token]) return CATEGORY_LABELS[token];
+  return token
+    .split("_")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
+// Mechanical drones top out at Mk IV; a higher requirement is a worker-only bay
+// (the Workshop & Research benches), which only Effort can fill.
+const MAX_MK = 4;
+
+// Every display label a hole should advertise. For a drone bay this is its Mk
+// requirement — and ALWAYS "Effort" too, because Effort is the universal Mk-0
+// worker that fits any bay. For an input hole it's each accepted category/def.
+export function holeLabels(
+  slot: SlotDef,
+  defsById: Map<string, CardDef>,
+): string[] {
+  if (slot.droneLevel > 0) {
+    if (slot.droneLevel > MAX_MK) return ["Effort"]; // worker-only bay
+    return [`Mk ${slot.droneLevel}+`, "Effort"];
+  }
+  return slot.accepts.map((t) => acceptLabel(t, defsById));
 }
 
 // ── Location helpers ───────────────────────────────────────────────────────

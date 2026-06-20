@@ -5,7 +5,12 @@
 // comes in as props from the Board; this component only draws and forwards the
 // pointer events that begin a drag on a slotted or produced card.
 import type { Card, CardDef, SlotDef } from "../module_bindings/types";
-import { visualFor, formatRemaining, type RunState } from "./catalogue";
+import {
+  visualFor,
+  formatRemaining,
+  holeLabels,
+  type RunState,
+} from "./catalogue";
 import CardToken from "./CardToken.svelte";
 
 let {
@@ -46,17 +51,11 @@ const v = $derived(visualFor(def.defId, def.category));
 const inputSlots = $derived(slots.filter((s) => s.droneLevel === 0));
 const droneBay = $derived(slots.find((s) => s.droneLevel > 0));
 const bayDrone = $derived(droneBay ? slotted.get(droneBay.slotIndex) : undefined);
-// Mechanical drones top out at Mk IV; a higher requirement is a worker-only bay
-// (the Workshop & Research benches), which only Effort can fill. Label bays by
-// what they take.
-const MAX_MK = 4;
-const bayLabel = $derived(
-  !droneBay
-    ? ""
-    : droneBay.droneLevel > MAX_MK
-      ? "Effort"
-      : `Mk ${droneBay.droneLevel}+`,
-);
+// Label bays (and holes) by what they accept — each as a human display name so
+// it wraps on word boundaries; the uppercase look is CSS. A worker bay reads
+// e.g. "Mk 1+" AND "Effort", because Effort is the universal worker.
+const bayLabels = $derived(droneBay ? holeLabels(droneBay, defsById) : []);
+const bayTitle = $derived(bayLabels.join(" / "));
 
 // Countdown ring geometry.
 const R = 30;
@@ -153,7 +152,7 @@ const stateLabel = $derived(
         class="drone-bay"
         class:filled={!!bayDrone}
         class:open={accepts(droneBay)}
-        title="Worker bay · {bayLabel}"
+        title="Worker bay · {bayTitle}"
       >
         {#if bayDrone}
           <div
@@ -172,7 +171,11 @@ const stateLabel = $derived(
           </div>
         {:else}
           <span class="bay-mark">⬡</span>
-          <span class="bay-label">{bayLabel}</span>
+          <div class="accepts">
+            {#each bayLabels as label}
+              <span class="chip">{label}</span>
+            {/each}
+          </div>
         {/if}
       </div>
     {/if}
@@ -202,8 +205,8 @@ const stateLabel = $derived(
             <div class="hole-empty">
               <span class="hole-mark">{slot.required ? "✶" : "○"}</span>
               <div class="accepts">
-                {#each slot.accepts as a}
-                  <span class="chip">{a}</span>
+                {#each holeLabels(slot, defsById) as label}
+                  <span class="chip">{label}</span>
                 {/each}
               </div>
             </div>
@@ -514,14 +517,6 @@ header {
   line-height: 1;
   color: rgba(116, 199, 214, 0.5);
 }
-.bay-label {
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
 .tray {
   margin-top: 0.8rem;
   padding-top: 0.7rem;

@@ -191,10 +191,20 @@ do is choose which blueprint you build. So the drone can provide the worker/turn
 the crank, while the blueprint choice stays the player's. (Needs a bit of design
 thought: how the choice is held when a drone, not Effort, is powering the bay.)
 
-# [ ] Card hole hints need improving
+# [x] Card hole hints need improving
 
-- [ ] Holes seem to be identifiers at the moment, and that doesn't quite work when the text is SOMETHING_LONG - we really wanted that space in there so we can line break cleanly. We should be using the card's display name. (I do like the fact that holes' text is shown upper-case though. Keep that, but for style reasons.)
-- [ ] Sometimes the hints should have more than one thing. Like most of the "MK1 +" labels should also have an "EFFORT" label too.
+- [x] Holes seem to be identifiers at the moment, and that doesn't quite work when the text is SOMETHING_LONG - we really wanted that space in there so we can line break cleanly. We should be using the card's display name. (I do like the fact that holes' text is shown upper-case though. Keep that, but for style reasons.)
+- [x] Sometimes the hints should have more than one thing. Like most of the "MK1 +" labels should also have an "EFFORT" label too.
+
+DONE. Client-only. `catalogue.ts` gains `CATEGORY_LABELS` (accepts-token →
+human display name with real spaces, e.g. `life_support → "Life Support"`) and
+`acceptLabel()` (a card's own `def.name` wins, then the category map, then a Title
+Case fallback). Hint chips now source the spaced display name and the uppercase
+look is pure CSS (`text-transform: uppercase`), so `LIFE_SUPPORT` (one
+unbreakable token) becomes `LIFE SUPPORT` that wraps cleanly. New
+`holeLabels()` lets a hole advertise multiple chips: a Mk N+ worker bay now
+renders **both** `MK N+` and `EFFORT` (Effort is the universal Mk-0 worker), and
+input holes map every accepted category through `acceptLabel`.
 
 # [ ] We need sound effects.
 
