@@ -313,6 +313,52 @@ Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then t
    + Fuel straight in; once all five subsystems + three Fuel are loaded, it
    `become`s **Escape**. *Win.*
 
+### 6a. The milestone toasters (the achievement arc)
+
+The progression is narrated by **achievements** — one-line story beats that pop a
+toaster the first time the board earns them. Both halves live in
+`content/achievements.ts`: the display text (`ACHIEVEMENT_DEFS`, seeded into
+`achievement_def`) and the earning condition (`ACHIEVEMENTS`, a predicate over the
+board's lifetime card-history). Each beat keys on the **first tally of a card that
+is never in the opening deal**, so it fires when the player *earns* it — the sole
+exception is `crash`, keyed on the always-dealt Survivor, which opens the story at
+the deal.
+
+**Design rule: every Workshop build output gets its own beat.** Standing up a new
+machine or drone tier is a story moment, so each earns a milestone rather than
+collapsing into a generic "first machine / first drone" toaster. The arc, in
+`sort` order:
+
+| # | achId | Title | Earned when |
+|---|---|---|---|
+| 0 | `crash` | Crash Landing | board dealt (Survivor) |
+| 1 | `prospector` | Prospector | first Regolith |
+| 2 | `salvage_printer` | Spare Parts | Printer dug from the Wreck |
+| 3 | `salvage_workshop` | A Fighting Chance | Workshop dug from the Wreck |
+| 4 | `wreck_exhausted` | Picked Clean | Wreck runs dry (Exhausted Wreck husk) |
+| 5 | `researcher` | Eureka | first blueprint researched |
+| 6 | `automation` | Hands Off | first **Mk I drone** built |
+| 7 | `power_up` | Let There Be Light | first **Power** (Solar Array running) |
+| 8 | `industrialist` | Industrialist | first **Refinery** built |
+| 9 | `fabricator` | The Production Line | first **Fabricator** built |
+| 10 | `kiln` | Trial by Fire | first **Kiln** built |
+| 11 | `drone_2` | Second Shift | first **Mk II drone** built |
+| 12 | `ice_mine` | Water from Stone | first **Ice Mine** built |
+| 13 | `electronics_fab` | First Circuits | first **Electronics Fab** built |
+| 14 | `electrolysis` | Breaking Water | first **Electrolysis** built |
+| 15 | `drone_3` | Night Crew | first **Mk III drone** built |
+| 16 | `chemist` | Rocket Fuel | first **Fuel** (Chem Reactor running) |
+| 17 | `assembler` | The Shipyard | first **Assembler** built |
+| 18 | `drone_4` | Full Automation | first **Mk IV drone** built |
+| 19 | `launch_ready` | All Systems Go | all five subsystems built |
+| 20 | `escape` | Escape the Moon | the Rocket `become`s Escape (**win**) |
+
+Two outputs are recognised by their **product** rather than the build, because
+their payoff reads better that way: the **Solar Array** via `power` (`power_up`)
+and the **Chem Reactor** via `fuel` (`chemist`). The five rocket subsystems
+(Assembler recipes, not Workshop blueprints) share the single `launch_ready`
+payoff rather than five separate beats.
+
 ---
 
 ## 7. Replayability — alternate escape routes (the "class" idea)

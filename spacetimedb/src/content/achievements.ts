@@ -80,10 +80,10 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     sort: 5,
   },
   {
-    achId: "industrialist",
-    title: "Industrialist",
+    achId: "automation",
+    title: "Hands Off",
     description:
-      "Your first self-built machine stands and hums. The crash site is becoming a factory.",
+      "A drone to take over the grind. The work can do itself now, and your hands will be free for bigger things. But one drone may not be enough...",
     sort: 6,
   },
   {
@@ -94,32 +94,95 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     sort: 7,
   },
   {
-    achId: "automation",
-    title: "Hands Off",
+    achId: "industrialist",
+    title: "Industrialist",
     description:
-      "A drone to take over the grind. The work can do itself now, and your hands will be free for bigger things. But one drone may not be enough...",
+      "Your first refinery fires up - raw regolith in, pure metal out. The crash site is becoming a factory.",
     sort: 8,
+  },
+  {
+    achId: "fabricator",
+    title: "The Production Line",
+    description:
+      "Metal feeds in and finished components roll out, untouched by your hands. The factory has started to build itself.",
+    sort: 9,
+  },
+  {
+    achId: "kiln",
+    title: "Trial by Fire",
+    description:
+      "You bake the regolith until it gives - silicon and glass wrung from grey dust. The electronics age opens up on a dead moon.",
+    sort: 10,
+  },
+  {
+    achId: "drone_2",
+    title: "Second Shift",
+    description:
+      "One drone was never going to be enough. A second takes the next chore off your hands, and the base hums a little louder without you.",
+    sort: 11,
+  },
+  {
+    achId: "ice_mine",
+    title: "Water from Stone",
+    description:
+      "You haul water from buried lunar ice. Drink it, split it, or burn it - almost everything that comes next begins here.",
+    sort: 12,
+  },
+  {
+    achId: "electronics_fab",
+    title: "First Circuits",
+    description:
+      "Silicon laid down into living circuitry. Crude and hand-fed, but it's the first real electronics for a hundred thousand miles.",
+    sort: 13,
+  },
+  {
+    achId: "electrolysis",
+    title: "Breaking Water",
+    description:
+      "A current cracks water into hydrogen and oxygen - the raw makings of rocket fuel, pried apart one molecule at a time.",
+    sort: 14,
+  },
+  {
+    achId: "drone_3",
+    title: "Night Crew",
+    description:
+      "Three drones working while you don't. The grind has all but vanished - now you mostly watch a machine that runs itself.",
+    sort: 15,
   },
   {
     achId: "chemist",
     title: "Rocket Fuel",
     description:
       "The first fuel is refined - the slowest, hardest step on the whole moon. The rocket will drink every drop.",
-    sort: 9,
+    sort: 16,
+  },
+  {
+    achId: "assembler",
+    title: "The Shipyard",
+    description:
+      "The Assembler stands ready. For the first time the parts you make aren't tools or supplies - they're pieces of the way home.",
+    sort: 17,
+  },
+  {
+    achId: "drone_4",
+    title: "Full Automation",
+    description:
+      "A fourth drone, and the last of the busywork is gone. The whole base runs lights-out while you turn your eyes to the launch pad.",
+    sort: 18,
   },
   {
     achId: "launch_ready",
     title: "All Systems Go",
     description:
       "Engine, hull, avionics, life support, heat shield - every subsystem built. The rocket is whole and waiting.",
-    sort: 10,
+    sort: 19,
   },
   {
     achId: "escape",
     title: "Escape the Moon",
     description:
       "Ignition. The wreck and the grey dust fall away beneath you. You're going home.",
-    sort: 11,
+    sort: 20,
   },
 ];
 
@@ -132,19 +195,9 @@ export type AchievementRule = {
 const has = (counts: Map<string, bigint>, defId: string): boolean =>
   (counts.get(defId) ?? 0n) > 0n;
 
-// Machines the player *builds* (none are in the opening deal — the dealt
-// stations are survivor/regolith_field/wreck/research).
-const BUILT_MACHINES = [
-  "solar_array",
-  "refinery",
-  "fabricator",
-  "kiln",
-  "electronics_fab",
-  "ice_mine",
-  "electrolysis",
-  "chem_reactor",
-  "assembler",
-];
+// The five rocket subsystems (Assembler outputs) — all required for the
+// "launch_ready" milestone. Everything else keys on a single defId inline, so
+// no other lists are needed.
 const SUBSYSTEMS = [
   "engine",
   "hull",
@@ -152,7 +205,6 @@ const SUBSYSTEMS = [
   "life_support",
   "heat_shield",
 ];
-const DRONES = ["drone_1", "drone_2", "drone_3", "drone_4"];
 
 export const ACHIEVEMENTS: AchievementRule[] = [
   // The opening beat — fires at the deal (keyed on the always-dealt Survivor).
@@ -171,10 +223,24 @@ export const ACHIEVEMENTS: AchievementRule[] = [
     id: "researcher",
     earned: (c) => [...c.keys()].some((k) => k.startsWith("blueprint_")),
   },
+  // One beat per thing you BUILD: every Workshop output — each machine, each
+  // drone tier — earns its own milestone, keyed on that built card's first
+  // tally. solar_array and chem_reactor are recognised by their PRODUCT instead
+  // (power_up / chemist), so they aren't repeated; the assembler's subsystems
+  // share the single "launch_ready" payoff below.
+  { id: "automation", earned: (c) => has(c, "drone_1") },
   { id: "power_up", earned: (c) => has(c, "power") },
-  { id: "industrialist", earned: (c) => BUILT_MACHINES.some((m) => has(c, m)) },
-  { id: "automation", earned: (c) => DRONES.some((d) => has(c, d)) },
+  { id: "industrialist", earned: (c) => has(c, "refinery") },
+  { id: "fabricator", earned: (c) => has(c, "fabricator") },
+  { id: "kiln", earned: (c) => has(c, "kiln") },
+  { id: "drone_2", earned: (c) => has(c, "drone_2") },
+  { id: "ice_mine", earned: (c) => has(c, "ice_mine") },
+  { id: "electronics_fab", earned: (c) => has(c, "electronics_fab") },
+  { id: "electrolysis", earned: (c) => has(c, "electrolysis") },
+  { id: "drone_3", earned: (c) => has(c, "drone_3") },
   { id: "chemist", earned: (c) => has(c, "fuel") },
+  { id: "assembler", earned: (c) => has(c, "assembler") },
+  { id: "drone_4", earned: (c) => has(c, "drone_4") },
   { id: "launch_ready", earned: (c) => SUBSYSTEMS.every((s) => has(c, s)) },
   { id: "escape", earned: (c) => has(c, "escape") },
 ];
