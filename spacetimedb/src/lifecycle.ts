@@ -274,33 +274,68 @@ function seedCatalogue(ctx: Ctx) {
     sort: number,
   ) => ctx.db.achievementDef.insert({ achId, title, description, sort });
 
-  achievement("prospector", "Prospector", "Gather your first Regolith.", 0);
-  achievement("researcher", "Eureka", "Research your first blueprint.", 1);
+  // The trophy shelf, ordered as the story unfolds: crash → scavenge → research →
+  // build → power → automate → fuel → assemble → escape. Each description is a
+  // beat in that arc, not a dry "did X" line.
+  achievement(
+    "prospector",
+    "Prospector",
+    "You claw the first regolith from the lunar dust. It isn't much — but the moon has materials, and that's where it starts.",
+    0,
+  );
+  achievement(
+    "salvage_printer",
+    "Spare Parts",
+    "You manage to salvage a working printer from the wreckage. Now you can make tools, and that could give you a fighting chance...",
+    1,
+  );
+  achievement(
+    "salvage_workshop",
+    "A Fighting Chance",
+    "A workshop, dragged intact from the wreck. With this, you could build your way off this moon.",
+    2,
+  );
+  achievement(
+    "researcher",
+    "Eureka",
+    "You reverse-engineer your first blueprint. The long road home begins to take shape.",
+    3,
+  );
+  achievement(
+    "industrialist",
+    "Industrialist",
+    "Your first self-built machine stands and hums. The crash site is becoming a factory.",
+    4,
+  );
   achievement(
     "power_up",
     "Let There Be Light",
-    "Generate your first Power.",
-    2,
+    "Power of your own, at last. The base wakes up — and the heavy machines can finally run.",
+    5,
   );
-  achievement("industrialist", "Industrialist", "Build your first machine.", 3);
   achievement(
     "automation",
     "Hands Off",
-    "Build your first drone and let it work for you.",
-    4,
+    "A drone to take over the grind. The work can do itself now, and your hands will be free for bigger things. But one drone may not be enough...",
+    6,
   );
-  achievement("chemist", "Rocket Fuel", "Refine your first Fuel.", 5);
+  achievement(
+    "chemist",
+    "Rocket Fuel",
+    "The first fuel is refined — the slowest, hardest step on the whole moon. The rocket will drink every drop.",
+    7,
+  );
   achievement(
     "launch_ready",
     "All Systems Go",
-    "Fabricate all five rocket subsystems.",
-    6,
+    "Engine, hull, avionics, life support, heat shield — every subsystem built. The rocket is whole and waiting.",
+    8,
   );
   achievement(
     "escape",
     "Escape the Moon",
-    "Launch the rocket and escape. You win.",
-    7,
+    "Ignition. The wreck and the grey dust fall away beneath you. You're going home.",
+    9,
   );
 }
 
