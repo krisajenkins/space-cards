@@ -16,6 +16,23 @@ import { tables } from "../module_bindings";
 import { stateOf } from "./catalogue";
 import { armAudio, setWhirring, playPing, playJingle } from "./audio";
 
+// ── Silent verbs ─────────────────────────────────────────────────────────────
+// Some verbs are self-running emitters that tick almost constantly — the Survivor
+// produces Effort on a near-permanent loop. A whirr that never stops (and a ping
+// every cycle) just becomes irritating background noise, so these are muted at
+// the source: they contribute neither to the whirr nor to completion pings. Add
+// other always-on emitters here if they prove annoying. The Survivor cranks out
+// Effort on a near-permanent loop; the Solar Array silently emits Power (solar
+// panels make no noise in real life either).
+const SILENT_DEFS = new Set<string>(["survivor", "solar_array"]);
+const [cards] = useTable(tables.myCards);
+// Card ids whose verb is silent — the situation row carries the verb card's id
+// (situation.cardId), so we test membership against that.
+const silentCardIds = $derived(
+  new Set($cards.filter((c) => SILENT_DEFS.has(c.defId)).map((c) => c.id)),
+);
+const isAudible = (s: { cardId: bigint }) => !silentCardIds.has(s.cardId);
+
 // ── Completion ping: coalesced ───────────────────────────────────────────────
 // A burst of completions (e.g. five cards born from one run, or several verbs
 // finishing in the same tick) must not fire five overlapping pings into a wall
@@ -43,12 +60,13 @@ const wasOngoing = (s: { state: { tag: string } }) =>
 
 const [situations] = useTable(tables.mySituations, {
   onUpdate: (oldRow, newRow) => {
-    if (wasOngoing(oldRow) && !wasOngoing(newRow)) notePing();
+    if (isAudible(newRow) && wasOngoing(oldRow) && !wasOngoing(newRow))
+      notePing();
   },
   onDelete: (row) => {
     // A run that completed and tidied itself away. Re-firing verbs replace their
     // timer rather than delete, so this is a genuine finish.
-    if (wasOngoing(row)) notePing();
+    if (isAudible(row) && wasOngoing(row)) notePing();
   },
 });
 
@@ -56,7 +74,9 @@ const [situations] = useTable(tables.mySituations, {
 // Derived reactively from the live table rows — exactly the same source the
 // board's countdown rings read. Goes true the moment a verb starts running,
 // false when the last one stops; the synth fades the loop in/out to match.
-const anyRunning = $derived($situations.some((s) => stateOf(s) === "ongoing"));
+const anyRunning = $derived(
+  $situations.some((s) => stateOf(s) === "ongoing" && isAudible(s)),
+);
 $effect(() => {
   setWhirring(anyRunning);
 });
