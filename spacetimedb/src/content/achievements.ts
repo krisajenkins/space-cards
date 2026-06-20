@@ -1,11 +1,13 @@
-import type { Ctx } from "./types";
+import type { Ctx } from "../platform/types";
 
 // ──────────────────────────────────────────────────────────────────────────
-// Achievements — milestones earned by playing. The *condition* lives here as
-// code (a predicate over the board's lifetime card-history); the *display* text
-// (title/description/order) is content, authored as achievement_def rows in
-// init (lifecycle.ts). Same split as card_def (data) vs RESOLVERS (behaviour).
-// The `id` of each rule below MUST match an achievement_def `achId`.
+// Achievements — milestones earned by playing. This is "what the game IS": the
+// trophy shelf. BOTH halves live here now — the *display* content (title /
+// description / order, authored as ACHIEVEMENT_DEFS and seeded into
+// achievement_def) AND the *condition* that earns each one (ACHIEVEMENTS, a
+// predicate over the board's lifetime card-history). They are keyed to each
+// other by `achId`; keeping them in one file is the whole point of this module
+// (previously the text was buried in lifecycle.ts and the conditions sat alone).
 //
 // Each predicate reads `counts`: a map of defId → lifetime count for one board
 // (the my_card_history numbers). IMPORTANT: every milestone keys off a card that
@@ -20,6 +22,108 @@ import type { Ctx } from "./types";
 // to fire the instant a board is dealt. It keys on the Survivor (always dealt), so
 // awardAchievements pops it on the very first tally of a new game.
 // ──────────────────────────────────────────────────────────────────────────
+
+// ── Display content (seeded into achievement_def by seedCatalogue) ──────────
+// The trophy shelf, ordered as the story unfolds: crash → scavenge → research →
+// build → power → automate → fuel → assemble → escape. Each description is a
+// beat in that arc, not a dry "did X" line. The first is the inciting incident,
+// not a reward: it fires the instant a board is dealt (keyed on the Survivor),
+// so the story opens with a line of its own before the player has done anything.
+// `sort` orders the shelf roughly along that arc.
+export type AchievementDef = {
+  achId: string;
+  title: string;
+  description: string;
+  sort: number;
+};
+export const ACHIEVEMENT_DEFS: AchievementDef[] = [
+  {
+    achId: "crash",
+    title: "Crash Landing",
+    description:
+      "Your ship is scattered across the regolith and you're the only thing still moving. No rescue is coming - the only way off this rock is the one you build. So get to work.",
+    sort: 0,
+  },
+  {
+    achId: "prospector",
+    title: "Prospector",
+    description:
+      "You claw the first regolith from the lunar dust. It isn't much — but the moon has materials, and that's where it starts.",
+    sort: 1,
+  },
+  {
+    achId: "salvage_printer",
+    title: "Spare Parts",
+    description:
+      "You manage to salvage a working printer from the wreckage. Now you can make tools, and that could give you a fighting chance...",
+    sort: 2,
+  },
+  {
+    achId: "salvage_workshop",
+    title: "A Fighting Chance",
+    description:
+      "A workshop, dragged intact from the wreck. With this, could you build your way off the moon?",
+    sort: 3,
+  },
+  {
+    achId: "wreck_exhausted",
+    title: "Picked Clean",
+    description:
+      "You've stripped the wreck to its bones - there's nothing left to scavenge. From here, everything you build comes from your own effort and industry.",
+    sort: 4,
+  },
+  {
+    achId: "researcher",
+    title: "Eureka",
+    description:
+      "You reverse-engineer your first blueprint. The long road home begins to take shape.",
+    sort: 5,
+  },
+  {
+    achId: "industrialist",
+    title: "Industrialist",
+    description:
+      "Your first self-built machine stands and hums. The crash site is becoming a factory.",
+    sort: 6,
+  },
+  {
+    achId: "power_up",
+    title: "Let There Be Light",
+    description:
+      "Power of your own, at last. The base wakes up - and the heavy machines can finally run.",
+    sort: 7,
+  },
+  {
+    achId: "automation",
+    title: "Hands Off",
+    description:
+      "A drone to take over the grind. The work can do itself now, and your hands will be free for bigger things. But one drone may not be enough...",
+    sort: 8,
+  },
+  {
+    achId: "chemist",
+    title: "Rocket Fuel",
+    description:
+      "The first fuel is refined - the slowest, hardest step on the whole moon. The rocket will drink every drop.",
+    sort: 9,
+  },
+  {
+    achId: "launch_ready",
+    title: "All Systems Go",
+    description:
+      "Engine, hull, avionics, life support, heat shield - every subsystem built. The rocket is whole and waiting.",
+    sort: 10,
+  },
+  {
+    achId: "escape",
+    title: "Escape the Moon",
+    description:
+      "Ignition. The wreck and the grey dust fall away beneath you. You're going home.",
+    sort: 11,
+  },
+];
+
+// ── Conditions (the code keyed to each achId above) ─────────────────────────
 export type AchievementRule = {
   id: string;
   earned: (counts: Map<string, bigint>) => boolean;

@@ -13,7 +13,7 @@ you put things.
 
 ## What we ship — server-side VPSC overlap removal
 
-The layout lives in `spacetimedb/src/layout.ts`: a pure function
+The layout lives in `spacetimedb/src/engine/layout.ts`: a pure function
 `relayout(ctx, boardId, pinnedCardId?)` run **inside the reducer transaction**
 that changed the board. It reads every tabletop card's position + footprint,
 removes all overlaps with minimum displacement, and writes the changed positions

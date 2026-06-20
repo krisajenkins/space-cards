@@ -1,7 +1,12 @@
 import { t, SenderError } from "spacetimedb/server";
 import spacetimedb from "./schema";
-import { holeCards, maybeAutostart, spawnCard, tryBeginRun } from "./engine";
-import { relayout } from "./layout";
+import {
+  holeCards,
+  maybeAutostart,
+  spawnCard,
+  tryBeginRun,
+} from "../engine/engine";
+import { relayout } from "../engine/layout";
 import { requireCaller, requireMember } from "./auth";
 import type { Ctx, Card } from "./types";
 

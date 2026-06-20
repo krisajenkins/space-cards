@@ -6,7 +6,7 @@ import {
   MemberRole,
   type Effects,
 } from "./types";
-import { RESOLVERS } from "./resolvers";
+import { RESOLVERS } from "../engine/resolvers";
 import {
   holeCards,
   maybeAutostart,
@@ -14,8 +14,8 @@ import {
   spawnOutput,
   tryBeginRun,
   verbReady,
-} from "./engine";
-import { relayout } from "./layout";
+} from "../engine/engine";
+import { relayout } from "../engine/layout";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Catalogue (public). Authored content describing what cards exist.
@@ -48,8 +48,9 @@ export const slotDef = table(
 
 // The achievement catalogue (public): the *display* content of each milestone —
 // title + blurb + display order. The *condition* that earns it is code, keyed by
-// the same `achId`, in achievements.ts (same split as card_def vs RESOLVERS).
-// Authored in init/seedCatalogue alongside the card catalogue.
+// the same `achId`, in content/achievements.ts (same split as card_def vs
+// RESOLVERS). Both halves (text + condition) live in content/achievements.ts;
+// the text is seeded by content/catalogue.ts (seedCatalogue) alongside the cards.
 export const achievementDef = table(
   { name: "achievement_def", public: false },
   {
@@ -156,7 +157,7 @@ export const cardHistory = table(
 );
 
 // One row per achievement a board has earned (private; read via my_achievements).
-// Inserted by awardAchievements (achievements.ts) the moment its condition first
+// Inserted by awardAchievements (content/achievements.ts) the moment its condition first
 // holds, then never again — the `by_board_ach` lookup makes the award idempotent,
 // so each milestone fires exactly once. `seen` starts false; the client pops an
 // unseen row as a toaster and calls mark_achievement_seen to flip it true. No row

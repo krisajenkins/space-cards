@@ -21,11 +21,11 @@ import { writable, get, type Writable } from "svelte/store";
 // The Google OAuth client id and trusted issuers are public, shared config. The
 // server module is their single source of truth — it validates ID tokens
 // against this same audience and issuer set — so import them rather than
-// duplicating (here or in env). See spacetimedb/src/constants.ts.
+// duplicating (here or in env). See spacetimedb/src/platform/constants.ts.
 import {
   GOOGLE_CLIENT_ID,
   GOOGLE_ISSUERS,
-} from "../../spacetimedb/src/constants";
+} from "../../spacetimedb/src/platform/constants";
 export { GOOGLE_CLIENT_ID };
 
 const HOST = import.meta.env.VITE_SPACETIMEDB_HOST ?? "ws://localhost:3000";

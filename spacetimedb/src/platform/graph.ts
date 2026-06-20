@@ -1,6 +1,11 @@
 import { t } from "spacetimedb/server";
 import type { ReadCtx } from "./types";
-import { BUILDS, SUBSYSTEMS, RESEARCH_TREE, WRECK_CONTENTS } from "./resolvers";
+import {
+  BUILDS,
+  SUBSYSTEMS,
+  RESEARCH_TREE,
+  WRECK_CONTENTS,
+} from "../content/recipes";
 
 // The graph builder only ever READS catalogue tables — it needs `ctx.db`, not
 // the caller's identity. An anonymous view's context has no `sender` (it's the
@@ -15,7 +20,7 @@ type GraphCtx = Pick<ReadCtx, "db">;
 // "This would be easy if all our recipes were data" — they aren't (verb
 // behaviour is code, by design; see CLAUDE.md), so this module is the bridge:
 // a pure function that walks the catalogue (card_def / slot_def) PLUS the
-// recipe maps now exported from resolvers.ts (BUILDS / SUBSYSTEMS /
+// recipe maps from content/recipes.ts (BUILDS / SUBSYSTEMS /
 // RESEARCH_TREE / WRECK_CONTENTS) into a {nodes, edges} graph an admin can
 // SEE end-to-end. It changes nothing about how the game plays — it only reads.
 //

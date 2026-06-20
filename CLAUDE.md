@@ -24,17 +24,34 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
 
 ## Layout
 
-- `spacetimedb/src/` — the server module (its own pnpm package). Split into
-  focused files re-exported from `index.ts`: `schema.ts` (tables + the scheduled
-  `completeSituation`), `engine.ts` (the generic verb engine — assembly, runs,
-  output caps, spawning), `resolvers.ts` (the `RESOLVERS` map: per-verb behaviour,
-  the bay-drone feeder, the build/subsystem recipe maps), `lifecycle.ts`
-  (`init` authors the catalogue; connect/disconnect; admin bootstrap),
-  `layout.ts` (the authoritative tabletop layout — VPSC overlap removal via the
-  `webcola` dep; see `docs/LAYOUT.md`), `reducers.ts` (player actions: `newGame`,
-  `slotCard`, `collectAndSlot`, `moveCard`, and admin `devGrant` / `relayoutBoard`),
-  `views.ts` (the `my_*` read views), `constants.ts`, `types.ts`, `auth.ts`.
-  Reducer names are snake_cased on the wire (`new_game`, `slot_card`, …).
+- `spacetimedb/src/` — the server module (its own pnpm package). `index.ts` is
+  the aggregator SpacetimeDB bundles from (it re-exports the schema + every
+  reducer/view/hook). The rest is split into **three folders by what the thing
+  _is_**, so code lives where you'd guess to look for it:
+  - **`content/`** — "what the game IS" (authoring + data). `catalogue.ts`
+    (`seedCatalogue` — the `card_def` / `slot_def` / `achievement_def` authoring:
+    **this is where the cards are defined**), `recipes.ts` (the recipe DATA tables
+    — `BUILDS`, `SUBSYSTEMS`, `RESEARCH_TREE`, `WRECK_CONTENTS`: the Wreck's
+    contents, the build costs, the research tree, the subsystem recipes),
+    `achievements.ts` (both halves of each milestone — the display text
+    `ACHIEVEMENT_DEFS` **and** the earning conditions `ACHIEVEMENTS` + the
+    `awardAchievements` funnel).
+  - **`engine/`** — "how it RUNS" (mechanism). `engine.ts` (the generic verb
+    engine — assembly, runs, output caps, spawning, the `tally`), `resolvers.ts`
+    (the `RESOLVERS` map: per-verb behaviour, the bay-drone feeder, and the
+    research/wreck/assembler logic that READS `content/recipes.ts`), `layout.ts`
+    (the authoritative tabletop layout — VPSC overlap removal via the `webcola`
+    dep; see `docs/LAYOUT.md`).
+  - **`platform/`** — the SpacetimeDB surface + shared infra. `schema.ts` (tables,
+    the schema object, + the scheduled `completeSituation`, colocated with its
+    `situation_timer` table), `reducers.ts` (player actions: `newGame`, `slotCard`,
+    `collectAndSlot`, `moveCard`, and admin `devGrant` / `relayoutBoard`),
+    `views.ts` (the `my_*` read views), `graph.ts` (the admin progression-graph
+    projection), `lifecycle.ts` (`init`/`reseedCatalogue` wiring, connect/disconnect,
+    first-admin bootstrap), `auth.ts`, `constants.ts`, `types.ts`.
+
+  Reducer names are snake_cased on the wire (`new_game`, `slot_card`, …). The
+  client imports the public auth constants from `spacetimedb/src/platform/constants.ts`.
 - `src/` — Svelte client. `main.ts` (imports global `app.css`) → `Root.svelte`
   (sets up `SpacetimeDBProvider`) → `App.svelte`. `App.svelte` shows a sign-in
   hero when signed out, and otherwise drops the player straight into their one
@@ -88,7 +105,7 @@ There is no test suite. Type-check the client with `svelte-check`.
   not separate nullable columns. There is no quantity anywhere — every card is a
   discrete row; "3 wood" is three cards / three holes.
 - **Tabletop layout is authoritative on the server, not the client.** `relayout`
-  (`layout.ts`) runs VPSC overlap removal inside the reducer that changed the
+  (`engine/layout.ts`) runs VPSC overlap removal inside the reducer that changed the
   board (`moveCard` pins the dropped card; `newGame` / `become` / `devGrant` /
   `relayoutBoard` too), so positions are settled once, atomically, and every
   client just renders them. It is one-shot per mutation — never a timer/loop (an
@@ -102,8 +119,9 @@ There is no test suite. Type-check the client with `svelte-check`.
   output-cap stalls) is shared; per-verb resolution lives in the `RESOLVERS` map
   keyed by `defId`. A resolver decides duration, what to consume, and whether to
   re-fire (`again`) at runtime from what's in the holes — durations are not static
-  columns. To add a verb: add a `card_def` (+ `slot_def`s) in `init`, then a
-  `RESOLVERS` entry.
+  columns. To add a verb: author its `card_def` (+ `slot_def`s) in
+  `content/catalogue.ts`, then add a `RESOLVERS` entry in `engine/resolvers.ts`
+  (recipe data, if any, goes in `content/recipes.ts`).
 - **Calls run on per-situation one-shot timers** (`situation_timer`, a scheduled
   table → `completeSituation`), not a global tick. Zero running calls → zero
   scheduler work. A re-firing verb inserts a fresh timer each cycle.

@@ -3,7 +3,7 @@
 // A READ-ONLY node-link diagram of the WHOLE crafting graph: every card_def is
 // a node, every recipe relation an edge, served by the public `progression_*`
 // anonymous views (derived on the server from the catalogue + the recipe maps —
-// see spacetimedb/src/graph.ts). The toggle that opens this is gated to admins
+// see spacetimedb/src/platform/graph.ts). The toggle that opens this is gated to admins
 // in App.svelte; the data itself is catalogue-level (no game state), so it's a
 // pure visualiser, not an editor.
 //

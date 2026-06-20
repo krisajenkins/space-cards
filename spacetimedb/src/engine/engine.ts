@@ -1,8 +1,8 @@
 import { ScheduleAt, Timestamp } from "spacetimedb";
-import { MINUTE } from "./constants";
+import { MINUTE } from "../platform/constants";
 import { RESOLVERS } from "./resolvers";
-import { awardAchievements } from "./achievements";
-import type { Ctx, Card, SlottedCard } from "./types";
+import { awardAchievements } from "../content/achievements";
+import type { Ctx, Card, SlottedCard } from "../platform/types";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Engine helpers

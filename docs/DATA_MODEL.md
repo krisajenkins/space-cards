@@ -471,9 +471,11 @@ real.
 > re-skinned verbs — the Survivor/Solar Array are `you`-style emitters, the
 > Regolith Field is the dual-mode `forest`, the powered machines are `market`
 > queues, the couriers generalise the `worker`, and the Rocket uses `become`.
-> The module is now split across focused files (`schema.ts`, `engine.ts`,
-> `resolvers.ts`, `lifecycle.ts`, `reducers.ts`, `views.ts`, …), not one
-> `index.ts`. The description below is kept for historical context.
+> The module is now split across three folders — `content/` (catalogue, recipes,
+> achievements), `engine/` (engine, resolvers, layout) and `platform/` (schema,
+> reducers, views, graph, lifecycle, auth, …) — re-exported from `index.ts`, not
+> one file. See the CLAUDE.md "Layout" section. The description below is kept for
+> historical context.
 
 A first end-to-end slice is built in `spacetimedb/src/index.ts` and verified on a
 local server.

@@ -23,7 +23,7 @@ import {
 } from "webcola/dist/src/rectangle";
 import { Variable, Solver } from "webcola/dist/src/vpsc";
 import { removeOverlaps } from "webcola/dist/src/rectangle";
-import type { Ctx, Card } from "./types";
+import type { Ctx, Card } from "../platform/types";
 
 const MARGIN = 40; // keep the layout this far from the board's (0,0) origin
 const PIN_WEIGHT = 1e9; // a pinned card's VPSC variable barely moves

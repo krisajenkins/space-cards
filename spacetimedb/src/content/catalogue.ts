@@ -1,20 +1,21 @@
-import { t, SenderError } from "spacetimedb/server";
-import { GOOGLE_ISSUERS, GOOGLE_CLIENT_ID } from "./constants";
-import { normaliseEmail, requireCaller } from "./auth";
-import spacetimedb from "./schema";
-import type { Ctx } from "./types";
+import type { Ctx } from "../platform/types";
+import { ACHIEVEMENT_DEFS } from "./achievements";
 
 // ──────────────────────────────────────────────────────────────────────────
-// Lifecycle
-// ──────────────────────────────────────────────────────────────────────────
-// Seed (or re-seed) the catalogue idempotently: wipe card_def + slot_def and
-// rebuild from scratch. Safe to re-run on a LIVE database — cards reference
+// The card catalogue — "what the game IS". Authored content describing every
+// card that exists (card_def), the holes on each verb (slot_def), and the
+// milestone display text (achievement_def). This is the answer to "where are the
+// cards defined?": here, not buried in lifecycle.ts.
+//
+// `seedCatalogue` is idempotent: it wipes card_def + slot_def + achievement_def
+// and rebuilds from scratch. Safe to re-run on a LIVE database — cards reference
 // card_defs by their string `defId` (not a row id) and a slotted card stores a
 // `slotIndex` (not a slot_def id), so a full catalogue refresh inside one
 // transaction never disturbs boards, cards or situations. This is the migration
 // path for any catalogue change after first publish: `init` runs only once, so
-// `reseed_catalogue` (below) re-applies this to an already-initialised DB.
-function seedCatalogue(ctx: Ctx) {
+// `reseed_catalogue` (lifecycle.ts) re-applies this to an already-initialised DB.
+// ──────────────────────────────────────────────────────────────────────────
+export function seedCatalogue(ctx: Ctx) {
   for (const s of [...ctx.db.slotDef.iter()]) ctx.db.slotDef.id.delete(s.id);
   for (const d of [...ctx.db.cardDef.iter()])
     ctx.db.cardDef.defId.delete(d.defId);
@@ -268,223 +269,15 @@ function seedCatalogue(ctx: Ctx) {
   // into the launchpad so the final assembly runs itself.
   droneSlot("rocket", DRONE, 4);
 
-  // ── Achievements ───────────────────────────────────────────────────────
-  // The display content of each milestone. The condition that earns it is code
-  // (achievements.ts), keyed by the same achId; `sort` orders the trophy shelf
-  // roughly along the gather → refine → fabricate → automate → escape arc.
-  const achievement = (
-    achId: string,
-    title: string,
-    description: string,
-    sort: number,
-  ) => ctx.db.achievementDef.insert({ achId, title, description, sort });
-
-  // The trophy shelf, ordered as the story unfolds: crash → scavenge → research →
-  // build → power → automate → fuel → assemble → escape. Each description is a
-  // beat in that arc, not a dry "did X" line. The first is the inciting incident,
-  // not a reward: it fires the instant a board is dealt (keyed on the Survivor),
-  // so the story opens with a line of its own before the player has done anything.
-  achievement(
-    "crash",
-    "Crash Landing",
-    "Your ship is scattered across the regolith and you're the only thing still moving. No rescue is coming - the only way off this rock is the one you build. So get to work.",
-    0,
-  );
-  achievement(
-    "prospector",
-    "Prospector",
-    "You claw the first regolith from the lunar dust. It isn't much — but the moon has materials, and that's where it starts.",
-    1,
-  );
-  achievement(
-    "salvage_printer",
-    "Spare Parts",
-    "You manage to salvage a working printer from the wreckage. Now you can make tools, and that could give you a fighting chance...",
-    2,
-  );
-  achievement(
-    "salvage_workshop",
-    "A Fighting Chance",
-    "A workshop, dragged intact from the wreck. With this, could you build your way off the moon?",
-    3,
-  );
-  achievement(
-    "wreck_exhausted",
-    "Picked Clean",
-    "You've stripped the wreck to its bones - there's nothing left to scavenge. From here, everything you build comes from your own effort and industry.",
-    4,
-  );
-  achievement(
-    "researcher",
-    "Eureka",
-    "You reverse-engineer your first blueprint. The long road home begins to take shape.",
-    5,
-  );
-  achievement(
-    "industrialist",
-    "Industrialist",
-    "Your first self-built machine stands and hums. The crash site is becoming a factory.",
-    6,
-  );
-  achievement(
-    "power_up",
-    "Let There Be Light",
-    "Power of your own, at last. The base wakes up - and the heavy machines can finally run.",
-    7,
-  );
-  achievement(
-    "automation",
-    "Hands Off",
-    "A drone to take over the grind. The work can do itself now, and your hands will be free for bigger things. But one drone may not be enough...",
-    8,
-  );
-  achievement(
-    "chemist",
-    "Rocket Fuel",
-    "The first fuel is refined - the slowest, hardest step on the whole moon. The rocket will drink every drop.",
-    9,
-  );
-  achievement(
-    "launch_ready",
-    "All Systems Go",
-    "Engine, hull, avionics, life support, heat shield - every subsystem built. The rocket is whole and waiting.",
-    10,
-  );
-  achievement(
-    "escape",
-    "Escape the Moon",
-    "Ignition. The wreck and the grey dust fall away beneath you. You're going home.",
-    11,
-  );
-}
-
-export const init = spacetimedb.init((ctx) => seedCatalogue(ctx));
-
-// Admin-only catalogue migration. `init` runs only on first publish, so after a
-// catalogue change a plain (data-preserving) republish leaves the old card_def /
-// slot_def rows in place. Calling this re-applies seedCatalogue idempotently —
-// the fix path for a live database without wiping anyone's game.
-export const reseedCatalogue = spacetimedb.reducer((ctx) => {
-  const { user: me } = requireCaller(ctx);
-  if (!me.isAdmin) throw new SenderError("admin only");
-  seedCatalogue(ctx);
-});
-
-// Auto-link trusted (Google) logins on connect. Connecting is permissive — any
-// principal may open a socket — but the `identity` table is the gate: only a
-// linked principal can do anything (see reducers below). Untrusted providers
-// (e.g. SpacetimeAuth CLI tokens) are NOT auto-linked; they link explicitly via
-// `bootstrap_first_admin` / a future "link account" reducer. See doc §11.
-export const onConnect = spacetimedb.clientConnected((ctx) => {
-  const jwt = ctx.senderAuth.jwt;
-
-  // Trust check: BOTH issuer and audience (issuer alone would accept a token
-  // minted for a different app by the same IdP).
-  const isGoogle =
-    jwt !== null &&
-    GOOGLE_ISSUERS.includes(jwt.issuer) &&
-    jwt.audience.includes(GOOGLE_CLIENT_ID);
-
-  const payload = jwt?.fullPayload ?? null;
-  const email = normaliseEmail(payload?.["email"]);
-  const pictureClaim = payload?.["picture"];
-  const pictureUrl =
-    typeof pictureClaim === "string" ? pictureClaim : undefined;
-  const nameClaim = payload?.["name"];
-  const displayName =
-    typeof nameClaim === "string" && nameClaim.trim().length > 0
-      ? nameClaim.trim()
-      : (email?.split("@")[0] ?? "Player");
-
-  const existing = ctx.db.identity.id.find(ctx.sender);
-
-  // Known principal → refresh ONLY provider-owned fields (email, picture).
-  // Never re-sync displayName: the human owns that once they've edited it.
-  if (existing !== null) {
-    if (!isGoogle || email === null) return;
-    const u = ctx.db.user.id.find(existing.userId);
-    if (u === null) return;
-    // Email rotation: skip the email change if that address now belongs to a
-    // DIFFERENT user (would violate the unique constraint); still refresh picture.
-    const collision = ctx.db.user.primaryEmail.find(email);
-    const nextEmail =
-      collision !== null && collision.id !== u.id ? u.primaryEmail : email;
-    ctx.db.user.id.update({
-      ...u,
-      primaryEmail: nextEmail,
-      pictureUrl: pictureUrl ?? u.pictureUrl,
+  // ── Achievements (display text) ──────────────────────────────────────────
+  // The condition that earns each one is code in content/achievements.ts, keyed
+  // by the same achId. The text + sort order lives there too (ACHIEVEMENT_DEFS);
+  // we just insert the rows here as part of the one idempotent catalogue seed.
+  for (const a of ACHIEVEMENT_DEFS)
+    ctx.db.achievementDef.insert({
+      achId: a.achId,
+      title: a.title,
+      description: a.description,
+      sort: a.sort,
     });
-    return;
-  }
-
-  // New principal. Only auto-link providers we trust to assert a verified email.
-  if (!isGoogle || email === null) return;
-
-  // Find-or-create the user by email, then attach this principal. This is what
-  // merges providers: an existing user with that email (CLI bootstrap, prior
-  // login) gets a second identity rather than forking a second human.
-  const existingUser = ctx.db.user.primaryEmail.find(email);
-  const userId =
-    existingUser?.id ??
-    ctx.db.user.insert({
-      id: 0n,
-      primaryEmail: email,
-      displayName,
-      pictureUrl,
-      isAdmin: false,
-      createdAt: ctx.timestamp,
-    }).id;
-
-  ctx.db.identity.insert({
-    id: ctx.sender,
-    userId,
-    provider: { tag: "Google" },
-    linkedAt: ctx.timestamp,
-  });
-});
-
-export const onDisconnect = spacetimedb.clientDisconnected((_ctx) => {});
-
-// Explicit linking for non-auto providers (the CLI / SpacetimeAuth path), which
-// also bootstraps the first admin. Find-or-create the same user the web login
-// resolves to (by email), link THIS principal, and flip isAdmin. One-shot: it
-// refuses once any admin exists, so it closes itself. See doc §5.
-export const bootstrapFirstAdmin = spacetimedb.reducer(
-  { email: t.string() },
-  (ctx, { email }) => {
-    for (const u of ctx.db.user.iter()) {
-      if (u.isAdmin)
-        throw new SenderError("An admin already exists; bootstrap is closed.");
-    }
-    const trimmed = normaliseEmail(email);
-    if (trimmed === null)
-      throw new SenderError("requires the human's primary email.");
-
-    const target =
-      ctx.db.user.primaryEmail.find(trimmed) ??
-      ctx.db.user.insert({
-        id: 0n,
-        primaryEmail: trimmed,
-        displayName: trimmed.split("@")[0] ?? trimmed,
-        pictureUrl: undefined,
-        isAdmin: false,
-        createdAt: ctx.timestamp,
-      });
-
-    const existing = ctx.db.identity.id.find(ctx.sender);
-    if (existing === null) {
-      ctx.db.identity.insert({
-        id: ctx.sender,
-        userId: target.id,
-        provider: { tag: "Spacetime" },
-        linkedAt: ctx.timestamp,
-      });
-    } else if (existing.userId !== target.id) {
-      throw new SenderError(
-        "This identity is already linked to a different user.",
-      );
-    }
-
-    ctx.db.user.id.update({ ...target, isAdmin: true });
-  },
-);
+}

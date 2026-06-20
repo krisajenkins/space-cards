@@ -157,7 +157,8 @@ is the unambiguous output selector — no fragile count-matching.
 > Assembler before the electronics + chemistry chain, etc. — so the game stays
 > always-winnable while the tree *unfurls through play* instead of sitting open
 > from turn one. Research auto-picks the lowest-priority undiscovered eligible
-> blueprint (`researchTarget` in `resolvers.ts`, table `RESEARCH_TREE`); a
+> blueprint (`researchTarget` in `engine/resolvers.ts`, table `RESEARCH_TREE` in
+> `content/recipes.ts`); a
 > per-card *choice* of what to research is a natural future refinement. This is
 > the "reverse-engineering" addition §8 #6 anticipated, leaning on the card-history
 > view exactly as planned.
@@ -333,7 +334,7 @@ without touching the engine.
 ## 8. Open questions / deferred
 
 1. **~~Wreck finiteness.~~ RESOLVED — the Wreck holds a fixed manifest.** It carries
-   an authored list of contents (`WRECK_CONTENTS` in `resolvers.ts`) — the Printer
+   an authored list of contents (`WRECK_CONTENTS` in `content/recipes.ts`) — the Printer
    and Workshop (the only copies you'll get, since they're no longer dealt) wrapped
    in a finite run of Scrap and Salvage — handed out one item per scavenge, in order.
    When the list runs dry the Wreck `become`s an inert **Exhausted Wreck** husk. The
@@ -357,8 +358,10 @@ without touching the engine.
    no ongoing Power/parts cost. Simpler and friendlier; the tension lives in
    *building* the automation, not in feeding it.
 5. **~~Concrete recipe table.~~ RESOLVED — built.** Durations live in
-   `constants.ts`; output caps, holes, and `ready`-hook predicates in
-   `lifecycle.ts` + `resolvers.ts`. Construction is the Workshop reading a
+   `platform/constants.ts`; the recipe DATA (builds, subsystems, research tree,
+   wreck manifest) in `content/recipes.ts`; card/hole authoring in
+   `content/catalogue.ts`; and the `ready`-hook predicates in
+   `engine/resolvers.ts`. Construction is the Workshop reading a
    Blueprint's `defId` (a clean selector), not the count-matched Lab originally
    sketched — see §3 Gate 2.
 6. **~~Build order / unlock gating.~~ RESOLVED — the resource graph gates it.**

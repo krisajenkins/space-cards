@@ -100,7 +100,7 @@ function outputsFor(verbId: bigint): Card[] {
 // ── Card footprints (mirror of the server's max-size estimate) ───────────────
 // The server reserves space for each card's FULLEST state (every hole shown, the
 // output tray full) so the layout never reshuffles as trays fill — see
-// docs/LAYOUT.md and spacetimedb/src/layout.ts `footprint()`. The zoom-fit bbox
+// docs/LAYOUT.md and spacetimedb/src/engine/layout.ts `footprint()`. The zoom-fit bbox
 // must reserve the same maximal box, or the camera would clip a card the moment
 // its tray grows. This is a faithful port of that server formula (board-space px).
 const TOKEN_W = 130;

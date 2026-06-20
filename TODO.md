@@ -148,11 +148,26 @@ are measured against `contentEl.getBoundingClientRect()` (which folds in the liv
 transform) and divided by the live computed scale, so drops land under the cursor
 even mid-transition.
 
-# [ ] Refactor namespaces
+# [x] Refactor namespaces
 
 We need to rearrange the codebase so that code is in more meaningful places. For example, at the moment, how do you find where achievements are defined? You have to know to look in `lifecycle.ts`. You could never guess that. Similarly, it makes sense for some resolvers to be in `resolvers.ts`, but you'd never guess the initial contents of the Wreck live their too.
 
 This needs an audit of what's currently where, and some thought about what the taxonomy _should_ be.
+
+DONE. The server module is now grouped into **three folders by what the thing
+_is_**: `content/` (authoring + data — `catalogue.ts` is where cards are defined,
+`recipes.ts` holds the build/subsystem/research/Wreck data, `achievements.ts`
+holds both the milestone text and its earning conditions), `engine/` (mechanism —
+`engine.ts`, `resolvers.ts`, `layout.ts`), and `platform/` (the SpacetimeDB
+surface + infra — `schema.ts`, `reducers.ts`, `views.ts`, `graph.ts`,
+`lifecycle.ts`, `auth.ts`, `constants.ts`, `types.ts`). `index.ts` stays the
+aggregator. The two buried things the TODO named — achievement text (was in
+`lifecycle.ts`) and the Wreck's contents (was in `resolvers.ts`) — now live where
+you'd guess. **Zero wire-surface change**: reducer/table/view/column names are
+untouched, proven by regenerated bindings being semantically identical; the module
+type-checks clean (`tsc -p spacetimedb/tsconfig.json`), publishes with an empty
+migration plan, and the client checks + builds. CLAUDE.md / docs file-location
+references updated.
 
 # [ ] A few rule updates
 
