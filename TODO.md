@@ -169,10 +169,18 @@ type-checks clean (`tsc -p spacetimedb/tsconfig.json`), publishes with an empty
 migration plan, and the client checks + builds. CLAUDE.md / docs file-location
 references updated.
 
-# [ ] A few rule updates
+# [x] A few rule updates
 
-- [ ] You shouldn't be able to research anything until you have a workshop. It's frustrating to have the blueprint and no way of using it.
-- [ ] Let's start the Survivor as containing 2 Effort.
+- [x] You shouldn't be able to research anything until you have a workshop. It's frustrating to have the blueprint and no way of using it.
+- [x] Let's start the Survivor as containing 2 Effort.
+
+DONE. (1) The `research` resolver's `ready` hook now also requires
+`boardHas(ctx, boardId, "workshop")` (and `resolve` short-circuits to `NOOP`
+without one), so Research stays idle — Effort un-spent — until you've salvaged a
+Workshop to build at; `tally` already re-nudges the idle bench when the Workshop
+appears. (2) `newGame` seeds two Effort into the Survivor's output tray
+(`spawnOutput(... "effort", survivor.id)` ×2), so a fresh board opens with 2
+Effort ready. No schema/wire change.
 
 # [ ] The Workshop should accept a Mk I drone, not just Effort.
 

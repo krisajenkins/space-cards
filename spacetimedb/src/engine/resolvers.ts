@@ -464,10 +464,17 @@ export const RESOLVERS: Record<string, Resolver> = {
   // reads your card history). `ready` keeps it idle when nothing's left to learn,
   // so Effort is never spent for nothing. One blueprint per crank (Effort is no
   // drone → no re-fire), which paces discovery against your scarce early labour.
+  // It also stays idle until the board has a Workshop: a blueprint is useless with
+  // nothing to BUILD it at, so we don't spend the worker earning one you can't use
+  // (the Workshop is salvaged from the Wreck — see wreckDrop). Same idle/ready
+  // pattern as "nothing left to learn", so the Effort is never consumed when blocked.
   research: {
     duration: () => RESEARCH,
-    ready: (ctx, _holes, verb) => researchTarget(ctx, verb.boardId) !== null,
+    ready: (ctx, _holes, verb) =>
+      boardHas(ctx, verb.boardId, "workshop") &&
+      researchTarget(ctx, verb.boardId) !== null,
     resolve: (ctx, holes, verb) => {
+      if (!boardHas(ctx, verb.boardId, "workshop")) return NOOP;
       const target = researchTarget(ctx, verb.boardId);
       if (!target) return NOOP;
       return {

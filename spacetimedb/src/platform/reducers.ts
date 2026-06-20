@@ -4,6 +4,7 @@ import {
   holeCards,
   maybeAutostart,
   spawnCard,
+  spawnOutput,
   tryBeginRun,
 } from "../engine/engine";
 import { relayout } from "../engine/layout";
@@ -73,10 +74,17 @@ export const newGame = spacetimedb.reducer((ctx) => {
   // and the Research bench (earns blueprints). The Printer and Workshop are NOT
   // dealt — you salvage them from the Wreck (resolvers.ts, wreckDrop). Rough
   // coordinates — relayout tidies them below.
-  spawnCard(ctx, b.id, "survivor", 40, 40);
+  const survivor = spawnCard(ctx, b.id, "survivor", 40, 40);
   spawnCard(ctx, b.id, "regolith_field", 540, 40);
   spawnCard(ctx, b.id, "wreck", 300, 40);
   spawnCard(ctx, b.id, "research", 40, 340);
+
+  // Hand the player two Effort to start: seed them into the Survivor's output
+  // tray (produced-but-uncollected, exactly as a normal Survivor cycle leaves
+  // them — each Effort is its own card row, there is no quantity). The board
+  // opens with 2 Effort sitting under the Survivor, ready to crank a station.
+  spawnOutput(ctx, b.id, "effort", survivor.id);
+  spawnOutput(ctx, b.id, "effort", survivor.id);
 
   // Tidy the deal: the hand-placed coordinates above are rough; let the
   // size-aware layout space everything cleanly (and account for the stations'
