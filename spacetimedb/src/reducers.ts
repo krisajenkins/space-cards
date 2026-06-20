@@ -69,9 +69,9 @@ export const newGame = spacetimedb.reducer((ctx) => {
   // dealt — you salvage them from the Wreck (resolvers.ts, wreckDrop). Rough
   // coordinates — relayout tidies them below.
   spawnCard(ctx, b.id, "survivor", 40, 40);
-  spawnCard(ctx, b.id, "regolith_field", 300, 40);
-  spawnCard(ctx, b.id, "wreck", 560, 40);
-  spawnCard(ctx, b.id, "research", 300, 340);
+  spawnCard(ctx, b.id, "regolith_field", 540, 40);
+  spawnCard(ctx, b.id, "wreck", 300, 40);
+  spawnCard(ctx, b.id, "research", 40, 340);
 
   // Tidy the deal: the hand-placed coordinates above are rough; let the
   // size-aware layout space everything cleanly (and account for the stations'
