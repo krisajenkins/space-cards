@@ -101,6 +101,26 @@ spacetime logs
 2025-01-13T12:00:00.000000Z  INFO: Hello, World!
 ```
 
+## Grant yourself admin (progression tree)
+
+Admin-only tools — chiefly the **Tree** pill in the top bar, which opens the
+progression-graph visualiser — are gated on your user's `is_admin` flag. There
+is no auto-admin on connect: the first admin is granted by a one-shot
+`bootstrap_first_admin` reducer that refuses once any admin exists.
+
+After signing in once (so your user row exists), grant yourself admin with the
+email you signed in as:
+
+```bash
+spacetime call spacecards --server local bootstrap_first_admin '"you@example.com"'
+
+# Verify (note the quoted "user" — it's a reserved word):
+spacetime sql spacecards --server local 'SELECT id, primary_email, is_admin FROM "user"'
+```
+
+`is_admin` lives on the **user** row, so the change pushes live through
+`me_view` and the Tree pill appears without a reload.
+
 ## Next steps
 
 - Read the [TypeScript SDK Reference](https://spacetimedb.com/docs/intro/core-concepts/clients/typescript-reference) for detailed API docs
