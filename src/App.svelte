@@ -5,6 +5,7 @@ import SignIn from "./lib/SignIn.svelte";
 import Board from "./lib/Board.svelte";
 import Achievements from "./lib/Achievements.svelte";
 import About from "./lib/About.svelte";
+import ProgressionTree from "./lib/ProgressionTree.svelte";
 
 const conn = useSpacetimeDB();
 
@@ -14,6 +15,12 @@ const [boards, boardsReady] = useTable(tables.myBoards);
 const newGame = useReducer(reducers.newGame);
 
 const signedIn = $derived($meReady && $me.length > 0);
+// Admin-only: the progression-tree visualiser. The `me_view` carries the
+// caller's isAdmin flag (same signal SignIn uses for its badge); we mirror it
+// here to gate the topbar toggle. The progression_* views are public, but only
+// an admin gets the surface to open them.
+const isAdmin = $derived($me[0]?.isAdmin ?? false);
+let treeOpen = $state(false);
 // v1: a player has exactly one game — their own. We never list boards; we drop
 // straight into the first (and only) one. The schema permits more; the UI does
 // not. A brand-new player has none yet, so we offer a single "Begin" instead.
@@ -52,10 +59,23 @@ const board = $derived($boards[0]);
         <span class="brand-name">Space Cards</span>
       </div>
       <div class="topbar-right">
+        {#if isAdmin}
+          <button
+            class="tree-trigger"
+            title="Progression tree (admin)"
+            onclick={() => (treeOpen = true)}
+          >
+            Tree
+          </button>
+        {/if}
         <About />
         <SignIn />
       </div>
     </header>
+
+    {#if isAdmin && treeOpen}
+      <ProgressionTree onClose={() => (treeOpen = false)} />
+    {/if}
 
     <main class="stage">
       <Achievements />
@@ -228,6 +248,27 @@ const board = $derived($boards[0]);
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
+}
+
+/* The admin-only progression-tree toggle, styled to match About's pill. */
+.tree-trigger {
+  appearance: none;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  background: rgba(20, 26, 46, 0.7);
+  color: var(--ink-soft);
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+.tree-trigger:hover {
+  color: var(--brass-bright);
+  border-color: rgba(201, 214, 255, 0.25);
 }
 
 .begin {

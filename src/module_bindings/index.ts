@@ -56,6 +56,8 @@ import MyCardHistoryRow from "./my_card_history_table";
 import MyCardsRow from "./my_cards_table";
 import MyPlayersRow from "./my_players_table";
 import MySituationsRow from "./my_situations_table";
+import ProgressionEdgesRow from "./progression_edges_table";
+import ProgressionNodesRow from "./progression_nodes_table";
 import SlotDefRow from "./slot_def_table";
 
 /** Type-only namespace exports for generated type groups. */
@@ -169,6 +171,22 @@ const tablesSchema = __schema({
       constraints: [],
     },
     MySituationsRow,
+  ),
+  progressionEdges: __table(
+    {
+      name: "progression_edges",
+      indexes: [],
+      constraints: [],
+    },
+    ProgressionEdgesRow,
+  ),
+  progressionNodes: __table(
+    {
+      name: "progression_nodes",
+      indexes: [],
+      constraints: [],
+    },
+    ProgressionNodesRow,
   ),
 });
 

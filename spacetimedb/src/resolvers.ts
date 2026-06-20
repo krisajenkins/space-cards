@@ -121,8 +121,8 @@ function poweredOne(dur: bigint, inputCat: string, output: string): Resolver {
 // manual, not a one-shot. The Solar Array is kept for the same reason: Power is
 // the spine of the whole game, you scale it by building more arrays, so its
 // manual stays permanent. Other machine blueprints are one-and-done.
-type Build = { output: string; cost: number; keep?: boolean }; // cost = Components consumed
-const BUILDS: Record<string, Build> = {
+export type Build = { output: string; cost: number; keep?: boolean }; // cost = Components consumed
+export const BUILDS: Record<string, Build> = {
   // Machines
   blueprint_solar: { output: "solar_array", cost: 2, keep: true },
   blueprint_refinery: { output: "refinery", cost: 3 },
@@ -147,8 +147,8 @@ const BUILDS: Record<string, Build> = {
 // `ready` hook): load the ingredients for the subsystem you want. Checked
 // most-specific-first so an overlapping load (e.g. 5 components) resolves
 // deterministically. Every recipe also costs one Power (handled in resolve).
-type Recipe = { output: string; need: Record<string, number> };
-const SUBSYSTEMS: Recipe[] = [
+export type Recipe = { output: string; need: Record<string, number> };
+export const SUBSYSTEMS: Recipe[] = [
   { output: "life_support", need: { component: 2, circuit: 1, water: 1 } },
   { output: "heat_shield", need: { component: 3, glass: 2 } },
   { output: "avionics", need: { circuit: 4 } },
@@ -174,8 +174,8 @@ const recipeSatisfied = (ctx: Ctx, holes: SlottedCard[], r: Recipe) =>
 //     work you've outgrown" rhythm.
 // The needs are CATEGORIES, summed over every defId in the category (so "raw"
 // counts Regolith + Scrap, "component" counts Salvage too). Easy to re-tune.
-type Research = { target: string; need: Record<string, number> };
-const RESEARCH_TREE: Research[] = [
+export type Research = { target: string; need: Record<string, number> };
+export const RESEARCH_TREE: Research[] = [
   // Automate gathering FIRST. Per §2 the reward is retiring the chore you're
   // sick of doing by hand — and a Mk I drone (gatherers + Printer) is the first
   // genuinely useful thing to unlock, well before you need Power. So drone_1
@@ -344,7 +344,7 @@ function boardHas(ctx: Ctx, boardId: bigint, defId: string): boolean {
 // run of Scrap and Salvage. Drawn front-to-back, so the opening ramps the same
 // every game — retune by editing this list. When it's spent the Wreck is picked
 // clean: wreckDrop returns null and the resolver collapses it into a husk.
-const WRECK_CONTENTS = [
+export const WRECK_CONTENTS = [
   "scrap",
   "salvage",
   "printer", // make Components by hand

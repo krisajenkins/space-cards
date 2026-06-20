@@ -118,11 +118,20 @@ both views iterate-and-filter instead.)
 
 # [x] We need an About button and popup
 
-# [ ] We need a way for an admin to visualise the whole progression tree.
+# [x] We need a way for an admin to visualise the whole progression tree.
 
 That's the only way we're going to design this in a satisfying way without
 playing through the whole game a million times. This would be easy if all our
 recipes were data... 🤔
+
+DONE. Recipe maps in `resolvers.ts` are now exported; `graph.ts` walks them
+(plus the live `card_def`/`slot_def` catalogue) into a `{nodes, edges}` crafting
+graph, surfaced via two public anonymous views (`progression_nodes`,
+`progression_edges`). `ProgressionTree.svelte` renders it as a read-only,
+pan/zoom layered-DAG node-link diagram (pure-TS layout, no new dep; edges
+coloured by relation kind with legend toggles), opened from an admin-only "Tree"
+pill in the topbar (gated on `me_view.isAdmin`). Game behaviour is unchanged —
+the visualiser only reads.
 
 # [ ] Zoom-to-Fit
 

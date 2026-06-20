@@ -10,6 +10,7 @@ import spacetimedb, {
 import { MeRow, MyAchievementRow } from "./types";
 import type { Board, BoardMember, User, Card, Situation } from "./types";
 import { lookupCaller } from "./auth";
+import { GraphNode, GraphEdge, buildProgressionGraph } from "./graph";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Views: the ONLY way clients read game state. Each `my_*` view resolves the
@@ -162,6 +163,28 @@ export const myAchievements = spacetimedb.view(
         };
       });
   },
+);
+
+// The whole progression tree — every card_def as a node, every recipe relation
+// as an edge — computed from the catalogue + the exported recipe maps (graph.ts).
+// It's catalogue-level data: the same for every caller and derived from public
+// tables (card_def / slot_def) plus authored constants, so these are ANONYMOUS,
+// PUBLIC views — exactly like card_def / slot_def. Read-only; a pure projection.
+// The CLIENT gates rendering them to admins (a visualiser surface), but the data
+// itself is no more sensitive than the public catalogue it's built from. Split
+// into two views (nodes / edges) — a single object-of-two-arrays view would have
+// to nest named row types, which the module's type registry rejects as a
+// duplicate-name clash; two flat row arrays sidestep that and read just as well.
+export const progressionNodes = spacetimedb.anonymousView(
+  { name: "progression_nodes", public: true },
+  t.array(GraphNode),
+  (ctx) => buildProgressionGraph(ctx).nodes,
+);
+
+export const progressionEdges = spacetimedb.anonymousView(
+  { name: "progression_edges", public: true },
+  t.array(GraphEdge),
+  (ctx) => buildProgressionGraph(ctx).edges,
 );
 
 export const mySituations = spacetimedb.view(

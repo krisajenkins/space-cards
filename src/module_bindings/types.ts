@@ -74,6 +74,23 @@ export const CardHistory = __t.object("CardHistory", {
 });
 export type CardHistory = __Infer<typeof CardHistory>;
 
+export const GraphEdge = __t.object("GraphEdge", {
+  from: __t.string(),
+  to: __t.string(),
+  kind: __t.string(),
+  label: __t.string(),
+});
+export type GraphEdge = __Infer<typeof GraphEdge>;
+
+export const GraphNode = __t.object("GraphNode", {
+  defId: __t.string(),
+  name: __t.string(),
+  category: __t.string(),
+  isVerb: __t.bool(),
+  droneLevel: __t.u32(),
+});
+export type GraphNode = __Infer<typeof GraphNode>;
+
 export const Identity = __t.object("Identity", {
   id: __t.identity(),
   userId: __t.u64(),
@@ -160,6 +177,12 @@ export const Output = __t.object("Output", {
   verbCardId: __t.u64(),
 });
 export type Output = __Infer<typeof Output>;
+
+export const ProgressionEdges = __t.object("ProgressionEdges", {});
+export type ProgressionEdges = __Infer<typeof ProgressionEdges>;
+
+export const ProgressionNodes = __t.object("ProgressionNodes", {});
+export type ProgressionNodes = __Infer<typeof ProgressionNodes>;
 
 export const Situation = __t.object("Situation", {
   cardId: __t.u64(),
