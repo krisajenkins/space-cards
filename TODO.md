@@ -124,13 +124,6 @@ That's the only way we're going to design this in a satisfying way without
 playing through the whole game a million times. This would be easy if all our
 recipes were data... 🤔
 
-# [ ] We need sound effects.
-
-There should be a gentle whirring whenever timers are running, a ping whenver
-one completes, and a jingle when you get an achievement.
-
-And that also means we need a mute button in the top bar.
-
 # [ ] Zoom-to-Fit
 
 The card tableaux often spills over the page. We need zoom-to-fit on the local view, whenever a card appears/changes position/changes/size/disappears.
@@ -151,6 +144,13 @@ This needs an audit of what's currently where, and some thought about what the t
 - [ ] Holes seem to be identifiers at the moment, and that doesn't quite work when the text is SOMETHING_LONG - we really wanted that space in there so we can line break cleanly. We should be using the card's display name. (I do like the fact that holes' text is shown upper-case though. Keep that, but for style reasons.)
 - [ ] Sometimes the hints should have more than one thing. Like most of the "MK1 +" labels should also have an "EFFORT" label too.
 
-# [ ] What is the order of revealed blueprints.
+# [ ] We need sound effects.
+
+There should be a gentle whirring whenever timers are running, a ping whenver
+one completes, and a jingle when you get an achievement.
+
+And that also means we need a mute button in the top bar.
+
+# [ ] What is the order of revealed blueprints?
 
 Let's talk about it. This feels like a key playthrough decision.
