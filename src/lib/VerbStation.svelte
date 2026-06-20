@@ -47,7 +47,8 @@ const inputSlots = $derived(slots.filter((s) => s.droneLevel === 0));
 const droneBay = $derived(slots.find((s) => s.droneLevel > 0));
 const bayDrone = $derived(droneBay ? slotted.get(droneBay.slotIndex) : undefined);
 // Mechanical drones top out at Mk IV; a higher requirement is a worker-only bay
-// (the choice machines), which only Effort can fill. Label bays by what they take.
+// (the Workshop & Research benches), which only Effort can fill. Label bays by
+// what they take.
 const MAX_MK = 4;
 const bayLabel = $derived(
   !droneBay

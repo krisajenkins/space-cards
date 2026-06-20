@@ -246,8 +246,10 @@ function researchTarget(ctx: Ctx, boardId: bigint): string | null {
 // one of the host's empty INPUT holes by pulling a card the host accepts from the
 // table or from any output tray — moving it straight in. Because each drone only
 // ever feeds its own host, two drones never fight over the work the way roaming
-// couriers did, and a machine with no bay (the choice machines) is never auto-
-// filled. This single behaviour subsumes the old catalyst + courier shapes.
+// couriers did. Most bays take a blind feeder; the Assembler is the one host that
+// needs intent (it picks its own recipe), so a Mk IV there runs a targeted variant
+// — see assemblerDroneResolve. This single behaviour subsumes the old catalyst +
+// courier shapes.
 // ──────────────────────────────────────────────────────────────────────────
 
 // The first card on the board this host could take in `accepts`: a loose tabletop
@@ -263,6 +265,32 @@ function firstLoot(ctx: Ctx, boardId: bigint, accepts: string[]): Card | null {
   return null;
 }
 
+// One drone move: shuttle `cardId` from wherever it sits into the host's hole at
+// `slotIndex`. `again: true` keeps the drone ticking; completeSituation's generic
+// `moves` handling does the relocation and its side-effects (un-stalling the
+// source tray, autostarting the host once the hole is filled).
+function feedMove(cardId: bigint, hostId: bigint, slotIndex: number): Effects {
+  return {
+    consume: [],
+    produce: [],
+    again: true,
+    moves: [
+      {
+        cardId,
+        to: { tag: "slotted", value: { verbCardId: hostId, slotIndex } },
+      },
+    ],
+  };
+}
+
+// The host's currently-slotted cards (its filled holes + the drone in its bay).
+function hostHoles(ctx: Ctx, hostId: bigint, boardId: bigint): SlottedCard[] {
+  return [...ctx.db.card.boardId.filter(boardId)].filter(
+    (c): c is SlottedCard =>
+      c.location.tag === "slotted" && c.location.value.verbCardId === hostId,
+  );
+}
+
 // One service tick for a drone (`verb`) sitting in some host's bay: find the
 // host's first empty input hole and a card to drop into it. The actual relocation
 // + its side-effects (un-stalling the source tray, autostarting the host) are run
@@ -276,14 +304,15 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
   const host = ctx.db.card.id.find(verb.location.value.verbCardId);
   if (!host || host.location.tag !== "tabletop") return idle;
 
+  // The Assembler is a CHOICE machine: a blind feed would load whatever's lying
+  // around and build a random (or already-owned) subsystem. A Mk IV drone there
+  // instead targets the subsystems we still need — see assemblerDroneResolve.
+  if (host.defId === "assembler") return assemblerDroneResolve(ctx, host);
+
   const filled = new Set(
-    [...ctx.db.card.boardId.filter(host.boardId)]
-      .filter(
-        (c) =>
-          c.location.tag === "slotted" &&
-          c.location.value.verbCardId === host.id,
-      )
-      .map((c) => (c.location.value as { slotIndex: number }).slotIndex),
+    hostHoles(ctx, host.id, host.boardId).map(
+      (c) => c.location.value.slotIndex,
+    ),
   );
   // Input holes only (droneLevel 0); never the bay itself.
   const slots = [...ctx.db.slotDef.defId.filter(host.defId)]
@@ -294,22 +323,68 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
     if (filled.has(sl.slotIndex)) continue;
     const loot = firstLoot(ctx, host.boardId, sl.accepts);
     if (!loot) continue;
-    return {
-      consume: [],
-      produce: [],
-      again: true,
-      moves: [
-        {
-          cardId: loot.id,
-          to: {
-            tag: "slotted",
-            value: { verbCardId: host.id, slotIndex: sl.slotIndex },
-          },
-        },
-      ],
-    };
+    return feedMove(loot.id, host.id, sl.slotIndex);
   }
   return tick; // nothing to feed right now — keep watching
+}
+
+// Does the board already hold a card of `defId` (anywhere — table, tray, or
+// slotted)? Used to decide which rocket subsystems the Assembler drone still
+// owes us: the Rocket wants exactly one of each.
+function boardHas(ctx: Ctx, boardId: bigint, defId: string): boolean {
+  for (const c of ctx.db.card.boardId.filter(boardId))
+    if (c.defId === defId) return true;
+  return false;
+}
+
+// The next subsystem a Mk IV Assembler drone should build: the first recipe whose
+// output we don't already have. Null once we hold all five (the drone then idles).
+function nextSubsystem(ctx: Ctx, boardId: bigint): Recipe | null {
+  for (const r of SUBSYSTEMS) if (!boardHas(ctx, boardId, r.output)) return r;
+  return null;
+}
+
+// A Mk IV drone in the Assembler's bay. Unlike a generic feeder it can't just
+// shovel parts in — the Assembler picks its recipe from whatever's loaded, so a
+// blind drone would build duplicates or whatever happens to match first. Instead
+// it chooses a subsystem we don't have yet and loads EXACTLY that recipe (plus
+// Power), one card per tick; the Assembler's most-specific-first matcher then
+// resolves to precisely that part. Goes quiet (an idle heartbeat) once the board
+// holds all five subsystems, and picks back up if one is later spent.
+function assemblerDroneResolve(ctx: Ctx, host: Card): Effects {
+  // Like every bayed drone, never stop the heartbeat while we have a host — return
+  // `tick` (again: true) when there's nothing to do, so the drone resumes the
+  // instant a subsystem is spent (e.g. flown into the Rocket) and needs rebuilding.
+  const tick: Effects = { consume: [], produce: [], again: true };
+  const holes = hostHoles(ctx, host.id, host.boardId);
+  const filled = new Set(holes.map((c) => c.location.value.slotIndex));
+  const slots = [...ctx.db.slotDef.defId.filter(host.defId)]
+    .filter((s) => s.droneLevel === 0)
+    .sort((a, b) => a.slotIndex - b.slotIndex);
+  const feedInto = (cat: string): Effects | null => {
+    const sl = slots.find(
+      (s) => !filled.has(s.slotIndex) && s.accepts.includes(cat),
+    );
+    if (!sl) return null;
+    const loot = firstLoot(ctx, host.boardId, sl.accepts);
+    return loot ? feedMove(loot.id, host.id, sl.slotIndex) : null;
+  };
+
+  // Power first — the Assembler stalls without it (and every recipe needs one).
+  if (!hasPower(holes)) return feedInto("power") ?? tick;
+
+  const target = nextSubsystem(ctx, host.boardId);
+  if (!target) return tick; // we already hold all five subsystems — keep watching
+
+  // Top each recipe category up to its required count, one card per tick. We feed
+  // ONLY the categories this recipe lists, so the holes never satisfy a different
+  // (more-specific) recipe by accident.
+  for (const [cat, n] of Object.entries(target.need)) {
+    if (count(ctx, holes, cat) >= n) continue;
+    const move = feedInto(cat);
+    if (move) return move;
+  }
+  return tick; // recipe fully loaded (or nothing to fetch) — let the Assembler fire
 }
 
 // ──────────────────────────────────────────────────────────────────────────

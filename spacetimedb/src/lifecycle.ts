@@ -71,8 +71,10 @@ function seedCatalogue(ctx: Ctx) {
     });
   // A drone slot (rendered top-right of the card): takes any drone of >= minLevel.
   // It is optional and is NOT an input the verb consumes — the slotted drone's job
-  // is to feed the verb's OTHER (input) holes. Choice machines (Workshop,
-  // Assembler) deliberately get no drone slot, so a drone can never force a recipe.
+  // is to feed the verb's OTHER (input) holes. The Workshop & Research benches get
+  // a WORKER-only bay (no mechanical Mk qualifies), so a drone can never force a
+  // build/research choice; the Assembler is the exception (Mk IV, but it feeds with
+  // intent — see assemblerDroneResolve).
   const droneSlot = (defId: string, slotIndex: number, minLevel: number) =>
     slot(defId, slotIndex, ["drone"], false, minLevel);
   // A run of optional inbox holes accepting one category (a drainable queue).
@@ -92,9 +94,9 @@ function seedCatalogue(ctx: Ctx) {
   // Effort IS a drone — the universal worker. It's the labour every non-emitter
   // machine needs in its bay to run: an inert worker spent one cycle at a time
   // (you, by hand), the manual counterpart to a reusable mechanical drone. Its
-  // WORKER-level fits any bay (it's >= every machine's required Mk), and the two
-  // choice machines use a WORKER-only bay so only Effort — never a mechanical
-  // drone — can crank them. See WORKER below.
+  // WORKER-level fits any bay (it's >= every machine's required Mk), and the
+  // Workshop & Research benches use a WORKER-only bay so only Effort — never a
+  // mechanical drone — can crank them. See WORKER below.
   inert("effort", "Effort", "drone", 99); // your hands; universal bay worker
   inert("power", "Power", "power"); // machine fuel (Solar Array)
   inert("regolith", "Regolith", "raw");
@@ -141,7 +143,7 @@ function seedCatalogue(ctx: Ctx) {
   verb("regolith_field", "Regolith Field", "station", 5);
   verb("wreck", "Wreck", "station", 5);
   verb("printer", "Printer", "station", 5); // crude raw → Component
-  verb("workshop", "Workshop", "station", 5); // blueprint → machine/drone
+  verb("workshop", "Workshop", "station", 6); // blueprint → machine/drone
   verb("research", "Research", "station", 5); // Effort → the next earned blueprint
 
   // Power, then the power-gated production line:
@@ -176,9 +178,10 @@ function seedCatalogue(ctx: Ctx) {
   // Every non-emitter machine has a bay and needs a WORKER in it to run — Effort
   // (manual, one cycle) or a mechanical drone of sufficient Mk (continuous + it
   // fetches the machine's material inputs). Emitters (Survivor, Solar) need no
-  // worker; they self-run. The two CHOICE machines (Workshop, Assembler) use a
-  // WORKER-level bay: Effort (level 99) fits, but no buildable Mk does, so a drone
-  // can never auto-crank them and force a build/recipe choice.
+  // worker; they self-run. The Workshop & Research benches use a WORKER-level bay:
+  // Effort (level 99) fits, but no buildable Mk does, so a drone can never auto-pick
+  // a blueprint or research target. (The Assembler is also a choice machine but its
+  // Mk IV drone targets missing subsystems on purpose, so it gets a real Mk IV bay.)
   const WORKER = 99;
 
   // Gatherers (Mk I bay): no material input — the worker IS the input. Effort →
@@ -221,8 +224,8 @@ function seedCatalogue(ctx: Ctx) {
   inbox("chem_reactor", 3, 2, ["oxygen"]);
 
   // Drone bays on the power line. Mk II for the first powered tier, Mk III for the
-  // electronics + chemistry tier. The Assembler gets a WORKER-only bay (below) —
-  // it's a choice machine, so only Effort cranks it.
+  // electronics + chemistry tier. The Assembler gets a Mk IV bay (below) — it's a
+  // choice machine, but its Mk IV drone feeds with intent rather than blindly.
   droneSlot("refinery", DRONE, 2);
   droneSlot("fabricator", DRONE, 2);
   droneSlot("kiln", DRONE, 2);
@@ -239,7 +242,12 @@ function seedCatalogue(ctx: Ctx) {
   inbox("assembler", 7, 4, ["circuit"]);
   inbox("assembler", 11, 2, ["glass"]);
   slot("assembler", 13, ["water"], false);
-  droneSlot("assembler", DRONE, WORKER); // WORKER-only: you crank each assembly
+  // Mk IV bay: Effort still cranks it by hand (level 99 ≥ 4), but a Mk IV drone
+  // now also qualifies — and it doesn't blind-feed like other bays, it targets the
+  // subsystems you don't have yet and loads each recipe exactly (resolvers.ts,
+  // assemblerDroneResolve). The capstone automation: park a Mk IV here and it
+  // builds the whole rocket's worth of subsystems for you.
+  droneSlot("assembler", DRONE, 4);
 
   // Rocket: all five subsystems plus three Fuel, every hole required — it only
   // fires when the whole craft is complete.

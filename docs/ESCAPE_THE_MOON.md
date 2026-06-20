@@ -65,9 +65,12 @@ retires itself. Because a drone is bound to one host, two drones never fight ove
 work. Pure gatherers (Regolith Field, Wreck) have no material input at all — the
 worker *is* the input.
 
-The **two choice machines** (Workshop, Assembler) have a **worker-only bay**:
-Effort fits, but no buildable Mk does, so a drone can never auto-crank them — you
-always pick the blueprint / load the recipe yourself.
+The **choice machines** (Workshop, Research) have a **worker-only bay**: Effort
+fits, but no buildable Mk does, so a drone can never auto-crank them — you always
+pick the blueprint / research target yourself. The **Assembler** is the deliberate
+exception: it *is* a choice machine, but its Mk IV drone doesn't blind-feed — it
+picks a subsystem you don't have yet and loads exactly that recipe, so the choice
+is made *with intent* rather than at random (see §5.3).
 
 The Mk level is a pure **access gate**: a higher-tier machine's bay demands a
 higher Mk, so automating a new tier is a fresh build (and a fresh investment).
@@ -223,7 +226,7 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 | **Electronics Fab** | **yes** | `power` + `silicon` inbox | Mk III | Silicon + Power → Circuit |
 | **Electrolysis** | **yes** | `power` + `water` inbox | Mk III | Water + Power → Hydrogen + Oxygen |
 | **Chem Reactor** | **yes** | `power` + `hydrogen` + `oxygen` inboxes | Mk III | H₂ + O₂ + Power → Fuel (slow; the bottleneck) |
-| **Assembler** | **yes** | `power` + `component`/`circuit`/`glass`/`water` inboxes | worker | recipe choice → the Subsystem whose ingredients you loaded |
+| **Assembler** | **yes** | `power` + `component`/`circuit`/`glass`/`water` inboxes | Mk IV | recipe choice → the Subsystem whose ingredients you loaded. By hand (Effort) you load the recipe; a **Mk IV** drone instead targets the subsystems you're still missing and loads each recipe itself |
 | **Rocket** | — | `engine`+`hull`+`avionics`+`life_support`+`heat_shield`+`fuel`×3 (all required, consumed) | Mk IV | all filled + a worker → countdown → **`become` Escape**. Win |
 
 ### 5.3 Verb cards — drones (the automation layer, as built)
@@ -247,13 +250,22 @@ materials). Mk is a **pure access gate**: a bay accepts its minimum Mk or higher
 | **Drone Mk III** | `blueprint_drone_3` + 4 Components | Electronics Fab, Electrolysis, Chem Reactor |
 | **Drone Mk IV** | `blueprint_drone_4` + 5 Components | Rocket |
 
-The Mk IV is the late-game capstone: parked in the Rocket's bay it flies finished
-Subsystems and Fuel straight into the launchpad, so the final assembly runs
-itself while you watch the countdown. The two **choice** machines have a
-**worker-only bay** — the Workshop (a blueprint selects its output) and the
-Assembler (you load the ingredients for the subsystem you want) accept only
-Effort, never a mechanical drone, so automation can never blindly force a choice:
-you spend Effort to crank each build/assembly and stay in charge of what's made.
+The Mk IV is the late-game capstone, and it works **two** of the endgame's choice
+machines. Parked in the **Rocket's** bay it flies finished Subsystems and Fuel
+straight into the launchpad, so the final assembly runs itself while you watch the
+countdown. Parked in the **Assembler's** bay it becomes the subsystem factory:
+each tick it checks which of the five rocket subsystems the board doesn't have yet,
+picks the first one missing, and loads *exactly* that recipe (plus Power) into the
+Assembler's holes — never the parts for a subsystem you already hold — so the
+Assembler's most-specific-first matcher builds precisely the part you need. It
+idles once all five subsystems exist. (You can still crank it by hand with Effort,
+loading whatever recipe you like.)
+
+The remaining **choice** machines keep a **worker-only bay** — the Workshop (a
+blueprint selects its output) and the Research bench (it earns the next blueprint
+you've qualified for) accept only Effort, never a mechanical drone, so automation
+can never blindly pick a blueprint or research target: you spend Effort to crank
+each build/research step and stay in charge of *what's unlocked and made*.
 
 ---
 
@@ -285,9 +297,11 @@ Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then t
    in Electrolysis & the Chem Reactor tame the liquid/fuel logistics.*
 6. **Liftoff.** The **Assembler** builds Engine, Hull, Avionics, Life-Support and
    Heat-Shield from Components, Circuits, Glass and Water (recipe choice — load
-   for the part you want, by hand: it has no bay). Grind Fuel. Park a **Mk IV**
-   drone in the **Rocket** to fly finished subsystems + Fuel straight in; once all
-   five subsystems + three Fuel are loaded, it `become`s **Escape**. *Win.*
+   for the part you want by hand, or park a **Mk IV** drone in its bay and it
+   targets the subsystems you're missing, building one of each unattended). Grind
+   Fuel. Park another **Mk IV** drone in the **Rocket** to fly finished subsystems
+   + Fuel straight in; once all five subsystems + three Fuel are loaded, it
+   `become`s **Escape**. *Win.*
 
 ---
 
