@@ -97,7 +97,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "industrialist",
     title: "Industrialist",
     description:
-      "Your first refinery fires up - raw regolith in, pure metal out. The crash site is becoming a factory.",
+      "Your first refinery fires up - raw regolith in, pure metal out. And metal opens up possibilities...",
     sort: 8,
   },
   {
