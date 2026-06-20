@@ -274,7 +274,10 @@ each build/research step and stay in charge of *what's unlocked and made*.
 Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then the
 **automation** that retires it and unlocks the next act.
 
-1. **Crash (hands).** Survivor + Regolith Field + Wreck + Research — and *nothing
+1. **Crash (hands).** The game opens on a **distress-log toaster** ("Crash
+   Landing") — the inciting incident, awarded the instant the board is dealt, so
+   the story has an opening line before the milestone toasters take over. You start
+   with Survivor + Regolith Field + Wreck + Research — and *nothing
    else*: no resources, no blueprints, and **not yet a Printer or Workshop**. Drop
    your Effort into a machine's bay to work it, one cycle at a time. Work the
    **Wreck** first: it yields Scrap and Salvage, and digs out a **Printer** (~33%

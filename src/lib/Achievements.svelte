@@ -24,6 +24,17 @@ const toasts = $derived(
 function dismiss(id: bigint) {
   markSeen({ achievementId: id });
 }
+
+// Most milestones are trophies. Two bookend the story and get their own voice:
+// `crash` is the opening distress log (not a reward), `escape` is the win. Falls
+// back to the trophy for everything in between.
+const ICON: Record<string, string> = { crash: "☄", escape: "✦" };
+const EYEBROW: Record<string, string> = {
+  crash: "Distress log",
+  escape: "Mission complete",
+};
+const iconFor = (achId: string) => ICON[achId] ?? "🏆";
+const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
 </script>
 
 <div class="toasts" aria-live="polite">
@@ -31,12 +42,13 @@ function dismiss(id: bigint) {
     <button
       class="toast"
       class:win={t.achId === "escape"}
+      class:intro={t.achId === "crash"}
       onclick={() => dismiss(t.id)}
       title="Dismiss"
     >
-      <span class="trophy">{t.achId === "escape" ? "✦" : "🏆"}</span>
+      <span class="trophy">{iconFor(t.achId)}</span>
       <span class="body">
-        <span class="eyebrow">Achievement unlocked</span>
+        <span class="eyebrow">{eyebrowFor(t.achId)}</span>
         <span class="title">{t.title || t.achId}</span>
         {#if t.description}
           <span class="desc">{t.description}</span>
@@ -87,6 +99,17 @@ function dismiss(id: bigint) {
   box-shadow:
     0 10px 30px -8px rgba(0, 0, 0, 0.7),
     0 0 30px -4px rgba(116, 199, 214, 0.55);
+}
+/* The crash distress log: a warm ember alert, set apart from the brass trophies. */
+.toast.intro {
+  border-color: var(--ember);
+  box-shadow:
+    0 10px 30px -8px rgba(0, 0, 0, 0.7),
+    0 0 30px -4px rgba(239, 122, 82, 0.5);
+}
+.toast.intro .eyebrow,
+.toast.intro .title {
+  color: var(--ember);
 }
 .trophy {
   font-size: 1.5rem;

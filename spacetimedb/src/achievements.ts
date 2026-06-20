@@ -15,6 +15,10 @@ import type { Ctx } from "./types";
 // The Printer and Workshop are NO LONGER dealt (they're salvaged from the Wreck —
 // see wreckDrop), so they're now legitimate bases: their first tally is the moment
 // the player digs one out of the wreckage.
+//
+// The ONE deliberate exception is `crash`: the story's opening line, which we WANT
+// to fire the instant a board is dealt. It keys on the Survivor (always dealt), so
+// awardAchievements pops it on the very first tally of a new game.
 // ──────────────────────────────────────────────────────────────────────────
 export type AchievementRule = {
   id: string;
@@ -47,6 +51,8 @@ const SUBSYSTEMS = [
 const DRONES = ["drone_1", "drone_2", "drone_3", "drone_4"];
 
 export const ACHIEVEMENTS: AchievementRule[] = [
+  // The opening beat — fires at the deal (keyed on the always-dealt Survivor).
+  { id: "crash", earned: (c) => has(c, "survivor") },
   { id: "prospector", earned: (c) => has(c, "regolith") },
   // The two things you dig out of the Wreck — no longer dealt at the start, so
   // their first tally is the salvage moment.

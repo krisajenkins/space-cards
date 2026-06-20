@@ -276,66 +276,74 @@ function seedCatalogue(ctx: Ctx) {
 
   // The trophy shelf, ordered as the story unfolds: crash → scavenge → research →
   // build → power → automate → fuel → assemble → escape. Each description is a
-  // beat in that arc, not a dry "did X" line.
+  // beat in that arc, not a dry "did X" line. The first is the inciting incident,
+  // not a reward: it fires the instant a board is dealt (keyed on the Survivor),
+  // so the story opens with a line of its own before the player has done anything.
+  achievement(
+    "crash",
+    "Crash Landing",
+    "Your ship is scattered across the regolith and you're the only thing still moving. No rescue is coming - the only way off this rock is the one you build. So get to work.",
+    0,
+  );
   achievement(
     "prospector",
     "Prospector",
     "You claw the first regolith from the lunar dust. It isn't much — but the moon has materials, and that's where it starts.",
-    0,
+    1,
   );
   achievement(
     "salvage_printer",
     "Spare Parts",
     "You manage to salvage a working printer from the wreckage. Now you can make tools, and that could give you a fighting chance...",
-    1,
+    2,
   );
   achievement(
     "salvage_workshop",
     "A Fighting Chance",
     "A workshop, dragged intact from the wreck. With this, you could build your way off this moon.",
-    2,
+    3,
   );
   achievement(
     "researcher",
     "Eureka",
     "You reverse-engineer your first blueprint. The long road home begins to take shape.",
-    3,
+    4,
   );
   achievement(
     "industrialist",
     "Industrialist",
     "Your first self-built machine stands and hums. The crash site is becoming a factory.",
-    4,
+    5,
   );
   achievement(
     "power_up",
     "Let There Be Light",
-    "Power of your own, at last. The base wakes up — and the heavy machines can finally run.",
-    5,
+    "Power of your own, at last. The base wakes up - and the heavy machines can finally run.",
+    6,
   );
   achievement(
     "automation",
     "Hands Off",
     "A drone to take over the grind. The work can do itself now, and your hands will be free for bigger things. But one drone may not be enough...",
-    6,
+    7,
   );
   achievement(
     "chemist",
     "Rocket Fuel",
-    "The first fuel is refined — the slowest, hardest step on the whole moon. The rocket will drink every drop.",
-    7,
+    "The first fuel is refined - the slowest, hardest step on the whole moon. The rocket will drink every drop.",
+    8,
   );
   achievement(
     "launch_ready",
     "All Systems Go",
-    "Engine, hull, avionics, life support, heat shield — every subsystem built. The rocket is whole and waiting.",
-    8,
+    "Engine, hull, avionics, life support, heat shield - every subsystem built. The rocket is whole and waiting.",
+    9,
   );
   achievement(
     "escape",
     "Escape the Moon",
     "Ignition. The wreck and the grey dust fall away beneath you. You're going home.",
-    9,
+    10,
   );
 }
 
