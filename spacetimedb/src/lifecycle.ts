@@ -121,6 +121,11 @@ function seedCatalogue(ctx: Ctx) {
 
   inert("escape", "Escape", "endgame"); // the win token
 
+  // The picked-clean husk the Wreck collapses into once it's spent (a `become`
+  // target — see the wreck resolver). Inert and accepted by nothing: a dead monument
+  // on the table, not a resource. Its only job is to show the Wreck has run dry.
+  inert("exhausted_wreck", "Exhausted Wreck", "debris");
+
   // Blueprints — one per buildable machine/drone. Seeded as cards in newGame.
   blueprint("solar", "Solar Array");
   blueprint("refinery", "Refinery");
@@ -300,50 +305,56 @@ function seedCatalogue(ctx: Ctx) {
   achievement(
     "salvage_workshop",
     "A Fighting Chance",
-    "A workshop, dragged intact from the wreck. With this, you could build your way off this moon.",
+    "A workshop, dragged intact from the wreck. With this, could you build your way off the moon?",
     3,
+  );
+  achievement(
+    "wreck_exhausted",
+    "Picked Clean",
+    "You've stripped the wreck to its bones - there's nothing left to scavenge. From here, everything you build comes from your own effort and industry.",
+    4,
   );
   achievement(
     "researcher",
     "Eureka",
     "You reverse-engineer your first blueprint. The long road home begins to take shape.",
-    4,
+    5,
   );
   achievement(
     "industrialist",
     "Industrialist",
     "Your first self-built machine stands and hums. The crash site is becoming a factory.",
-    5,
+    6,
   );
   achievement(
     "power_up",
     "Let There Be Light",
     "Power of your own, at last. The base wakes up - and the heavy machines can finally run.",
-    6,
+    7,
   );
   achievement(
     "automation",
     "Hands Off",
     "A drone to take over the grind. The work can do itself now, and your hands will be free for bigger things. But one drone may not be enough...",
-    7,
+    8,
   );
   achievement(
     "chemist",
     "Rocket Fuel",
     "The first fuel is refined - the slowest, hardest step on the whole moon. The rocket will drink every drop.",
-    8,
+    9,
   );
   achievement(
     "launch_ready",
     "All Systems Go",
     "Engine, hull, avionics, life support, heat shield - every subsystem built. The rocket is whole and waiting.",
-    9,
+    10,
   );
   achievement(
     "escape",
     "Escape the Moon",
     "Ignition. The wreck and the grey dust fall away beneath you. You're going home.",
-    10,
+    11,
   );
 }
 

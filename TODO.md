@@ -128,3 +128,11 @@ recipes were data... 🤔
 
 There should be a gentle whirring whenever timers are running, a ping whenver
 one completes, and a jingle when you get an achievement.
+
+# [ ] Zoom-to-Fit
+
+The card tableaux often spills over the page. We need zoom-to-fit on the local view, whenever a card appears/changes position/changes/size/disappears.
+
+# [ ] A few rule updates
+
+- [ ]  You shouldn't be able to research your first drone without a workshop.

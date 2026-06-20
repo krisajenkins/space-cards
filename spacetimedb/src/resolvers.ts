@@ -338,20 +338,41 @@ function boardHas(ctx: Ctx, boardId: bigint, defId: string): boolean {
   return false;
 }
 
-// What the Wreck yields this scavenge. Before it's picked clean you can still
-// salvage a key machine from the crash — a Printer first (so you can make
-// Components by hand), then a Workshop (to build from blueprints) — at 33% each
-// while you still lack that machine. newGame no longer hands these out, so the
-// Wreck is how the opening unfolds: a gentler ramp, and a little of the "you saved
-// a few things from the wreckage" story. Otherwise the usual haul: mostly Scrap,
-// ~20% a ready-made Salvage part (which counts as a Component).
-function wreckDrop(ctx: Ctx, boardId: bigint): string {
-  if (!boardHas(ctx, boardId, "printer")) {
-    if (ctx.random() < 0.33) return "printer";
-  } else if (!boardHas(ctx, boardId, "workshop")) {
-    if (ctx.random() < 0.33) return "workshop";
-  }
-  return ctx.random() < 0.2 ? "salvage" : "scrap";
+// The Wreck's manifest — a fixed list of what the crash buried, handed out one
+// item per scavenge in this order. The Printer and Workshop are no longer dealt, so
+// the wreck is the only place they come from; they sit early, wrapped in a finite
+// run of Scrap and Salvage. Drawn front-to-back, so the opening ramps the same
+// every game — retune by editing this list. When it's spent the Wreck is picked
+// clean: wreckDrop returns null and the resolver collapses it into a husk.
+const WRECK_CONTENTS = [
+  "scrap",
+  "salvage",
+  "printer", // make Components by hand
+  "scrap",
+  "workshop", // build from blueprints
+  "salvage",
+  "scrap",
+  "salvage",
+  "scrap",
+  "scrap",
+];
+
+// Lifetime count of one defId created on this board (the full two-column key — the
+// bare-prefix form panics; see the discovered() note). Only the Wreck ever makes
+// any of its manifest cards, so the sum of these counts is exactly how many items
+// it has handed out — our cursor into WRECK_CONTENTS.
+function histDef(ctx: Ctx, boardId: bigint, defId: string): bigint {
+  const h = [...ctx.db.cardHistory.by_board_def.filter([boardId, defId])][0];
+  return h ? h.count : 0n;
+}
+
+// What the Wreck yields this scavenge — the next manifest item, or `null` once the
+// list is exhausted (the resolver then collapses it into an Exhausted Wreck husk).
+function wreckDrop(ctx: Ctx, boardId: bigint): string | null {
+  let drawn = 0;
+  for (const defId of new Set(WRECK_CONTENTS))
+    drawn += Number(histDef(ctx, boardId, defId));
+  return WRECK_CONTENTS[drawn] ?? null;
 }
 
 // The next subsystem a Mk IV Assembler drone should build: the first recipe whose
@@ -431,16 +452,48 @@ export const RESOLVERS: Record<string, Resolver> = {
     },
   },
 
-  // Wreck: the discovery node. Mostly Scrap; ~20% a Salvage (a ready-made part) —
-  // and, while you still lack them, a salvaged Printer then Workshop (wreckDrop).
-  // Effort scavenges once; a drone keeps it worked.
+  // Wreck: the discovery node, holding a fixed manifest (WRECK_CONTENTS) — Scrap,
+  // Salvage, and the only Printer + Workshop you'll get — handed out one item per
+  // scavenge in order. When the manifest is spent wreckDrop returns null and the
+  // Wreck collapses into an inert Exhausted Wreck husk (become). Effort scavenges
+  // once; a drone keeps it worked — and burns through the contents faster.
   wreck: {
     duration: () => GATHER,
     resolve: (ctx, holes, verb) => {
-      if (!theWorker(ctx, holes)) return NOOP;
+      const worker = theWorker(ctx, holes);
+      if (!worker) return NOOP;
+      const drop = wreckDrop(ctx, verb.boardId);
+      if (drop === null) {
+        // Picked clean. Free a mechanical drone from the bay before the Wreck card
+        // is replaced, or it would be left slotted into a card that no longer
+        // exists; an Effort worker is just spent (workerCost). It lands where the
+        // Wreck stood — relayout (run after the become) nudges it clear of the husk.
+        const moves =
+          workerIsDrone(ctx, holes) && verb.location.tag === "tabletop"
+            ? [
+                {
+                  cardId: worker.id,
+                  to: {
+                    tag: "tabletop" as const,
+                    value: {
+                      x: verb.location.value.x,
+                      y: verb.location.value.y,
+                    },
+                  },
+                },
+              ]
+            : undefined;
+        return {
+          consume: workerCost(ctx, holes),
+          produce: [],
+          again: false,
+          become: "exhausted_wreck",
+          moves,
+        };
+      }
       return {
         consume: workerCost(ctx, holes),
-        produce: [wreckDrop(ctx, verb.boardId)],
+        produce: [drop],
         again: workerIsDrone(ctx, holes),
       };
     },

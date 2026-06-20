@@ -86,6 +86,8 @@ const G = {
   regolith_field: `<path d="M3 19h18"/><path d="M4 19c1.5-3 3.5-5 5-5"/><path d="M13 7l5 2-2 5-5-2z"/><path d="M11 12l-3 3" stroke-linecap="round"/>`,
   // Wreck: a crashed ship, broken on the surface.
   wreck: `<path d="M3 19h18"/><path d="M5 19l3-9 6-2 3 4-2 7z"/><path d="M9 9l3 5M16 12l-5 1" stroke-linecap="round"/>`,
+  // Exhausted wreck: the same hull picked clean — a hollow, broken-open husk.
+  exhausted_wreck: `<path d="M3 19h18"/><path d="M6 19l1.5-7M18 19l-1.5-6"/><path d="M7.5 12l4-1 5 1"/><path d="M10 19v-4.5M13.5 19v-4" stroke-linecap="round"/>`,
   // Printer: a 3D-printer / fabricator nozzle laying a bead.
   printer: `<rect x="5" y="4" width="14" height="3" rx="1"/><path d="M12 7v4"/><path d="M10 11h4l-1 3h-2z"/><path d="M8 19h8M8 19l1-2M16 19l-1-2"/>`,
   // Workshop: a workbench with a wrench crossing a gear.
@@ -181,6 +183,7 @@ const BY_DEF: Record<string, Visual> = {
   survivor: { color: "var(--cat-avatar)", glyph: G.survivor },
   regolith_field: { color: "var(--cat-station)", glyph: G.regolith_field },
   wreck: { color: "var(--cat-station)", glyph: G.wreck },
+  exhausted_wreck: { color: "var(--ink-faint)", glyph: G.exhausted_wreck },
   printer: { color: "var(--cat-station)", glyph: G.printer },
   workshop: { color: "var(--cat-station)", glyph: G.workshop },
   research: { color: "var(--cat-blueprint)", glyph: G.research },
@@ -223,6 +226,7 @@ const BY_CATEGORY: Record<string, Visual> = {
   launchpad: { color: "var(--cat-launchpad)", glyph: G.rocket },
   endgame: { color: "var(--cat-escape)", glyph: G.escape },
   blueprint: { color: "var(--cat-blueprint)", glyph: G.blueprint },
+  debris: { color: "var(--ink-faint)", glyph: G.exhausted_wreck },
 };
 
 export function visualFor(defId: string, category: string): Visual {

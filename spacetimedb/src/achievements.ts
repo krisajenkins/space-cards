@@ -58,6 +58,9 @@ export const ACHIEVEMENTS: AchievementRule[] = [
   // their first tally is the salvage moment.
   { id: "salvage_printer", earned: (c) => has(c, "printer") },
   { id: "salvage_workshop", earned: (c) => has(c, "workshop") },
+  // The Wreck picked clean — its husk (exhausted_wreck) is only ever created by
+  // the Wreck running dry, so its first tally closes the scavenging story.
+  { id: "wreck_exhausted", earned: (c) => has(c, "exhausted_wreck") },
   // Any blueprint discovered — none are in the opening deal now, so the first
   // one can only come from the Research bench.
   {

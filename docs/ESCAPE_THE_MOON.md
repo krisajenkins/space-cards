@@ -215,7 +215,7 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 | **Survivor** | — | none | — | self-runs; emits 1 Effort / cycle, cap 5 |
 | **Solar Array** | — | none | — | self-runs; emits 1 Power / cycle, cap 5; build more to scale (its blueprint is *kept*, so one manual builds a whole solar farm) |
 | **Regolith Field** | — | none | Mk I | worker → Regolith (worker is the input) |
-| **Wreck** | — | none | Mk I | worker → Scrap (~80%) or Salvage (~20%); also **salvages a Printer** (33%) while you have none, then a **Workshop** (33%) while you have a Printer but no Workshop — these are no longer dealt at the start |
+| **Wreck** | — | none | Mk I | worker → the next item in its **fixed manifest** (`WRECK_CONTENTS`): the only **Printer** and **Workshop** you get (no longer dealt), early, wrapped in a finite run of **Scrap** + **Salvage**. One item per scavenge, in order; when the list is spent it `become`s an inert **Exhausted Wreck** husk |
 | **Printer** | — | `raw` inbox | Mk I | crude bootstrap: raw → Component, no power, slow |
 | **Workshop** | — | `blueprint` + `component` inbox | worker | Blueprint selects the output: + Components + an Effort worker → that machine/drone, dormant in tray |
 | **Research** | — | none | worker | an Effort worker → the next blueprint you've *earned* (machine: 1-of-each input discovered; drone: tier chore done ≥3×). Idles when there's nothing left to learn, so Effort is never spent for nothing |
@@ -280,11 +280,13 @@ Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then t
    with Survivor + Regolith Field + Wreck + Research — and *nothing
    else*: no resources, no blueprints, and **not yet a Printer or Workshop**. Drop
    your Effort into a machine's bay to work it, one cycle at a time. Work the
-   **Wreck** first: it yields Scrap and Salvage, and digs out a **Printer** (~33%
-   per scavenge) and then a **Workshop** (~33%) — the few things you save from the
-   crash — which you plant to bring to life. With the Printer you make Components
+   **Wreck** first: it holds a fixed manifest of salvage — Scrap, Salvage, and the
+   only **Printer** and **Workshop** you'll get (they're no longer dealt), early in
+   the list — which you plant to bring to life. With the Printer you make Components
    by hand (or use a Salvage, which counts as one); then **Research** your first
-   blueprint (Solar Array) and **build** it at the Workshop. *Novelty: the basic
+   blueprint (Solar Array) and **build** it at the Workshop. The Wreck is finite —
+   keep scavenging and it eventually runs dry (an Exhausted Wreck husk), so its
+   Salvage is a one-time windfall, not a tap. *Novelty: the basic
    scavenge→print→research→build loop. Goal: salvage the Printer + Workshop, get
    your first blueprint, and stand up a Solar Array.*
 2. **Power up.** Build a Solar Array at the Workshop and plant it; electrify the
@@ -330,11 +332,20 @@ without touching the engine.
 
 ## 8. Open questions / deferred
 
-1. **Wreck finiteness.** A scavenge node *should* exhaust, but the engine has no
-   counter. Options: a non-reusable Wreck producing a fixed batch; or a reusable
-   Wreck that probabilistically `become`s an "Exhausted Wreck". Deferred — v1
-   Wreck is endless. (If finite, Salvage scarcity becomes the natural mid-game
-   pacing lever via Gate 2.)
+1. **~~Wreck finiteness.~~ RESOLVED — the Wreck holds a fixed manifest.** It carries
+   an authored list of contents (`WRECK_CONTENTS` in `resolvers.ts`) — the Printer
+   and Workshop (the only copies you'll get, since they're no longer dealt) wrapped
+   in a finite run of Scrap and Salvage — handed out one item per scavenge, in order.
+   When the list runs dry the Wreck `become`s an inert **Exhausted Wreck** husk. The
+   manifest is derived state, not a new counter: only the Wreck creates those cards,
+   so the count already created (card-history) *is* the cursor into the list — the
+   same "history is the state" trick the Research bench uses. The Printer and
+   Workshop sit early in the list, so the opening always ramps the same way; the
+   Wreck can't soft-lock it (the Regolith Field's infinite raw makes it non-essential
+   once those two are out), and Salvage is now genuinely scarce — the mid-game pacing
+   lever anticipated here. Picking it clean earns the **"Picked Clean"** achievement
+   (the close of the scavenging story: from here, everything is from your own effort
+   and industry).
 2. **Day/night.** A Solar Array that pauses at "night" would add a Battery /
    Capacitor power-buffer sub-game. Tempting tension; deferred to keep Act 1
    simple.
