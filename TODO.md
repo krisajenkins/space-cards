@@ -182,7 +182,7 @@ appears. (2) `newGame` seeds two Effort into the Survivor's output tray
 (`spawnOutput(... "effort", survivor.id)` ×2), so a fresh board opens with 2
 Effort ready. No schema/wire change.
 
-# [ ] The Workshop should accept a Mk I drone, not just Effort.
+# [x] The Workshop should accept a Mk I drone, not just Effort.
 
 The Workshop currently has a worker-only bay (Effort only) specifically so a
 drone can't auto-pick a blueprint for you. Let's relax that: a **Mk I drone**
@@ -190,6 +190,15 @@ should be able to work the Workshop too — but the one thing a drone must *not*
 do is choose which blueprint you build. So the drone can provide the worker/turn
 the crank, while the blueprint choice stays the player's. (Needs a bit of design
 thought: how the choice is held when a drone, not Effort, is powering the bay.)
+
+DONE, no schema change. (1) The Workshop bay drops from WORKER-level (99,
+Effort-only) to **Mk I** — Effort still qualifies (99 ≥ 1), so this only *adds*
+Mk I+ drones. (2) The generic drone feeder (`droneResolve`) now skips any hole
+that accepts the `blueprint` category, so a drone in the Workshop bay cranks it
+and loads Components but **never grabs a blueprint** — choosing what to build
+stays the player's call. Only the Workshop has a blueprint hole, so the rule
+touches nothing else (the Assembler choice machine is handled separately). The
+hole hint now reads `MK I+ / EFFORT` for free. Research stays WORKER-only.
 
 # [x] Card hole hints need improving
 

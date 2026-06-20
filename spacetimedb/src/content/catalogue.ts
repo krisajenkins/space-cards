@@ -72,10 +72,12 @@ export function seedCatalogue(ctx: Ctx) {
     });
   // A drone slot (rendered top-right of the card): takes any drone of >= minLevel.
   // It is optional and is NOT an input the verb consumes — the slotted drone's job
-  // is to feed the verb's OTHER (input) holes. The Workshop & Research benches get
-  // a WORKER-only bay (no mechanical Mk qualifies), so a drone can never force a
-  // build/research choice; the Assembler is the exception (Mk IV, but it feeds with
-  // intent — see assemblerDroneResolve).
+  // is to feed the verb's OTHER (input) holes. The Research bench gets a WORKER-only
+  // bay (no mechanical Mk qualifies), so a drone can never force a research choice.
+  // The Workshop takes a Mk I drone (it cranks the bench and loads Components) but
+  // the drone feeder refuses to touch its blueprint hole, so choosing what to build
+  // stays a player decision (see droneResolve). The Assembler is a Mk IV choice
+  // machine that feeds with intent — see assemblerDroneResolve.
   const droneSlot = (defId: string, slotIndex: number, minLevel: number) =>
     slot(defId, slotIndex, ["drone"], false, minLevel);
   // A run of optional inbox holes accepting one category (a drainable queue).
@@ -96,8 +98,8 @@ export function seedCatalogue(ctx: Ctx) {
   // machine needs in its bay to run: an inert worker spent one cycle at a time
   // (you, by hand), the manual counterpart to a reusable mechanical drone. Its
   // WORKER-level fits any bay (it's >= every machine's required Mk), and the
-  // Workshop & Research benches use a WORKER-only bay so only Effort — never a
-  // mechanical drone — can crank them. See WORKER below.
+  // Research bench uses a WORKER-only bay so only Effort — never a mechanical drone
+  // — can crank it (its output is a research choice). See WORKER below.
   inert("effort", "Effort", "drone", 99); // your hands; universal bay worker
   inert("power", "Power", "power"); // machine fuel (Solar Array)
   inert("regolith", "Regolith", "raw");
@@ -184,10 +186,12 @@ export function seedCatalogue(ctx: Ctx) {
   // Every non-emitter machine has a bay and needs a WORKER in it to run — Effort
   // (manual, one cycle) or a mechanical drone of sufficient Mk (continuous + it
   // fetches the machine's material inputs). Emitters (Survivor, Solar) need no
-  // worker; they self-run. The Workshop & Research benches use a WORKER-level bay:
-  // Effort (level 99) fits, but no buildable Mk does, so a drone can never auto-pick
-  // a blueprint or research target. (The Assembler is also a choice machine but its
-  // Mk IV drone targets missing subsystems on purpose, so it gets a real Mk IV bay.)
+  // worker; they self-run. The Research bench uses a WORKER-level bay: Effort
+  // (level 99) fits, but no buildable Mk does, so a drone can never auto-pick a
+  // research target. The Workshop now takes a Mk I drone — but the drone feeder
+  // skips its blueprint hole (resolvers.ts), so the player still picks what to
+  // build. (The Assembler is also a choice machine but its Mk IV drone targets
+  // missing subsystems on purpose, so it gets a real Mk IV bay.)
   const WORKER = 99;
 
   // Gatherers (Mk I bay): no material input — the worker IS the input. Effort →
@@ -200,10 +204,13 @@ export function seedCatalogue(ctx: Ctx) {
   droneSlot("printer", DRONE, 1);
 
   // Workshop: a Blueprint (required) + a Component inbox deep enough for the
-  // costliest build (the Rocket needs 6) + a WORKER-only bay (Effort cranks it).
+  // costliest build (the Rocket needs 6) + a Mk I bay. A Mk I+ drone cranks the
+  // bench and feeds Components, but the feeder refuses the blueprint hole, so the
+  // player must still choose what to build (resolvers.ts, droneResolve). Effort
+  // (level 99 ≥ 1) still fits and works it by hand.
   slot("workshop", 0, ["blueprint"], true);
   inbox("workshop", 2, 6, ["component"]);
-  droneSlot("workshop", DRONE, WORKER);
+  droneSlot("workshop", DRONE, 1);
 
   // Research: no material input — Effort in the WORKER-only bay is the whole cost.
   // What it produces is decided from card history (resolvers.ts), not from holes,

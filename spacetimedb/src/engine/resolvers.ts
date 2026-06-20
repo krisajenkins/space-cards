@@ -241,9 +241,13 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
       (c) => c.location.value.slotIndex,
     ),
   );
-  // Input holes only (droneLevel 0); never the bay itself.
+  // Input holes only (droneLevel 0); never the bay itself. Also never a blueprint
+  // hole: a Mk I+ drone may crank the Workshop and load its Components, but choosing
+  // WHAT to build stays a player decision — the drone never grabs a blueprint. (The
+  // Workshop is the only machine with a blueprint hole; the Assembler choice is
+  // handled separately by assemblerDroneResolve above.)
   const slots = [...ctx.db.slotDef.defId.filter(host.defId)]
-    .filter((s) => s.droneLevel === 0)
+    .filter((s) => s.droneLevel === 0 && !s.accepts.includes("blueprint"))
     .sort((a, b) => a.slotIndex - b.slotIndex);
 
   for (const sl of slots) {
@@ -429,32 +433,35 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Workshop: hand-cranked constructor. Blueprint (selects the output) + enough
-  // Components + an Effort worker in its bay → the machine/drone, dormant in the
-  // tray to be planted. The bay is WORKER-only, so a drone can't auto-build — you
-  // always pick the blueprint. Cranked by Effort (not Power): works from turn one.
+  // Components + a worker in its bay → the machine/drone, dormant in the tray to
+  // be planted. The worker is Effort OR a Mk I+ drone (theWorker), but the drone
+  // can never PICK the blueprint — the feeder skips blueprint holes, so you always
+  // choose what to build. Cranked, not powered: works from turn one.
   workshop: {
     duration: () => BUILD,
     ready: (ctx, holes) => {
       const bp = holes.find((h) => catOf(ctx, h) === "blueprint");
-      const effort = holes.find((h) => h.defId === "effort");
-      if (!bp || !effort) return false;
+      const worker = theWorker(ctx, holes);
+      if (!bp || !worker) return false;
       const recipe = BUILDS[bp.defId];
       return !!recipe && count(ctx, holes, "component") >= recipe.cost;
     },
     resolve: (ctx, holes) => {
       const bp = holes.find((h) => catOf(ctx, h) === "blueprint");
-      const effort = holes.find((h) => h.defId === "effort");
-      if (!bp || !effort) return NOOP;
+      const worker = theWorker(ctx, holes);
+      if (!bp || !worker) return NOOP;
       const recipe = BUILDS[bp.defId];
       if (!recipe) return NOOP;
       const comps = take(ctx, holes, "component", recipe.cost);
       if (comps.length < recipe.cost) return NOOP;
-      // A kept blueprint is consumed-and-reproduced: it lands back in the tray
-      // for the player to re-slot, so the Workshop frees up for the next build.
+      // A kept blueprint is consumed-and-reproduced: it lands in the tray for the
+      // player to re-slot, so the Workshop frees up for the next build. Effort is
+      // spent (workerCost); a drone persists and re-fires — but with the blueprint
+      // now gone from its hole it idles until you slot the next one.
       return {
-        consume: [bp.id, effort.id, ...comps],
+        consume: [bp.id, ...workerCost(ctx, holes), ...comps],
         produce: recipe.keep ? [recipe.output, bp.defId] : [recipe.output],
-        again: false,
+        again: workerIsDrone(ctx, holes),
       };
     },
   },
