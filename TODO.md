@@ -129,10 +129,28 @@ recipes were data... 🤔
 There should be a gentle whirring whenever timers are running, a ping whenver
 one completes, and a jingle when you get an achievement.
 
+And that also means we need a mute button in the top bar.
+
 # [ ] Zoom-to-Fit
 
 The card tableaux often spills over the page. We need zoom-to-fit on the local view, whenever a card appears/changes position/changes/size/disappears.
 
+# [ ] Refactor namespaces
+
+We need to rearrange the codebase so that code is in more meaningful places. For example, at the moment, how do you find where achievements are defined? You have to know to look in `lifecycle.ts`. You could never guess that. Similarly, it makes sense for some resolvers to be in `resolvers.ts`, but you'd never guess the initial contents of the Wreck live their too.
+
+This needs an audit of what's currently where, and some thought about what the taxonomy _should_ be.
+
 # [ ] A few rule updates
 
-- [ ]  You shouldn't be able to research your first drone without a workshop.
+- [ ] You shouldn't be able to research anything until you have a workshop. It's frustrating to have the blueprint and no way of using it.
+- [ ] Let's start the Survivor as containing 2 Effort.
+
+# [ ] Card hole hints need improving
+
+- [ ] Holes seem to be identifiers at the moment, and that doesn't quite work when the text is SOMETHING_LONG - we really wanted that space in there so we can line break cleanly. We should be using the card's display name. (I do like the fact that holes' text is shown upper-case though. Keep that, but for style reasons.)
+- [ ] Sometimes the hints should have more than one thing. Like most of the "MK1 +" labels should also have an "EFFORT" label too.
+
+# [ ] What is the order of revealed blueprints.
+
+Let's talk about it. This feels like a key playthrough decision.
