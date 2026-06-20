@@ -26,6 +26,14 @@ let { boardId }: { boardId: bigint } = $props();
 // Inset so a card seeded at board-space (0,0) doesn't hug the corner.
 const PAD = 56;
 
+// ── Zoom-to-fit (local, client-only view transform) ──────────────────────────
+// The server settles where every card SITS; this only fits the *camera* to them.
+// We never relayout here — we scale + translate the content layer so the whole
+// tableau is visible, re-fitting whenever cards appear / move / grow / vanish or
+// the viewport resizes. Pure CSS transform: no reducer, no layout, no overlap math.
+const FIT_MARGIN = 28; // breathing room kept around the fitted tableau (screen px)
+const MAX_SCALE = 1; // fit means shrink-to-fit; never blow a tiny board up past 1×
+
 const [cardDefs] = useTable(tables.cardDef);
 const [slotDefs] = useTable(tables.slotDef);
 const [cards] = useTable(tables.myCards);
@@ -89,6 +97,87 @@ function outputsFor(verbId: bigint): Card[] {
   return onBoard.filter((c) => placeOf(c) === "output" && verbOf(c) === verbId);
 }
 
+// ── Card footprints (mirror of the server's max-size estimate) ───────────────
+// The server reserves space for each card's FULLEST state (every hole shown, the
+// output tray full) so the layout never reshuffles as trays fill — see
+// docs/LAYOUT.md and spacetimedb/src/layout.ts `footprint()`. The zoom-fit bbox
+// must reserve the same maximal box, or the camera would clip a card the moment
+// its tray grows. This is a faithful port of that server formula (board-space px).
+const TOKEN_W = 130;
+const TOKEN_H = 160;
+function footprintOf(c: Card): { w: number; h: number } {
+  const def = defsById.get(c.defId);
+  if (!def || !def.isVerb) return { w: TOKEN_W, h: TOKEN_H };
+  const allSlots = slotsByDef.get(def.defId) ?? [];
+  const hasBay = allSlots.some((s) => s.droneLevel > 0);
+  const slotCount = allSlots.filter((s) => s.droneLevel === 0).length;
+  const perRow = Math.min(slotCount, 5);
+  const holeRows = slotCount > 0 ? Math.ceil(slotCount / 5) : 0;
+  const holesW = perRow > 0 ? perRow * 78 + (perRow - 1) * 8 : 0;
+  const holesH = holeRows > 0 ? holeRows * 96 + (holeRows - 1) * 8 : 0;
+  const cap = def.outputCap;
+  const trayW = cap > 0 ? cap * 64 + (cap - 1) * 5 : 0;
+  const trayH = cap > 0 ? 80 + 30 : 0;
+  const header = hasBay ? 120 : 64;
+  const w = Math.max(220, holesW, trayW) + 32 + (hasBay ? 96 : 0);
+  const h = header + (holesH ? holesH + 14 : 0) + (trayH ? trayH + 14 : 0) + 28;
+  return { w, h };
+}
+
+// Bounding box of every rendered tabletop card, in board space (the same space
+// cards render in: `left/top = tx + PAD`). Keyed off the card set, their
+// positions, and — via footprintOf → slotsByDef/defsById — their sizes, so it
+// re-derives whenever any of those change. null when the board is empty.
+const bbox = $derived.by(() => {
+  const placed = [...verbCards, ...looseCards.filter((c) => !defsById.get(c.defId)?.isVerb)];
+  if (placed.length === 0) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const c of placed) {
+    const x = txOf(c) + PAD;
+    const y = tyOf(c) + PAD;
+    const { w, h } = footprintOf(c);
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x + w > maxX) maxX = x + w;
+    if (y + h > maxY) maxY = y + h;
+  }
+  return { minX, minY, maxX, maxY };
+});
+
+// Viewport (the .board element) size — tracked with a ResizeObserver so a window
+// resize / panel toggle re-fits. Set in an $effect below.
+let viewW = $state(0);
+let viewH = $state(0);
+
+// The fit transform: shrink (never enlarge past MAX_SCALE) the content layer so
+// the whole bbox fits the viewport with FIT_MARGIN of slack, and centre it.
+const fit = $derived.by(() => {
+  const b = bbox;
+  if (!b || viewW === 0 || viewH === 0) return { scale: 1, ox: 0, oy: 0 };
+  const bw = b.maxX - b.minX;
+  const bh = b.maxY - b.minY;
+  const avW = Math.max(1, viewW - FIT_MARGIN * 2);
+  const avH = Math.max(1, viewH - FIT_MARGIN * 2);
+  const scale = Math.min(MAX_SCALE, avW / bw, avH / bh);
+  // Centre the (scaled) bbox in the viewport: translate so b.minX*scale lands at
+  // the left gap, then nudge by the leftover space / 2.
+  const ox = (viewW - bw * scale) / 2 - b.minX * scale;
+  const oy = (viewH - bh * scale) / 2 - b.minY * scale;
+  return { scale, ox, oy };
+});
+
+// Track the viewport size so the fit re-runs on resize (window, panel toggles).
+$effect(() => {
+  if (!boardEl) return;
+  const ro = new ResizeObserver(([entry]) => {
+    const r = entry.contentRect;
+    viewW = r.width;
+    viewH = r.height;
+  });
+  ro.observe(boardEl);
+  return () => ro.disconnect();
+});
+
 // ── Countdown clock ──────────────────────────────────────────────────────────
 let now = $state(Date.now());
 $effect(() => {
@@ -134,7 +223,8 @@ type Drag = {
   py: number;
 };
 let drag = $state<Drag | null>(null);
-let boardEl: HTMLDivElement;
+let boardEl: HTMLDivElement; // the viewport (clips + observed for size)
+let contentEl: HTMLDivElement; // the transformed (scaled/translated) card layer
 let ghostEl = $state<HTMLDivElement>();
 // The card most recently bounced off an invalid target — flashed for feedback.
 let rejecting = $state<bigint | null>(null);
@@ -215,11 +305,26 @@ function firstValidSlot(verbId: bigint, card: Card): number | null {
 // rendered size — and that top-left is exactly where the card lands. This way
 // the small ghost's corner predictably marks the corner of even a large card,
 // rather than the card growing out from an unpredictable point.
+//
+// The content layer is scaled+translated by the zoom-to-fit transform, but we
+// measure against `contentEl.getBoundingClientRect()`, whose left/top already
+// FOLD IN that transform. So a screen point maps back to board space by
+// subtracting the content's screen origin and dividing the screen distance by
+// the fit scale. The ghost is `position: fixed` (outside the transform), so its
+// half-size is a screen distance and is divided out by the same scale. PAD is the
+// board-space inset cards render at (`left = tx + PAD`), subtracted last.
 function dropCoords(d: Drag, ghostW: number, ghostH: number): { x: number; y: number } {
-  const r = boardEl.getBoundingClientRect();
+  const r = contentEl.getBoundingClientRect();
+  // Read the LIVE rendered scale from the computed matrix, not `fit.scale`: a
+  // re-fit transition may be in flight at drop time, and the rect's origin (r.left)
+  // is the live, mid-transition value — so we must divide by the matching live
+  // scale or the drop would land off by the transition's progress. `matrix(a,b,c,d,…)`
+  // has the x-scale in `a`; an identity / "none" transform yields scale 1.
+  const m = new DOMMatrixReadOnly(getComputedStyle(contentEl).transform);
+  const s = m.a || 1;
   return {
-    x: Math.max(0, d.px - ghostW / 2 - r.left + boardEl.scrollLeft - PAD),
-    y: Math.max(0, d.py - ghostH / 2 - r.top + boardEl.scrollTop - PAD),
+    x: Math.max(0, (d.px - ghostW / 2 - r.left) / s - PAD),
+    y: Math.max(0, (d.py - ghostH / 2 - r.top) / s - PAD),
   };
 }
 
@@ -305,6 +410,14 @@ function onUp(e: PointerEvent) {
     </div>
   {/if}
 
+  <!-- The card layer. Scaled + translated by the local zoom-to-fit transform so
+       the whole tableau stays on-screen. transform-origin is the top-left so the
+       offset maths in `fit` are in plain pre-scale board coordinates. -->
+  <div
+    class="content"
+    bind:this={contentEl}
+    style="transform: translate({fit.ox}px, {fit.oy}px) scale({fit.scale})"
+  >
   <!-- Verb machines -->
   {#each verbCards as vc (vc.id)}
     {@const def = defsById.get(vc.defId)}
@@ -360,6 +473,8 @@ function onUp(e: PointerEvent) {
       </div>
     {/if}
   {/each}
+  </div>
+  <!-- /.content -->
 
   <!-- Drag ghost -->
   {#if drag && drag.def}
@@ -388,8 +503,11 @@ function onUp(e: PointerEvent) {
   position: relative;
   width: 100%;
   height: 100%;
-  overflow: auto;
-  /* faint engraved grid — the workbench surface */
+  /* The tableau is fitted to the viewport (zoom-to-fit), so it never overflows;
+     clip rather than scroll. */
+  overflow: hidden;
+  /* faint engraved grid — the workbench surface. Stays fixed on the viewport
+     (not inside the scaled .content), so the felt reads at a constant density. */
   background-image:
     radial-gradient(circle, var(--felt-line) 1px, transparent 1.4px);
   background-size: 26px 26px;
@@ -397,6 +515,21 @@ function onUp(e: PointerEvent) {
 }
 .board.dragging {
   cursor: grabbing;
+}
+
+/* The scaled + translated card layer. transform-origin top-left keeps the
+   offset maths in `fit` in plain board coordinates. The eased transform makes a
+   re-fit (a card appearing / growing / moving) glide rather than jump. */
+.content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  /* size to nothing; children are absolutely positioned, so the layer is just a
+     transform anchor. */
+  width: 0;
+  height: 0;
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .placed {

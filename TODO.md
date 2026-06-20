@@ -133,9 +133,20 @@ coloured by relation kind with legend toggles), opened from an admin-only "Tree"
 pill in the topbar (gated on `me_view.isAdmin`). Game behaviour is unchanged —
 the visualiser only reads.
 
-# [ ] Zoom-to-Fit
+# [x] Zoom-to-Fit
 
 The card tableaux often spills over the page. We need zoom-to-fit on the local view, whenever a card appears/changes position/changes/size/disappears.
+
+DONE. `Board.svelte` now wraps the card layer in a `.content` element carrying a
+purely-local `translate+scale` transform that fits the whole tableau into the
+viewport (scale capped at 1× — shrink-to-fit only, never blow up; centred, small
+margin). The bbox sweeps every card's **maximum** footprint (a faithful port of
+the server's `footprint()`), so size growth never needs a re-fit; a
+ResizeObserver re-fits on viewport change and `$derived` re-fits on card
+add/remove/move. No server/layout/reducer change. Drag stays exact: drop coords
+are measured against `contentEl.getBoundingClientRect()` (which folds in the live
+transform) and divided by the live computed scale, so drops land under the cursor
+even mid-transition.
 
 # [ ] Refactor namespaces
 
