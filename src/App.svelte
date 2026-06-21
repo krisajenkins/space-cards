@@ -7,7 +7,9 @@ import Achievements from "./lib/Achievements.svelte";
 import About from "./lib/About.svelte";
 import ProgressionTree from "./lib/ProgressionTree.svelte";
 import SoundEffects from "./lib/SoundEffects.svelte";
+import Finale from "./lib/Finale.svelte";
 import { muted, toggleMute } from "./lib/audio";
+import { finalePlaying, playFinale, endFinale } from "./lib/finale";
 
 const conn = useSpacetimeDB();
 
@@ -79,6 +81,13 @@ const board = $derived($boards[0]);
           >
             Tree
           </button>
+          <button
+            class="tree-trigger"
+            title="Preview the endgame cinematic (admin)"
+            onclick={() => playFinale()}
+          >
+            Finale
+          </button>
         {/if}
         <About />
         <SignIn />
@@ -89,7 +98,7 @@ const board = $derived($boards[0]);
       <ProgressionTree onClose={() => (treeOpen = false)} />
     {/if}
 
-    <main class="stage">
+    <main class="stage" class:receding={$finalePlaying}>
       <SoundEffects />
       <Achievements />
       {#if board}
@@ -114,6 +123,10 @@ const board = $derived($boards[0]);
         </div>
       {/if}
     </main>
+
+    {#if $finalePlaying}
+      <Finale onClose={endFinale} />
+    {/if}
   </div>
 {/if}
 
@@ -261,6 +274,19 @@ const board = $derived($boards[0]);
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
+}
+/* While the endgame cinematic plays, the whole board recedes — smaller, softer,
+   gone — leaving the rocket alone in frame. The Finale overlay sits OUTSIDE the
+   stage (at .app level) so it stays crisp while everything here fades away. */
+.stage.receding {
+  transition:
+    transform 1.8s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 1.8s ease,
+    filter 1.8s ease;
+  transform: scale(0.82);
+  opacity: 0;
+  filter: blur(8px) saturate(0.6);
+  pointer-events: none;
 }
 
 /* The admin-only progression-tree toggle, styled to match About's pill. */

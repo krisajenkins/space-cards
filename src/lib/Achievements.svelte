@@ -1,6 +1,7 @@
 <script lang="ts">
 import { useTable, useReducer } from "spacetimedb/svelte";
 import { tables, reducers } from "../module_bindings";
+import { playFinale } from "./finale";
 
 // Earned milestones (id + achId + seen + title/description). The catalogue text
 // is folded into the view because achievement_def is private — you can't read
@@ -21,8 +22,11 @@ const toasts = $derived(
     ),
 );
 
-function dismiss(id: bigint) {
+function dismiss(id: bigint, achId: string) {
   markSeen({ achievementId: id });
+  // The win toast doesn't just go quiet — dismissing it rolls the credits:
+  // launch the endgame cinematic over the (now-faded) board.
+  if (achId === "escape") playFinale();
 }
 
 // Most milestones are trophies. Two bookend the story and get their own voice:
@@ -43,7 +47,7 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
       class="toast"
       class:win={t.achId === "escape"}
       class:intro={t.achId === "crash"}
-      onclick={() => dismiss(t.id)}
+      onclick={() => dismiss(t.id, t.achId)}
       title="Dismiss"
     >
       <span class="trophy">{iconFor(t.achId)}</span>

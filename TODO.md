@@ -241,7 +241,7 @@ Let's talk about it. This feels like a key playthrough decision.
 
 For starters, drone mk 2 & 3 blueprints need to be available sooner.
 
-# [ ] Endgame Reward
+# [x] Endgame Reward
 
 At the moment you get an achievement. After you dismiss it we should do something cool. I'm open to suggestions, but one is: Have the camera pan to the rocket, which gets larger and larger until it fills the screen, while everything else gets smaller and more transparent until it disappears. Inside the rocket you see a happy little man through the window.
 

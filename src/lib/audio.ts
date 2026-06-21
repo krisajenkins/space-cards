@@ -243,6 +243,55 @@ export function playPing(): void {
   }
 }
 
+// ── Launch: the endgame rocket lift-off — a swelling rumble + climbing sub ─────
+// One-shot, ~3.4s, to ride under the Finale cinematic. A bed of low-passed noise
+// whose cutoff opens as thrust builds (then closes as the ship recedes), plus a
+// sub-bass sine that climbs an octave on the way up. Far louder in character than
+// the calm bench voices, but still under the master ceiling.
+export function playLaunch(): void {
+  if (get(muted) || !unlocked) return;
+  const c = ensureContext();
+  if (!c || !master || c.state !== "running") return;
+  const t = c.currentTime;
+  const dur = 3.4;
+
+  // Rumble bed: white noise through a lowpass that opens (ignition) then closes
+  // (the ship pulling away into the distance).
+  const bufLen = Math.floor(c.sampleRate * dur);
+  const buffer = c.createBuffer(1, bufLen, c.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+  const noise = c.createBufferSource();
+  noise.buffer = buffer;
+  const lp = c.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.setValueAtTime(160, t);
+  lp.frequency.exponentialRampToValueAtTime(1500, t + 1.6);
+  lp.frequency.exponentialRampToValueAtTime(260, t + dur);
+  lp.Q.value = 0.9;
+  const nGain = c.createGain();
+  nGain.gain.setValueAtTime(0.0001, t);
+  nGain.gain.exponentialRampToValueAtTime(0.5, t + 0.6);
+  nGain.gain.setValueAtTime(0.5, t + 1.9);
+  nGain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  noise.connect(lp).connect(nGain).connect(master);
+  noise.start(t);
+  noise.stop(t + dur);
+
+  // Sub: a low sine sweeping up an octave-and-a-half as the rocket climbs.
+  const sub = c.createOscillator();
+  sub.type = "sine";
+  sub.frequency.setValueAtTime(46, t);
+  sub.frequency.exponentialRampToValueAtTime(130, t + 2.4);
+  const subG = c.createGain();
+  subG.gain.setValueAtTime(0.0001, t);
+  subG.gain.exponentialRampToValueAtTime(0.32, t + 0.7);
+  subG.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  sub.connect(subG).connect(master);
+  sub.start(t);
+  sub.stop(t + dur);
+}
+
 // ── Jingle: a short brass-feel arpeggio when a milestone is earned ────────────
 export function playJingle(): void {
   if (get(muted) || !unlocked) return;
