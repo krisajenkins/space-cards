@@ -159,6 +159,11 @@ function researchTarget(ctx: Ctx, boardId: bigint): string | null {
   for (const r of RESEARCH_TREE) {
     const bp = `blueprint_${r.target}`;
     if (discovered(ctx, boardId, bp)) continue;
+    // An explicit prerequisite ladder (the drone Marks): every listed blueprint
+    // must already be discovered, so e.g. Mk IV is never offered before Mk III —
+    // the category needs alone can be met out of order.
+    if ((r.requires ?? []).some((req) => !discovered(ctx, boardId, req)))
+      continue;
     const ok = Object.entries(r.need).every(
       ([cat, n]) => histCategory(ctx, boardId, cat) >= BigInt(n),
     );

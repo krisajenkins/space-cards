@@ -8,8 +8,6 @@ For starters, drone mk 2 & 3 blueprints need to be available sooner.
 
 One for you, Kris.
 
-# [ ] In my last runthrough, drone mk4 unlocked long before drone mk3.
-
 # [ ] It bugs me that we can pull a workshop from the wreck
 
 That's unbelievable. Let's do this:

@@ -83,7 +83,19 @@ export const recipeSatisfied = (
 //     work you've outgrown" rhythm.
 // The needs are CATEGORIES, summed over every defId in the category (so "raw"
 // counts Regolith + Scrap, "component" counts Salvage too). Easy to re-tune.
-export type Research = { target: string; need: Record<string, number> };
+//
+// `requires` is an optional list of blueprint defIds that must ALREADY have been
+// discovered before this entry can be offered. The category `need`s alone can't
+// express "this tier comes after that one" because every blueprint shares the
+// `blueprint` category — and the chore gates can be met out of order (e.g. a
+// player rushing Fuel for the rocket can hit `fuel ≥ 3` before ever making 3
+// circuits). The drone Marks are a strict LADDER, so each higher Mk lists the Mk
+// below as a prerequisite — Mk IV can never be researched before Mk III.
+export type Research = {
+  target: string;
+  need: Record<string, number>;
+  requires?: string[];
+};
 export const RESEARCH_TREE: Research[] = [
   // Automate gathering FIRST. Per §2 the reward is retiring the chore you're
   // sick of doing by hand — and a Mk I drone (gatherers + Printer) is the first
@@ -97,12 +109,12 @@ export const RESEARCH_TREE: Research[] = [
   { target: "refinery", need: { raw: 1, power: 1 } },
   { target: "fabricator", need: { metal: 1, power: 1 } },
   { target: "kiln", need: { raw: 1, power: 1 } },
-  { target: "drone_2", need: { metal: 3 } },
+  { target: "drone_2", need: { metal: 3 }, requires: ["blueprint_drone_1"] },
   // Electronics + chemistry sub-trees.
   { target: "ice_mine", need: { power: 1 } },
   { target: "electronics_fab", need: { silicon: 1, power: 1 } },
   { target: "electrolysis", need: { water: 1, power: 1 } },
-  { target: "drone_3", need: { circuit: 3 } },
+  { target: "drone_3", need: { circuit: 3 }, requires: ["blueprint_drone_2"] },
   { target: "chem_reactor", need: { hydrogen: 1, oxygen: 1, power: 1 } },
   // Assembly + liftoff.
   {
@@ -110,7 +122,7 @@ export const RESEARCH_TREE: Research[] = [
     need: { component: 1, circuit: 1, glass: 1, water: 1 },
   },
   { target: "rocket", need: { subsystem: 1, fuel: 1 } },
-  { target: "drone_4", need: { fuel: 3 } },
+  { target: "drone_4", need: { fuel: 3 }, requires: ["blueprint_drone_3"] },
 ];
 
 // ── The Wreck's manifest ───────────────────────────────────────────────────

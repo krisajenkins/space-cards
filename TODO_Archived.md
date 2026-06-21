@@ -9,6 +9,22 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] In my last runthrough, drone mk4 unlocked long before drone mk3.
+
+*Archived: 2026-06-21 (change nozllrnurzuy)*
+
+Drone blueprints unlocked via `researchTarget`, gated only by per-category
+`need` (Mk III on `circuit: 3`, Mk IV on `fuel: 3`), which can be satisfied out
+of order — so a player rushing the Fuel branch could hit Mk IV before Mk III.
+Added an optional `requires: string[]` (prerequisite blueprint defIds) to the
+`Research` type and chained the drone tiers into a strict ladder (drone_2→drone_3
+→drone_4); `researchTarget` now skips entries whose prerequisites aren't yet
+discovered. Narrow fix only — does not touch the open "order of revealed
+blueprints" question.
+
+- spacetimedb/src/content/recipes.ts: `requires` field + drone ladder
+- spacetimedb/src/engine/resolvers.ts: `researchTarget` honours `requires`
+
 # [x] Research card a different colour?
 
 *Archived: 2026-06-21 (change zrwvyvssxqzr)*
