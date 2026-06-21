@@ -10,8 +10,23 @@ import SoundEffects from "./lib/SoundEffects.svelte";
 import Finale from "./lib/Finale.svelte";
 import { muted, toggleMute } from "./lib/audio";
 import { finalePlaying, playFinale, endFinale } from "./lib/finale";
+import { share } from "./lib/share";
 
 const conn = useSpacetimeDB();
+
+let shareLabel = $state("Share");
+let shareTimer: ReturnType<typeof setTimeout> | undefined;
+async function shareGame() {
+  const result = await share({
+    title: "Escape the Moon",
+    text: "Playing Escape the Moon 🌙 — can you escape?",
+  });
+  if (result === "copied") {
+    shareLabel = "Link copied!";
+    clearTimeout(shareTimer);
+    shareTimer = setTimeout(() => (shareLabel = "Share"), 2000);
+  }
+}
 
 const [me, meReady] = useTable(tables.meView);
 const [boards, boardsReady] = useTable(tables.myBoards);
@@ -63,6 +78,14 @@ const board = $derived($boards[0]);
         <span class="brand-name">Space Cards</span>
       </div>
       <div class="topbar-right">
+        <button
+          class="tree-trigger share-trigger"
+          title="Share Escape the Moon"
+          onclick={shareGame}
+        >
+          <span class="share-glyph" aria-hidden="true">↗</span>
+          {shareLabel}
+        </button>
         <button
           class="mute-trigger"
           class:muted={$muted}
@@ -308,6 +331,17 @@ const board = $derived($boards[0]);
 .tree-trigger:hover {
   color: var(--brass-bright);
   border-color: rgba(201, 214, 255, 0.25);
+}
+/* The share pill carries a small upload glyph before its label. */
+.share-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+.share-glyph {
+  font-size: 0.95em;
+  line-height: 1;
 }
 
 /* The sound toggle, styled as a round pill to match the topbar's other pills. */

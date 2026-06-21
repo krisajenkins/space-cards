@@ -9,6 +9,20 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Sharing buttons
+
+*Archived: 2026-06-21 (change usywnnvzuznx)*
+
+Added share buttons for in-game and the Finale message. A shared `share()` helper
+uses the Web Share API when available and falls back to copying the link
+(`window.location.href`, so it survives the deploy URL changing) with a brief
+"Link copied!" confirmation. The in-game button sits in the topbar, the other on
+the Finale outro card; both reuse the existing pill styling.
+
+- src/lib/share.ts (new): Web Share + clipboard-fallback helper
+- src/App.svelte: in-game share button
+- src/lib/Finale.svelte: finale share button
+
 # [x] Flash matching cards when hovering an input (Caz)
 
 *Archived: 2026-06-21 (change vqtqwnsnxoox)*

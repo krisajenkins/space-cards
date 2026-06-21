@@ -85,14 +85,3 @@ blueprints neatly stored.
 # Tips we might want to make visible
 
 "Always be ready to research - keep an Effort card in Research at all times."
-
-# [ ] Sharing buttons
-
-> ⚠ Blocked (2026-06-21): The button itself is trivial (`navigator.share` from
-> the topbar + Finale card), but the content/target aren't decided: (1) mechanism
-> — Web Share API, copy-link, or named platform buttons? (2) share text/image per
-> case (mid-game vs "I escaped the Moon!" finale)? (3) what URL does it point to?
-> Boards are private with no public/spectator route today, so a link can only hit
-> the landing page — and there's no OG meta-image for previews.
-
-For the game it while you're playing it, and for the Finale message.

@@ -14,9 +14,24 @@
 // the board or the server — it's pure send-off. Closing returns to the board.
 import { onMount, onDestroy } from "svelte";
 import { playLaunch } from "./audio";
+import { share } from "./share";
 import Astronaut from "./Astronaut.svelte";
 
 let { onClose }: { onClose: () => void } = $props();
+
+let shareLabel = $state("Share your escape");
+let shareTimer: ReturnType<typeof setTimeout> | undefined;
+async function shareWin() {
+  const result = await share({
+    title: "Escape the Moon",
+    text: "I escaped the Moon! 🚀",
+  });
+  if (result === "copied") {
+    shareLabel = "Link copied!";
+    clearTimeout(shareTimer);
+    shareTimer = setTimeout(() => (shareLabel = "Share your escape"), 2000);
+  }
+}
 
 type Phase = "rise" | "ignite" | "launch" | "done";
 let phase = $state<Phase>("rise");
@@ -59,7 +74,10 @@ onMount(() => {
   });
 });
 
-onDestroy(clearTimers);
+onDestroy(() => {
+  clearTimers();
+  clearTimeout(shareTimer);
+});
 </script>
 
 <div
@@ -152,9 +170,18 @@ onDestroy(clearTimers);
         The wreck and the grey dust fall away beneath you. You turned regolith
         into a way home.
       </p>
-      <button class="cw-btn" onclick={(e) => { e.stopPropagation(); onClose(); }}>
-        Back to the board
-      </button>
+      <div class="outro-actions">
+        <button
+          class="cw-btn cw-btn-share"
+          onclick={(e) => { e.stopPropagation(); shareWin(); }}
+        >
+          <span class="share-glyph" aria-hidden="true">↗</span>
+          {shareLabel}
+        </button>
+        <button class="cw-btn" onclick={(e) => { e.stopPropagation(); onClose(); }}>
+          Back to the board
+        </button>
+      </div>
     </div>
   {/if}
 </div>
@@ -416,6 +443,21 @@ onDestroy(clearTimers);
   color: var(--ink-soft);
   max-width: 34ch;
   margin: 0.4rem 0 1.4rem;
+}
+.outro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  justify-content: center;
+}
+.cw-btn-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.share-glyph {
+  font-size: 0.95em;
+  line-height: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
