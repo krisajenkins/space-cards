@@ -37,18 +37,6 @@ That's unbelievable. Let's do this:
 - You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
 - Eventually you can make a _workshop_, which can make level 2 blueprints.
 
-# [ ] When stackable cards is done, an autolayout button
-
-> ⚠ Blocked (2026-06-21): Dependency now MET — stackable cards shipped (server-side
-> piles in `relayout`). Remaining open design: the "lay out factory cards in
-> progression order, columns L→R" half conflicts with the locked
-> minimum-displacement VPSC philosophy in `docs/LAYOUT.md`. Decide: should
-> autolayout override or coexist with VPSC, and what defines a card's "progression
-> column" (the research/recipe tree? the six acts in `ESCAPE_THE_MOON.md`)? The
-> stacking half is now easy (trigger `relayout`, which already piles).
-
-Visible, top right, it will automatically stack resource cards into piles. Then it will lay out the factory style cards in roughly in order of progression through the story, columns, left-to-right.
-
 # [ ] Scroll to thing (Caz)
 
 > ⚠ Blocked (2026-06-21): The board has no scroll/pan model — `.board` is
@@ -76,3 +64,5 @@ blueprints neatly stored.
 # Tips we might want to make visible
 
 "Always be ready to research - keep an Effort card in Research at all times."
+
+# [ ] Fabricator seems to do the same job as printer, even though it's a much later stage unlock

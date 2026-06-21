@@ -6,6 +6,7 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AutoLayoutReducer from "../auto_layout_reducer";
 import BootstrapFirstAdminReducer from "../bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "../collect_and_slot_reducer";
 import DevGrantReducer from "../dev_grant_reducer";
@@ -16,6 +17,7 @@ import RelayoutBoardReducer from "../relayout_board_reducer";
 import ReseedCatalogueReducer from "../reseed_catalogue_reducer";
 import SlotCardReducer from "../slot_card_reducer";
 
+export type AutoLayoutParams = __Infer<typeof AutoLayoutReducer>;
 export type BootstrapFirstAdminParams = __Infer<
   typeof BootstrapFirstAdminReducer
 >;

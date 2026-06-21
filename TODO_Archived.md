@@ -9,6 +9,33 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] When stackable cards is done, an autolayout button
+
+*Archived: 2026-06-21 (change lpmxvzomulqz)*
+
+A top-right "Tidy board" button (player- and admin-facing) that arranges the
+board into an idealised story layout, then lets VPSC settle it. Resolved the
+philosophy tension by **seeding then settling** rather than overriding: the new
+member-gated `auto_layout` reducer calls `autoArrange` (in `engine/layout.ts`),
+which writes an idealised position for every card and then calls the ordinary
+`relayout` (no pin) — so minimum-displacement VPSC removes residual overlap and
+the existing stacking fan piles resources, all from the better starting point.
+`docs/LAYOUT.md`'s philosophy is untouched.
+
+Columns are derived from the recipe data, not an invented list: opening stations
+leftmost (`survivor`/`regolith_field`/`research`/`wreck`), then Wreck-salvaged
+verbs (`printer`/`workshop`), then each `RESEARCH_TREE` entry mapped through
+`BUILDS["blueprint_" + target].output` to its machine defId — so the progression
+order auto-tracks the tree. Verbs lay out in progression columns (same-rank cards
+stack as rows); inert cards seed one shared (x,y) per defId in a band beneath, so
+the cluster/fan piles them automatically.
+
+The original ask:
+
+> Visible, top right, it will automatically stack resource cards into piles. Then
+> it will lay out the factory style cards in roughly in order of progression
+> through the story, columns, left-to-right.
+
 # [x] Stackable resource cards. Perhaps autostacking?
 
 *Archived: 2026-06-21 (change ywxultllmtyt)*

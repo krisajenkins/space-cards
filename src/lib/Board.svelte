@@ -42,6 +42,7 @@ const [situations] = useTable(tables.mySituations);
 const slotCard = useReducer(reducers.slotCard);
 const collectAndSlot = useReducer(reducers.collectAndSlot);
 const moveCard = useReducer(reducers.moveCard);
+const autoLayout = useReducer(reducers.autoLayout);
 
 // ── Catalogue lookups ──────────────────────────────────────────────────────
 const defsById = $derived(
@@ -456,6 +457,19 @@ function onUp(e: PointerEvent) {
 </script>
 
 <div class="board" class:dragging={!!drag} bind:this={boardEl}>
+  <!-- Board control: re-arrange the table into its story order. Sits outside the
+       scaled .content layer (top-right), so it's a fixed control, never part of
+       the draggable tableau. Calls auto_layout for this board; the server seeds
+       the idealised arrangement and runs the usual VPSC layout from it. -->
+  <button
+    class="tidy"
+    type="button"
+    title="Tidy the table into its story order"
+    onclick={() => autoLayout({ boardId })}
+  >
+    Tidy board
+  </button>
+
   {#if onBoard.length === 0}
     <div class="empty">
       <div class="empty-orb"></div>
@@ -670,6 +684,37 @@ function onUp(e: PointerEvent) {
     transform: scale(1.1);
     opacity: 0.9;
   }
+}
+
+/* Top-right board control — a brass-accented pill in the celestial-workbench
+   aesthetic, echoing the .hint pill (dark panel, blurred, soft ink). It floats
+   above the scaled card layer and never participates in the drag surface. */
+.tidy {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(10, 13, 24, 0.72);
+  border: 1px solid var(--panel-edge);
+  backdrop-filter: blur(8px);
+  font-family: var(--mono, monospace);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+.tidy:hover {
+  color: var(--astral, #74c7d6);
+  border-color: var(--astral, #74c7d6);
+}
+.tidy:active {
+  transform: scale(0.96);
 }
 
 .hint {
