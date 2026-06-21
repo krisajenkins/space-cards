@@ -252,7 +252,7 @@ export function seedCatalogue(ctx: Ctx) {
   // Circuits, Heat Shield 2 Glass, Life Support 1 Water.
   slot("assembler", 0, ["power"], true);
   inbox("assembler", 1, 6, ["component"]);
-  inbox("assembler", 7, 2, ["circuit"]);
+  inbox("assembler", 7, 4, ["circuit"]);
   inbox("assembler", 11, 2, ["glass"]);
   slot("assembler", 13, ["water"], false);
   // Mk IV bay: Effort still cranks it by hand (level 99 ≥ 4), but a Mk IV drone
