@@ -230,6 +230,40 @@ let ghostEl = $state<HTMLDivElement>();
 let rejecting = $state<bigint | null>(null);
 let rejectTimer: ReturnType<typeof setTimeout> | undefined;
 
+// The empty hole the pointer is currently hovering (its accept-criteria), if any.
+// While set, every loose tabletop card that could fill it flashes — answering
+// "what goes in here?" without picking anything up. Cleared on pointer-leave.
+let hoveredHole = $state<{ accepts: string[]; droneLevel: number } | null>(null);
+
+// Does a loose card match a hovered hole? Mirrors `firstValidSlot` / VerbStation's
+// `accepts`: a drone bay (droneLevel > 0) takes a drone of sufficient Mk; an
+// ordinary input hole takes a card by defId or category. (The few lines are
+// duplicated, consistent with how the accept-test already appears in both places.)
+function cardMatchesHole(
+  card: Card,
+  hole: { accepts: string[]; droneLevel: number },
+): boolean {
+  const def = defsById.get(card.defId);
+  if (!def) return false;
+  if (hole.droneLevel > 0) {
+    return def.category === "drone" && def.droneLevel >= hole.droneLevel;
+  }
+  return hole.accepts.includes(card.defId) || hole.accepts.includes(def.category);
+}
+
+// The loose-card ids that should flash for the hovered hole.
+const flashing = $derived.by(() => {
+  if (!hoveredHole) return new Set<bigint>();
+  return new Set(
+    looseCards
+      .filter((c) => {
+        const d = defsById.get(c.defId);
+        return d && !d.isVerb && cardMatchesHole(c, hoveredHole!);
+      })
+      .map((c) => c.id),
+  );
+});
+
 // Any non-verb card can be slotted (output/slotted cards collect first), and so
 // can a drone — itself a verb, but one that belongs in a machine's bay. Arm the
 // highlight for whichever of those is in hand. Other verbs (machines) only
@@ -449,6 +483,8 @@ function onUp(e: PointerEvent) {
           rejectingId={rejecting}
           onSlottedPointerDown={startDragChild}
           onOutputPointerDown={startDragChild}
+          onHoleEnter={(hole) => (hoveredHole = hole)}
+          onHoleLeave={() => (hoveredHole = null)}
         />
       </div>
     {/if}
@@ -465,6 +501,7 @@ function onUp(e: PointerEvent) {
         aria-label="{def.name} (drag onto a verb card or across the table)"
         class:lifted={drag?.card.id === c.id}
         class:reject={rejecting === c.id}
+        class:flashing={flashing.has(c.id)}
         data-card-id={c.id}
         style="left: {txOf(c) + PAD}px; top: {tyOf(c) + PAD}px"
         onpointerdown={(e) => startDrag(e, c)}
@@ -558,6 +595,22 @@ function onUp(e: PointerEvent) {
 .placed.reject {
   animation: reject 0.46s cubic-bezier(0.36, 0.07, 0.19, 0.97);
   z-index: 6;
+}
+/* Hovering an empty hole flashes every loose card that could fill it — a pulsing
+   astral-cyan glow mirroring the open-hole / armed-station highlight, so the eye
+   is drawn straight to the answer to "what goes in here?". */
+.placed.flashing {
+  animation: hole-flash 0.9s ease-in-out infinite;
+  z-index: 6;
+}
+@keyframes hole-flash {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(116, 199, 214, 0.85));
+  }
 }
 
 .ghost {

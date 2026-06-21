@@ -9,6 +9,20 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Flash matching cards when hovering an input (Caz)
+
+*Archived: 2026-06-21 (change vqtqwnsnxoox)*
+
+Hovering an empty input hole (or drone bay) now flashes every loose tabletop card
+that could fill it. Client-only: `VerbStation.svelte` bubbles the hovered hole's
+`{ accepts, droneLevel }` up via new `onHoleEnter`/`onHoleLeave` props; `Board.svelte`
+derives the matching loose-card set (reusing the `firstValidSlot` accept logic)
+and applies a pulsing astral-cyan `flashing` glow, mirroring the existing
+reject-highlight pattern.
+
+- src/lib/VerbStation.svelte: pointer-enter/leave on empty holes + drone bay
+- src/lib/Board.svelte: hoveredHole state, matcher, flashing set + glow CSS
+
 # [x] Drone preferences
 
 *Archived: 2026-06-21 (change soxrnvwyotpv)*

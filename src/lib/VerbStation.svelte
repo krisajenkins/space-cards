@@ -27,6 +27,8 @@ let {
   rejectingId,
   onSlottedPointerDown,
   onOutputPointerDown,
+  onHoleEnter,
+  onHoleLeave,
 }: {
   def: CardDef;
   state: RunState;
@@ -41,6 +43,10 @@ let {
   rejectingId: bigint | null;
   onSlottedPointerDown: (e: PointerEvent, card: Card) => void;
   onOutputPointerDown: (e: PointerEvent, card: Card) => void;
+  // Hovering an empty hole / drone bay bubbles its accept-criteria to the Board,
+  // which flashes the loose cards that could fill it.
+  onHoleEnter: (hole: { accepts: string[]; droneLevel: number }) => void;
+  onHoleLeave: () => void;
 } = $props();
 
 const v = $derived(visualFor(def.defId, def.category));
@@ -170,11 +176,19 @@ const stateLabel = $derived(
             />
           </div>
         {:else}
-          <span class="bay-mark">⬡</span>
-          <div class="accepts">
-            {#each bayLabels as label}
-              <span class="chip">{label}</span>
-            {/each}
+          <div
+            class="hole-hover"
+            role="presentation"
+            onpointerenter={() =>
+              onHoleEnter({ accepts: droneBay.accepts, droneLevel: droneBay.droneLevel })}
+            onpointerleave={onHoleLeave}
+          >
+            <span class="bay-mark">⬡</span>
+            <div class="accepts">
+              {#each bayLabels as label}
+                <span class="chip">{label}</span>
+              {/each}
+            </div>
           </div>
         {/if}
       </div>
@@ -202,7 +216,13 @@ const stateLabel = $derived(
               />
             </div>
           {:else}
-            <div class="hole-empty">
+            <div
+              class="hole-empty hole-hover"
+              role="presentation"
+              onpointerenter={() =>
+                onHoleEnter({ accepts: slot.accepts, droneLevel: slot.droneLevel })}
+              onpointerleave={onHoleLeave}
+            >
               <span class="hole-mark">{slot.required ? "✶" : "○"}</span>
               <div class="accepts">
                 {#each holeLabels(slot, defsById) as label}
@@ -448,6 +468,16 @@ header {
   align-items: center;
   gap: 0.45rem;
   color: var(--ink-faint);
+}
+/* The hover target fills its cell so the whole empty hole / bay answers
+   "what goes in here?" — not just the glyph. */
+.hole-hover {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
 }
 .hole-mark {
   font-size: 1.1rem;

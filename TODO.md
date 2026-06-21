@@ -69,11 +69,6 @@ Visible, top right, it will automatically stack resource cards into piles. Then 
 
 Caz wants a way to scroll/jump the viewport to a particular thing on the board.
 
-# [ ] Flash matching cards when hovering an input (Caz)
-
-Caz wants: hover over an input hole, get feedback about what goes in there — all
-the matching cards that could fill that hole flash (i.e. flash available matches).
-
 # [ ] Blueprint library attached to the workshop (Caz)
 
 > ⚠ Blocked (2026-06-21): Tentative idea ("maybe some library") with no settled
