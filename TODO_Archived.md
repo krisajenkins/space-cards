@@ -9,6 +9,12 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Finale message
+
+*Archived: 2026-06-21 (change umqyttuvsrnr)*
+
+Let's have the happy little astronaut showing with that final "Escaped the Moon!" message, too. He's such a boss. 😎
+
 # [x] Login Bug
 
 *Archived: 2026-06-21*

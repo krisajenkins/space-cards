@@ -14,6 +14,7 @@
 // the board or the server — it's pure send-off. Closing returns to the board.
 import { onMount, onDestroy } from "svelte";
 import { playLaunch } from "./audio";
+import Astronaut from "./Astronaut.svelte";
 
 let { onClose }: { onClose: () => void } = $props();
 
@@ -127,17 +128,9 @@ onDestroy(clearTimers);
         <circle class="rim" cx="50" cy="84" r="16" />
         <g clip-path="url(#porthole)">
           <rect x="34" y="68" width="32" height="32" fill="url(#glass)" />
-          <!-- The happy little man: helmet, eyes, a big smile, a raised wave. -->
-          <g class="astro">
-            <circle class="helmet" cx="50" cy="88" r="11" />
-            <path class="visor" d="M42 81 a8 7 0 0 1 16 0 Z" />
-            <circle class="eye" cx="47" cy="86" r="1.2" />
-            <circle class="eye" cx="53" cy="86" r="1.2" />
-            <path class="smile" d="M46 90 q4 4 8 0" />
-            <!-- Waving arm -->
-            <path class="arm" d="M59 92 q6 -2 5 -9" />
-            <circle class="mitt" cx="64" cy="82" r="2.4" />
-          </g>
+          <!-- The boss at the controls — same figure as the outro, scaled down
+               so his shades & wave fill the porthole glass. -->
+          <Astronaut transform="translate(21.2 69.44) scale(0.36)" />
           <!-- A travelling glare across the glass -->
           <rect class="glint" x="34" y="66" width="10" height="36" />
         </g>
@@ -147,6 +140,12 @@ onDestroy(clearTimers);
 
   {#if phase === "done"}
     <div class="outro" role="dialog" aria-label="Mission complete">
+      <!-- The boss himself: free of the Moon at last, floating in for his curtain
+           call — shades on, one arm waving. -->
+      <svg viewBox="0 0 160 172" class="hero" aria-hidden="true">
+        <Astronaut />
+      </svg>
+
       <h1>Escaped the Moon!</h1>
       <p class="eyebrow">Mission complete</p>
       <p class="sub">
@@ -320,33 +319,6 @@ onDestroy(clearTimers);
   filter: drop-shadow(0 0 4px rgba(116, 199, 214, 0.6));
 }
 
-/* The astronaut */
-.helmet { fill: #f3f6fb; }
-.visor { fill: #1d3a5c; opacity: 0.9; }
-.eye { fill: #0c1a2c; }
-.smile { fill: none; stroke: #0c1a2c; stroke-width: 1.2; stroke-linecap: round; }
-.arm { fill: none; stroke: #f3f6fb; stroke-width: 3; stroke-linecap: round; }
-.mitt { fill: #f3f6fb; }
-/* A cheerful, continuous wave from the little pilot. */
-.astro {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: bob 2.4s ease-in-out infinite;
-}
-.arm, .mitt {
-  transform-box: fill-box;
-  transform-origin: 0% 100%;
-  animation: wave 1.1s ease-in-out infinite;
-}
-@keyframes wave {
-  0%, 100% { transform: rotate(-6deg); }
-  50% { transform: rotate(14deg); }
-}
-@keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-0.6px); }
-}
-
 .glint {
   fill: rgba(174, 240, 251, 0.18);
   transform: skewX(-18deg);
@@ -381,6 +353,25 @@ onDestroy(clearTimers);
 .flame-outer { fill: var(--ember); opacity: 0.85; }
 .flame-mid { fill: #ffb24d; }
 .flame-core { fill: var(--brass-bright); }
+
+/* ── The boss: a free-floating astronaut on the outro card ──────────────────── */
+.hero {
+  width: clamp(120px, 26vw, 200px);
+  height: auto;
+  margin-bottom: 0.4rem;
+  filter: drop-shadow(0 0 26px rgba(116, 199, 214, 0.3));
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: hero-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both, hero-float 4.5s ease-in-out 1s infinite;
+}
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(22px) scale(0.85); }
+}
+/* A slow drift + tumble, like he's weightless and loving it. */
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0) rotate(-2.5deg); }
+  50% { transform: translateY(-10px) rotate(2.5deg); }
+}
 
 /* ── Outro card ────────────────────────────────────────────────────────────── */
 .outro {
@@ -428,8 +419,8 @@ onDestroy(clearTimers);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ship, .phase-launch .ship, .stars, .moon, .astro, .arm, .mitt, .glint,
-  .exhaust, .space {
+  .ship, .phase-launch .ship, .stars, .moon, .glint,
+  .exhaust, .space, .hero {
     animation: none !important;
     transition: none !important;
   }

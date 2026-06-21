@@ -43,7 +43,3 @@ Visible, top right, it will automatically stack resource cards into piles. Then 
 # [ ] Sharing buttons
 
 For the game it while you're playing it, and for the Finale message.
-
-# [ ] Finale message
-
-Let's have the happy little astronaut showing with that final "Escaped the Moon!" message, too. He's such a boss. 😎
