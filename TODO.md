@@ -244,3 +244,17 @@ For starters, drone mk 2 & 3 blueprints need to be available sooner.
 # [ ] Endgame Reward
 
 At the moment you get an achievement. After you dismiss it we should do something cool. I'm open to suggestions, but one is: Have the camera pan to the rocket, which gets larger and larger until it fills the screen, while everything else gets smaller and more transparent until it disappears. Inside the rocket you see a happy little man through the window.
+
+# [ ] Achievements text needs human attention
+
+One for you, Kris.
+
+# [ ] In my last runthrough, drone mk4 unlocked long before drone mk3.
+
+# [ ] It bugs me that we can pull a workshop from the wreck
+
+That's unbelievable. Let's do this:
+
+- Two levels of blueprints
+- You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
+- Eventually you can make a _workshop_, which can make level 2 blueprints.
