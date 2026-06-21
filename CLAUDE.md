@@ -18,6 +18,15 @@ fabricate, automate with drones, build a rocket, escape). Its card list, recipes
 and progression are in `docs/ESCAPE_THE_MOON.md` — **read it before changing
 cards, resolvers, or `newGame`.**
 
+## Managing the TODO list
+
+Open work lives in `TODO.md`; completed work lives in `TODO_Archived.md`. When you
+close a TODO item, **move its entire entry out of `TODO.md` and into
+`TODO_Archived.md`**, prefixing the moved entry with an italic stamp of the form
+`*Archived: YYYY-MM-DD (change <jj-change-id>)*` — the date you closed it and the
+jj change ID that did the work (`jj log -r @ --no-graph -T 'change_id.short()'`).
+Don't just tick the checkbox in place.
+
 Stack: SpacetimeDB TypeScript module (server) + Svelte 5 + Vite (client).
 Package manager is **pnpm**; system deps come from Nix (`direnv reload` / `use
 flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
