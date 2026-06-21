@@ -26,11 +26,19 @@ When a drone wants to pick up a card, it should prefer cards loose on the table 
 
 Visible, top right, it will automatically stack resource cards into piles. Then it will lay out the factory style cards in roughly in order of progression through the story, columns, left-to-right.
 
-# [ ] Things Caz wants
+# [ ] Scroll to thing (Caz)
 
-- [ ] Scroll to thing.
-- [ ] Hover over an input, get some feedback about what goes in there. Like, all the matching cards that could go in that hole will flash. (ie. flash available matches).
-- [ ] Maybe some library, attached to the workshop, that keeps your blueprints neatly stored?
+Caz wants a way to scroll/jump the viewport to a particular thing on the board.
+
+# [ ] Flash matching cards when hovering an input (Caz)
+
+Caz wants: hover over an input hole, get feedback about what goes in there — all
+the matching cards that could fill that hole flash (i.e. flash available matches).
+
+# [ ] Blueprint library attached to the workshop (Caz)
+
+Caz wants: maybe some library, attached to the workshop, that keeps your
+blueprints neatly stored.
 
 # Tips we might want to make visible
 
