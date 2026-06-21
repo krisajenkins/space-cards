@@ -86,6 +86,21 @@ const slotOf = (c: Card): number => (c.location.value as Slotted).slotIndex;
 const txOf = (c: Card): number => (c.location.value as Tabletop).x;
 const tyOf = (c: Card): number => (c.location.value as Tabletop).y;
 
+// Paint loose cards top-to-bottom by y so a server-stacked pile (a straight
+// vertical fan) layers correctly: the card lower on screen paints last, i.e. in
+// front, showing just the top sliver of each card above it. Without this, paint
+// order followed array/id order and a pile's overlap looked arbitrary. Ties broken
+// by x then id so the order is stable. Keyed by id in the {#each}, so a reorder is
+// a cheap DOM move, not a re-render.
+const looseByDepth = $derived(
+  [...looseCards].sort(
+    (a, b) =>
+      tyOf(a) - tyOf(b) ||
+      txOf(a) - txOf(b) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  ),
+);
+
 function slottedFor(verbId: bigint): Map<number, Card> {
   const m = new Map<number, Card>();
   for (const c of onBoard) {
@@ -128,6 +143,10 @@ function footprintOf(c: Card): { w: number; h: number } {
 // cards render in: `left/top = tx + PAD`). Keyed off the card set, their
 // positions, and — via footprintOf → slotsByDef/defsById — their sizes, so it
 // re-derives whenever any of those change. null when the board is empty.
+//
+// Piles need no special-casing here: stacking is server-side (each pile member
+// keeps its own fanned `tabletop {x,y}` — see docs/LAYOUT.md), so iterating every
+// loose token already covers a deep pile's lowest card, and the camera fits it.
 const bbox = $derived.by(() => {
   const placed = [...verbCards, ...looseCards.filter((c) => !defsById.get(c.defId)?.isVerb)];
   if (placed.length === 0) return null;
@@ -490,8 +509,8 @@ function onUp(e: PointerEvent) {
     {/if}
   {/each}
 
-  <!-- Loose resource cards -->
-  {#each looseCards as c (c.id)}
+  <!-- Loose resource cards (painted top-to-bottom so piles layer correctly) -->
+  {#each looseByDepth as c (c.id)}
     {@const def = defsById.get(c.defId)}
     {#if def && !def.isVerb}
       <div

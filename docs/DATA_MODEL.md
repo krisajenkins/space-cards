@@ -217,9 +217,13 @@ situation {
 }
 ```
 
-Every card is a **discrete entity** — no merging, no counts. Visually piling
-identical cards into a tidy stack is a **client layout concern** computed from
-these rows; it is not in the data model.
+Every card is a **discrete entity** — no merging, no counts. Piling identical
+cards into a tidy stack is a **server layout concern**, not a data-model one:
+there is no quantity field and no pile table. The authoritative `relayout` pass
+(`engine/layout.ts`) groups adjacent same-`defId` inert tokens and writes each
+member a fanned `Tabletop {x,y}` so the offsets ARE the real stored positions —
+the client stays a near-pure renderer. See `docs/LAYOUT.md` for the
+cluster → collapse → VPSC → fan algorithm.
 
 A verb-card carries its identity in `card`; its mutable run-state lives in the
 satellite `situation` (keyed by the same id). This follows "organise by access

@@ -9,6 +9,24 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Stackable resource cards. Perhaps autostacking?
+
+*Archived: 2026-06-21 (change ywxultllmtyt)*
+
+Server-side autostacking, computed in the authoritative layout pass — no schema
+change, no quantity. Adjacent same-type inert cards cluster into straight-vertical
+piles via cluster→collapse→VPSC→fan: `relayout` feeds VPSC one footprint per pile
+(so piles never overlap), then fans members as `anchor + k·(0,14px)`. The fan is
+anchor-relative (a pure function of the solved anchor) so relayout stays
+idempotent. Dragging any card in a pile moves the whole pile (`moveCard` shifts
+every cluster member by the same delta); dropping a pile on a slot consumes one
+card and the remainder re-fans.
+
+- spacetimedb/src/engine/layout.ts: `clusterTabletop`/`clusterOf` helpers + pile-aware relayout
+- spacetimedb/src/platform/reducers.ts: whole-pile drag in `moveCard`; consume-one + relayout in `slotCard`/`collectAndSlot`
+- src/lib/Board.svelte: bbox comment (no logic change — members carry their own positions)
+- docs/LAYOUT.md, docs/DATA_MODEL.md: stacking is now a server concern
+
 # [x] Sharing buttons
 
 *Archived: 2026-06-21 (change usywnnvzuznx)*

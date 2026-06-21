@@ -7,7 +7,7 @@ import {
   spawnOutput,
   tryBeginRun,
 } from "../engine/engine";
-import { relayout } from "../engine/layout";
+import { relayout, clusterOf } from "../engine/layout";
 import { requireCaller, requireMember } from "./auth";
 import type { Ctx, Card } from "./types";
 
@@ -148,6 +148,10 @@ export const slotCard = spacetimedb.reducer(
 
     assertSlottable(ctx, c, verb, slotIndex);
 
+    // Note before consuming whether this tabletop card was part of a pile — if so
+    // the remaining members need to re-fan to close the gap (see below).
+    const wasInPile = clusterOf(ctx, c.boardId, c).length > 1;
+
     ctx.db.card.id.update({
       ...c,
       location: { tag: "slotted", value: { verbCardId, slotIndex } },
@@ -156,6 +160,10 @@ export const slotCard = spacetimedb.reducer(
     // if the dropped card is itself a drone — start the drone's service loop.
     maybeAutostart(ctx, verbCardId);
     maybeAutostart(ctx, cardId);
+    // Pulling one card out of a pile leaves a gap in the fan — relayout so the
+    // remaining members re-tighten. Removing a card can't create an overlap, so
+    // this is the only reason to relayout on a consume path.
+    if (wasInPile) relayout(ctx, c.boardId);
   },
 );
 
@@ -187,6 +195,11 @@ export const collectAndSlot = spacetimedb.reducer(
 
     assertSlottable(ctx, c, verb, slotIndex);
 
+    // A tabletop source may belong to a pile; note it before consuming so the rest
+    // can re-fan. (output/slotted sources are never in a pile.)
+    const wasInPile =
+      old.tag === "tabletop" && clusterOf(ctx, c.boardId, c).length > 1;
+
     ctx.db.card.id.update({
       ...c,
       location: { tag: "slotted", value: { verbCardId, slotIndex } },
@@ -201,6 +214,8 @@ export const collectAndSlot = spacetimedb.reducer(
 
     maybeAutostart(ctx, verbCardId);
     maybeAutostart(ctx, cardId);
+    // Re-fan the remaining pile members if this consumed a card out of a pile.
+    if (wasInPile) relayout(ctx, c.boardId);
   },
 );
 
@@ -223,6 +238,36 @@ export const moveCard = spacetimedb.reducer(
       const s = ctx.db.situation.cardId.find(old.value.verbCardId);
       if (s && s.state.tag !== "assembling") {
         throw new SenderError("cannot take a card out of a running verb");
+      }
+    }
+
+    // Dragging a tabletop token that belongs to a PILE drags the WHOLE pile: move
+    // every cluster member by the same delta (dragged card's old position → drop
+    // point), preserving their relative offsets. They stay adjacent (all shifted
+    // equally), so relayout re-clusters and re-fans the pile at the destination.
+    // Only tabletop tokens stack — the slotted/output branches fall through to the
+    // single-card move below.
+    if (old.tag === "tabletop") {
+      const pile = clusterOf(ctx, c.boardId, c);
+      if (pile.length > 1) {
+        const deltaX = x - old.value.x;
+        const deltaY = y - old.value.y;
+        for (const m of pile) {
+          if (m.location.tag !== "tabletop") continue;
+          ctx.db.card.id.update({
+            ...m,
+            location: {
+              tag: "tabletop",
+              value: {
+                x: m.location.value.x + deltaX,
+                y: m.location.value.y + deltaY,
+              },
+            },
+          });
+        }
+        // Pin the dragged card and let the pile re-settle/re-fan at the drop point.
+        relayout(ctx, c.boardId, cardId);
+        return;
       }
     }
 

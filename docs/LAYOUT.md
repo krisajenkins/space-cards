@@ -52,6 +52,53 @@ the board is a little more loosely spaced than the cards currently look. That
 slack is what buys a stable layout that doesn't shuffle every time a card is
 produced or collected.
 
+### Stacking — adjacent same-type tokens pile (cluster → collapse → VPSC → fan)
+
+Inert resource tokens **pile** into vertical fans, and this too is a server-side
+layout concern — there is **no quantity field, no pile table, no client grouping**.
+Each card keeps its own `Tabletop {x,y}`; the fanned offsets ARE the real stored
+positions, so the client stays a pure renderer. `relayout` does it in four steps:
+
+1. **Cluster** (`clusterTabletop`) — group loose, inert (`!def.isVerb`) tabletop
+   cards of the **same `defId`** by proximity via union-find: two are adjacent if
+   their stored centres are within `STACK_RADIUS` (≈130px, one token width). It is
+   deliberately **"only adjacent merge"**, not "all wood everywhere is one pile" —
+   so the same resource can form several distinct piles in different board regions.
+   Verbs/machines (and drones, which are verbs) never pile. Members sort by id (a
+   stable bottom-of-pile / z-order); singletons aren't piles. Iterating in
+   sorted-by-id order keeps clustering deterministic. The helper is **exported** so
+   `move_card`'s drag-whole-pile uses the exact same adjacency definition.
+2. **Collapse** — each cluster contributes **one** rectangle to VPSC, sized as a
+   single `footprint()` but **inflated in height** by `(depth-1) * STACK_DY` (the
+   fan's reach). So VPSC sees one tall box per pile and still guarantees no pile
+   overlaps a neighbour.
+3. **VPSC** — `removeOverlapsPinned` runs unchanged over (singletons + one rect
+   per cluster). The pin is translated: a dropped card that's a pile member pins
+   its **cluster's** rect.
+4. **Fan** — after the solve, expand each cluster: `member[k] = anchor + (k*STACK_DX,
+   k*STACK_DY)` with `STACK_DX = 0` (straight-down column) and `STACK_DY ≈ 14px`.
+
+**Deliberate intra-pile overlap carve-out.** VPSC's no-overlap guarantee is
+enforced *between* piles only — within a pile the members deliberately overlap
+(that's what a stack looks like). The overlap is applied **after** the solve, in
+the fan step; the solver never sees it.
+
+**Critical idempotence rule.** The fan MUST be a pure function of the cluster's
+**settled anchor** (`member[k] = anchor + k*offset`), **never** relative to each
+card's *current* position — otherwise the pile would creep on every relayout and
+break the "settled board → zero writes" guarantee below. On a settled pile the
+anchor (member[0], lowest id) is already at its solved spot and each member is
+already at `anchor + k*offset`, so a second relayout recomputes identical
+positions and writes nothing.
+
+**Interaction.** `move_card` drags the **whole pile**: it finds the dragged card's
+cluster (`clusterOf`, shared adjacency), applies the same old→new delta to every
+member, then pins + relayouts (members stay adjacent — all moved equally — so they
+re-cluster and re-fan at the destination). `slot_card` / `collect_and_slot`
+consume exactly **one** card; when that card came from a pile they relayout so the
+remaining members re-fan tight (removing a card can't create an overlap, so that
+is the only reason those consume paths relayout).
+
 ### Staying on-board, without the ratchet
 
 After the solve, a **single rigid translate** shifts the whole set so nothing
@@ -75,14 +122,17 @@ tabletop:
 
 | Path | Pin |
 | --- | --- |
-| `move_card` (drop / unslot / collect-to-table) | the moved card |
+| `move_card` (drop / unslot / collect-to-table) | the moved card (its whole pile, if any) |
+| `slot_card` / `collect_and_slot` (only if the consumed card was in a pile) | none — re-fans the remainder |
 | `new_game` (after the deal) | none |
 | `complete_situation` `become` (a Seed → Forest metamorphosis) | the new card |
 | `dev_grant` (admin spawn) | the granted card |
 | `relayout_board` (admin tidy / migration tool) | none |
 
 Slotting/collecting *into* a verb removes a card from the tabletop, which can't
-create an overlap, so those paths don't relayout. Output cards live in a tray
+create an overlap, so those paths don't relayout — **except** when the consumed
+card was part of a pile, where they relayout purely so the remaining members
+re-fan to close the gap. Output cards live in a tray
 (no tabletop position) until collected, so they're excluded until a `move_card`
 brings them out.
 
@@ -93,6 +143,8 @@ brings them out.
 - `GUTTER` — minimum visible gap kept between cards.
 - `MARGIN` — how far the layout is kept from the board's (0,0) origin.
 - `PIN_WEIGHT` — how immovable a pinned card is (dominating weight).
+- `STACK_RADIUS` — centre-to-centre distance under which two same-type tokens pile.
+- `STACK_DX` / `STACK_DY` — the per-card fan offset (DX=0 keeps the pile vertical).
 
 ## Why it's server-side (and why the client version was removed)
 

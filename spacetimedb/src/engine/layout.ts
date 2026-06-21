@@ -31,9 +31,98 @@ const GUTTER = 16; // minimum visible gap kept between cards
 const TOKEN_W = 130; // inert resource tokens / blueprints (CardToken md + air)
 const TOKEN_H = 160;
 
+// Stacking: same-type inert tokens that are already near each other pile up into
+// a vertical fan. STACK_RADIUS is the centre-to-centre distance under which two
+// same-defId tokens are considered "adjacent" (≈ one token width). STACK_DX/DY
+// are the per-card offsets of the fan: dx=0 keeps the pile a straight vertical
+// column; dy is a small downward slip so you can see how deep it is.
+export const STACK_RADIUS = 130;
+const STACK_DX = 0; // straight-down pile (no horizontal lean)
+const STACK_DY = 14; // visible slip per card in the fan
+
 // A card's tabletop (x,y), or null if it isn't on the tabletop.
 function tabletopXY(c: Card): { x: number; y: number } | null {
   return c.location.tag === "tabletop" ? c.location.value : null;
+}
+
+// True if a card is a STACKABLE tabletop token: an inert (non-verb) resource card
+// loose on the table. Verbs/machines (and drones, which are verbs) never pile.
+function isStackable(ctx: Ctx, c: Card): boolean {
+  if (c.location.tag !== "tabletop") return false;
+  const def = ctx.db.cardDef.defId.find(c.defId);
+  return !!def && !def.isVerb;
+}
+
+// Group adjacent same-defId stackable tabletop cards into clusters via union-find.
+// Two cards join the same cluster when they share a defId AND their stored centres
+// are within STACK_RADIUS — so a single resource type can form SEVERAL distinct
+// piles in different board regions (proximity-based, not "all wood everywhere").
+//
+// Returns one entry per cluster: its member cards sorted by id (a stable bottom-
+// of-pile / z-order), keyed by the cluster's lowest member id. Iterating the input
+// in sorted-by-id order keeps cluster membership deterministic, matching relayout's
+// constraint-generation discipline. Singletons (and every non-stackable card) are
+// left out — callers handle those as ordinary one-card rects.
+export function clusterTabletop(ctx: Ctx, cards: Card[]): Map<bigint, Card[]> {
+  const stackable = cards
+    .filter((c) => isStackable(ctx, c))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  // Union-find over indices into `stackable`.
+  const parent = stackable.map((_, i) => i);
+  const find = (i: number): number => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
+    }
+    return i;
+  };
+  const union = (a: number, b: number) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[Math.max(ra, rb)] = Math.min(ra, rb);
+  };
+
+  for (let i = 0; i < stackable.length; i++) {
+    const pi = tabletopXY(stackable[i])!;
+    for (let j = i + 1; j < stackable.length; j++) {
+      if (stackable[i].defId !== stackable[j].defId) continue;
+      const pj = tabletopXY(stackable[j])!;
+      const ddx = pi.x - pj.x;
+      const ddy = pi.y - pj.y;
+      if (ddx * ddx + ddy * ddy <= STACK_RADIUS * STACK_RADIUS) union(i, j);
+    }
+  }
+
+  const groups = new Map<number, Card[]>();
+  for (let i = 0; i < stackable.length; i++) {
+    const r = find(i);
+    const arr = groups.get(r) ?? [];
+    arr.push(stackable[i]);
+    groups.set(r, arr);
+  }
+
+  const out = new Map<bigint, Card[]>();
+  for (const members of groups.values()) {
+    if (members.length < 2) continue; // singletons aren't piles
+    members.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    out.set(members[0].id, members);
+  }
+  return out;
+}
+
+// The cluster a given card belongs to (its full pile, sorted by id), or just
+// [card] if it is a singleton / not stackable. Used by moveCard to drag a whole
+// pile as a unit — it MUST share clusterTabletop's adjacency definition exactly.
+export function clusterOf(ctx: Ctx, boardId: bigint, card: Card): Card[] {
+  if (!isStackable(ctx, card)) return [card];
+  const cards = [...ctx.db.card.boardId.filter(boardId)].filter(
+    (c) => c.location.tag === "tabletop",
+  );
+  for (const members of clusterTabletop(ctx, cards).values()) {
+    if (members.some((m) => m.id === card.id)) return members;
+  }
+  return [card];
 }
 
 // A card's MAXIMUM rendered footprint (board-space px) — sized for the fullest
@@ -78,25 +167,59 @@ export function relayout(
   boardId: bigint,
   pinnedCardId?: bigint,
 ): void {
-  const cards = [...ctx.db.card.boardId.filter(boardId)].filter(
+  const allTabletop = [...ctx.db.card.boardId.filter(boardId)].filter(
     (c) => c.location.tag === "tabletop",
   );
-  if (cards.length < 2) return;
-  // Deterministic, reproducible constraint generation.
-  cards.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (allTabletop.length < 2) return;
 
-  // Footprint rectangles at each card's current position, inflated by a GUTTER so
-  // VPSC's zero-separation result still leaves a visible gap between cards.
-  const rects = cards.map((c) => {
-    const { w, h } = footprint(ctx, c);
-    const p = tabletopXY(c)!;
-    return new Rectangle(p.x, p.x + w + GUTTER, p.y, p.y + h + GUTTER);
+  // ── Cluster: pile adjacent same-type tokens. A pile contributes ONE rectangle
+  // to the solver (its members move and fan together); every other card is its
+  // own rect. `clusterByMember` maps each clustered card id → its cluster's
+  // anchor id, so we can route the pin (below) to the right rect.
+  const clusters = clusterTabletop(ctx, allTabletop);
+  const clusterByMember = new Map<bigint, bigint>(); // memberId → anchorId
+  for (const [anchorId, members] of clusters) {
+    for (const m of members) clusterByMember.set(m.id, anchorId);
+  }
+
+  // The solver works over "units": either a singleton card or a whole cluster.
+  // A unit is identified by its anchor card (the cluster's lowest-id member, or
+  // the card itself for a singleton). Build them in sorted-by-id order so
+  // constraint generation stays deterministic.
+  type Unit = { anchor: Card; members: Card[] };
+  const units: Unit[] = [];
+  for (const c of allTabletop) {
+    if (clusterByMember.has(c.id) && clusterByMember.get(c.id) !== c.id)
+      continue; // a clustered card that isn't its anchor — folded into its unit
+    const members = clusters.get(c.id);
+    units.push({ anchor: c, members: members ?? [c] });
+  }
+  units.sort((a, b) =>
+    a.anchor.id < b.anchor.id ? -1 : a.anchor.id > b.anchor.id ? 1 : 0,
+  );
+
+  // ── Collapse: one footprint rect per unit, anchored at the cluster's anchor
+  // position. A pile's rect is INFLATED in height by the fan depth so the fanned
+  // column still can't overlap a neighbour — VPSC sees one tall box per pile and
+  // keeps the post-solve fan clear. Inflated by GUTTER too, as before.
+  const rects = units.map((u) => {
+    const { w, h } = footprint(ctx, u.anchor);
+    const depth = u.members.length;
+    const fanW = w + Math.abs(STACK_DX) * (depth - 1);
+    const fanH = h + STACK_DY * (depth - 1);
+    const p = tabletopXY(u.anchor)!;
+    return new Rectangle(p.x, p.x + fanW + GUTTER, p.y, p.y + fanH + GUTTER);
   });
 
-  const pinIdx =
+  // The pin: the dropped card may be a cluster member — pin its whole unit.
+  const pinUnitAnchor =
     pinnedCardId === undefined
+      ? undefined
+      : (clusterByMember.get(pinnedCardId) ?? pinnedCardId);
+  const pinIdx =
+    pinUnitAnchor === undefined
       ? -1
-      : cards.findIndex((c) => c.id === pinnedCardId);
+      : units.findIndex((u) => u.anchor.id === pinUnitAnchor);
 
   removeOverlapsPinned(rects, pinIdx);
 
@@ -115,18 +238,29 @@ export function relayout(
   const dx = minX < MARGIN ? MARGIN - minX : 0;
   const dy = minY < MARGIN ? MARGIN - minY : 0;
 
-  // Write back only the cards that actually moved (≥1px), so a settled board
-  // produces zero writes on re-run — re-running relayout is a safe no-op.
-  for (let i = 0; i < cards.length; i++) {
-    const c = cards[i];
-    const cur = tabletopXY(c)!;
-    const nx = Math.round(rects[i].x + dx);
-    const ny = Math.round(rects[i].y + dy);
-    if (Math.abs(nx - cur.x) >= 1 || Math.abs(ny - cur.y) >= 1) {
-      ctx.db.card.id.update({
-        ...c,
-        location: { tag: "tabletop", value: { x: nx, y: ny } },
-      });
+  // ── Fan + write-back. For a singleton the unit's settled rect IS its position.
+  // For a pile, member[k] = anchor + k*offset — a PURE function of the cluster's
+  // settled anchor, NOT of each card's current position. This is essential for
+  // idempotence: computing the fan relative to the settled anchor means a second
+  // relayout on a settled board recomputes the identical positions and writes
+  // nothing. (Computing offsets relative to each card's *current* spot would drift
+  // the pile a little every run and break the zero-writes guarantee LAYOUT.md
+  // depends on.) Only cards that actually moved (≥1px) are written.
+  for (let i = 0; i < units.length; i++) {
+    const u = units[i];
+    const anchorX = Math.round(rects[i].x + dx);
+    const anchorY = Math.round(rects[i].y + dy);
+    for (let k = 0; k < u.members.length; k++) {
+      const c = u.members[k];
+      const cur = tabletopXY(c)!;
+      const nx = anchorX + k * STACK_DX;
+      const ny = anchorY + k * STACK_DY;
+      if (Math.abs(nx - cur.x) >= 1 || Math.abs(ny - cur.y) >= 1) {
+        ctx.db.card.id.update({
+          ...c,
+          location: { tag: "tabletop", value: { x: nx, y: ny } },
+        });
+      }
     }
   }
 }

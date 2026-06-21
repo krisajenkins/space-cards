@@ -37,24 +37,15 @@ That's unbelievable. Let's do this:
 - You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
 - Eventually you can make a _workshop_, which can make level 2 blueprints.
 
-# □ Stackable resource cards. Perhaps autostacking?
-
-> ⚠ Blocked (2026-06-21): DATA_MODEL §3.3 says stacking must be a *client-only*
-> visual concern (every card is a discrete row — no merging/counts). Decide: (1)
-> honour that (render-only grouping) or revisit the data model? (2) what counts as
-> "stackable" — same `defId` or same `category`; resources only? (3) what triggers
-> a stack — always-on auto-group or an explicit drop-on-pile gesture? (4) how does
-> a pile interact with the server-authoritative VPSC layout, dragging and
-> slotting?
-
 # [ ] When stackable cards is done, an autolayout button
 
-> ⚠ Blocked (2026-06-21): Depends on "Stackable resource cards" (still open) —
-> there are no piles to stack into yet. Also the "lay out factory cards in
+> ⚠ Blocked (2026-06-21): Dependency now MET — stackable cards shipped (server-side
+> piles in `relayout`). Remaining open design: the "lay out factory cards in
 > progression order, columns L→R" half conflicts with the locked
-> minimum-displacement VPSC philosophy in `docs/LAYOUT.md`. Decide the stackable
-> feature first, then: should autolayout override or coexist with VPSC, and what
-> defines a card's "progression column"?
+> minimum-displacement VPSC philosophy in `docs/LAYOUT.md`. Decide: should
+> autolayout override or coexist with VPSC, and what defines a card's "progression
+> column" (the research/recipe tree? the six acts in `ESCAPE_THE_MOON.md`)? The
+> stacking half is now easy (trigger `relayout`, which already piles).
 
 Visible, top right, it will automatically stack resource cards into piles. Then it will lay out the factory style cards in roughly in order of progression through the story, columns, left-to-right.
 
