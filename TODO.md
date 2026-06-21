@@ -37,10 +37,6 @@ That's unbelievable. Let's do this:
 - You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
 - Eventually you can make a _workshop_, which can make level 2 blueprints.
 
-#  [ ] Drone preferences
-
-When a drone wants to pick up a card, it should prefer cards loose on the table before it looks in outboxes.
-
 # □ Stackable resource cards. Perhaps autostacking?
 
 > ⚠ Blocked (2026-06-21): DATA_MODEL §3.3 says stacking must be a *client-only*

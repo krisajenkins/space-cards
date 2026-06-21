@@ -184,15 +184,21 @@ function researchTarget(ctx: Ctx, boardId: bigint): string | null {
 // courier shapes.
 // ──────────────────────────────────────────────────────────────────────────
 
-// The first card on the board this host could take in `accepts`: a loose tabletop
-// card or one sitting in any output tray. Never a verb card (a dormant
-// machine/drone waiting to be planted) — only resources.
+// The first card on the board this host could take in `accepts`. Prefers loose
+// tabletop cards over ones sitting in an output tray: two passes, tabletop first,
+// outputs only as a fallback. Never a verb card (a dormant machine/drone waiting
+// to be planted) — only resources.
 function firstLoot(ctx: Ctx, boardId: bigint, accepts: string[]): Card | null {
-  for (const c of ctx.db.card.boardId.filter(boardId)) {
-    if (c.location.tag !== "tabletop" && c.location.tag !== "output") continue;
+  const acceptable = (c: Card): boolean => {
     const def = ctx.db.cardDef.defId.find(c.defId);
-    if (!def || def.isVerb) continue;
-    if (accepts.includes(c.defId) || accepts.includes(def.category)) return c;
+    if (!def || def.isVerb) return false;
+    return accepts.includes(c.defId) || accepts.includes(def.category);
+  };
+  for (const c of ctx.db.card.boardId.filter(boardId)) {
+    if (c.location.tag === "tabletop" && acceptable(c)) return c;
+  }
+  for (const c of ctx.db.card.boardId.filter(boardId)) {
+    if (c.location.tag === "output" && acceptable(c)) return c;
   }
   return null;
 }

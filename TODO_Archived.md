@@ -9,6 +9,15 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Drone preferences
+
+*Archived: 2026-06-21 (change soxrnvwyotpv)*
+
+A drone now prefers cards loose on the tabletop before raiding output trays.
+`firstLoot` (`engine/resolvers.ts`, the single card-selection point for both the
+generic and Assembler feeders) was rewritten as a two-pass search — scan
+`tabletop` first, fall back to `output` only if nothing's loose.
+
 # [x] In my last runthrough, drone mk4 unlocked long before drone mk3.
 
 *Archived: 2026-06-21 (change nozllrnurzuy)*
