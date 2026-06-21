@@ -258,3 +258,33 @@ That's unbelievable. Let's do this:
 - Two levels of blueprints
 - You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
 - Eventually you can make a _workshop_, which can make level 2 blueprints.
+
+#  [ ] Drone preferences
+
+When a drone wants to pick up a card, it should prefer cards loose on the table before it looks in outboxes.
+
+# □ Stackable resource cards. Perhaps autostacking?
+
+# [ ] When stackable cards is done, an autolayout button
+
+Visible, top right, it will automatically stack resource cards into piles. Then it will lay out the factory style cards in roughly in order of progression through the story, columns, left-to-right.
+
+# [ ] Research card a different colour?
+
+# [ ] Things Caz wants
+
+- [ ] Scroll to thing.
+- [ ] Hover over an input, get some feedback about what goes in there. Like, all the matching cards that could go in that hole will flash. (ie. flash available matches).
+- [ ] Maybe some library, attached to the workshop, that keeps your blueprints neatly stored?
+
+# Tips we might want to make visible?
+
+Always be research-ready
+
+# [ ] Sharing buttons
+
+For the game it while you're playing it, and for the Finale message.
+
+# [ ] Finale message
+
+Let's have the happy little astronaut showing with that final "Escaped the Moon!" message, too. He's such a boss. 😎
