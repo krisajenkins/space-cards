@@ -187,7 +187,7 @@ const BY_DEF: Record<string, Visual> = {
   exhausted_wreck: { color: "var(--ink-faint)", glyph: G.exhausted_wreck },
   printer: { color: "var(--cat-station)", glyph: G.printer },
   workshop: { color: "var(--cat-station)", glyph: G.workshop },
-  research: { color: "var(--cat-blueprint)", glyph: G.research },
+  research: { color: "var(--cat-research)", glyph: G.research },
   solar_array: { color: "var(--cat-power)", glyph: G.solar_array },
   refinery: { color: "var(--cat-fuel)", glyph: G.refinery },
   fabricator: { color: "var(--cat-station)", glyph: G.fabricator },

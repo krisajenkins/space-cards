@@ -28,8 +28,6 @@ When a drone wants to pick up a card, it should prefer cards loose on the table 
 
 Visible, top right, it will automatically stack resource cards into piles. Then it will lay out the factory style cards in roughly in order of progression through the story, columns, left-to-right.
 
-# [ ] Research card a different colour?
-
 # [ ] Things Caz wants
 
 - [ ] Scroll to thing.

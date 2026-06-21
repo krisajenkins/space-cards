@@ -9,6 +9,15 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Research card a different colour?
+
+*Archived: 2026-06-21 (change zrwvyvssxqzr)*
+
+Gave the Research card its own peach colour so it reads as distinct from the
+blueprint cards it produces. Added a `--cat-research: #e8a87c` palette variable
+in `src/app.css` and pointed the `research` entry in `src/lib/catalogue.ts` at
+it (was sharing `--cat-blueprint`).
+
 # [x] Finale message
 
 *Archived: 2026-06-21 (change umqyttuvsrnr)*
