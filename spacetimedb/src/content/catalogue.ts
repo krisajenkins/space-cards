@@ -124,6 +124,13 @@ export function seedCatalogue(ctx: Ctx) {
 
   inert("escape", "Escape", "endgame"); // the win token
 
+  // Warehouse: an INERT buildable container (not a verb — no resolver, no holes,
+  // outputCap 0). The player houses factory cards inside it to shrink the endgame
+  // tabletop; a housed factory keeps fully running (see the `housed` Location and
+  // houseCard / unhouseCard). Built at the Workshop for 3 Components from
+  // blueprint_warehouse, earned at Research after the Refinery.
+  inert("warehouse", "Warehouse", "warehouse");
+
   // The picked-clean husk the Wreck collapses into once it's spent (a `become`
   // target — see the wreck resolver). Inert and accepted by nothing: a dead monument
   // on the table, not a resource. Its only job is to show the Wreck has run dry.
@@ -140,6 +147,7 @@ export function seedCatalogue(ctx: Ctx) {
   blueprint("chem_reactor", "Chem Reactor");
   blueprint("assembler", "Assembler");
   blueprint("rocket", "Rocket");
+  blueprint("warehouse", "Warehouse");
   blueprint("drone_1", "Drone Mk I");
   blueprint("drone_2", "Drone Mk II");
   blueprint("drone_3", "Drone Mk III");

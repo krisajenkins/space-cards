@@ -320,6 +320,87 @@ export const moveCard = spacetimedb.reducer(
   },
 );
 
+// ──────────────────────────────────────────────────────────────────────────
+// Warehouse: house / un-house a factory card. Housing is pure LAYOUT RELIEF — a
+// housed verb keeps fully running (its situation/timer ticks, its bay drone feeds
+// it, other machines pull from its tray); only the verb's OWN location changes to
+// `housed`. Its slotted children + output cards reference it by id and stay put.
+// See the `housed` Location variant and engine.ts maybeAutostart.
+// ──────────────────────────────────────────────────────────────────────────
+const WAREHOUSE_CAPACITY = 6;
+
+// Move a tabletop verb card INTO a warehouse. Asserts membership, same board, a
+// real `warehouse` target, a verb source loose on the table (not an inert token,
+// blueprint, drone-in-bay, already-housed/slotted/output card, or a warehouse),
+// and the 6-card capacity. Then relayout pinned on the warehouse so the freed
+// space repacks around it (housed cards drop out of the packing — see layout.ts).
+export const houseCard = spacetimedb.reducer(
+  { cardId: t.u64(), warehouseCardId: t.u64() },
+  (ctx, { cardId, warehouseCardId }) => {
+    const c = ctx.db.card.id.find(cardId);
+    const wh = ctx.db.card.id.find(warehouseCardId);
+    if (!c || !wh) throw new SenderError("card not found");
+    requireMember(ctx, c.boardId);
+    if (c.boardId !== wh.boardId)
+      throw new SenderError("cards are on different boards");
+    if (wh.defId !== "warehouse")
+      throw new SenderError("target is not a warehouse");
+    if (cardId === warehouseCardId)
+      throw new SenderError("a warehouse can't house itself");
+
+    const cdef = ctx.db.cardDef.defId.find(c.defId);
+    if (!cdef || !cdef.isVerb)
+      throw new SenderError("only a verb card can be housed");
+    if (c.location.tag !== "tabletop")
+      throw new SenderError("card must be loose on the table to house it");
+
+    // Capacity: count what's already in this warehouse.
+    const housed = [...ctx.db.card.boardId.filter(c.boardId)].filter(
+      (x) =>
+        x.location.tag === "housed" &&
+        x.location.value.warehouseCardId === warehouseCardId,
+    ).length;
+    if (housed >= WAREHOUSE_CAPACITY)
+      throw new SenderError("warehouse is full");
+
+    ctx.db.card.id.update({
+      ...c,
+      location: { tag: "housed", value: { warehouseCardId } },
+    });
+    // The card left the tabletop packing; repack around the (pinned) warehouse so
+    // its neighbours reclaim the freed space.
+    relayout(ctx, c.boardId, warehouseCardId);
+  },
+);
+
+// Pull a housed card back out onto the tabletop, next to its warehouse. Asserts
+// membership + that the card is actually housed; places it at a small offset from
+// the warehouse's tabletop position (falling back to the origin if the warehouse
+// has somehow been housed/moved off the table), then relayout pins the unhoused
+// card so it keeps that spot and neighbours give way.
+export const unhouseCard = spacetimedb.reducer(
+  { cardId: t.u64() },
+  (ctx, { cardId }) => {
+    const c = ctx.db.card.id.find(cardId);
+    if (!c) throw new SenderError("card not found");
+    requireMember(ctx, c.boardId);
+    if (c.location.tag !== "housed")
+      throw new SenderError("card is not in a warehouse");
+
+    const wh = ctx.db.card.id.find(c.location.value.warehouseCardId);
+    const base =
+      wh && wh.location.tag === "tabletop"
+        ? { x: wh.location.value.x + 60, y: wh.location.value.y + 60 }
+        : { x: 0, y: 0 };
+
+    ctx.db.card.id.update({
+      ...c,
+      location: { tag: "tabletop", value: base },
+    });
+    relayout(ctx, c.boardId, cardId);
+  },
+);
+
 // Dismiss an achievement toaster: flip its `seen` flag so it stops popping. The
 // award itself is one-shot (awardAchievements never re-inserts), so this just
 // silences the notification — the earned row stays for stats/UI.

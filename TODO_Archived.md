@@ -9,6 +9,27 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Endgame layout is too large
+
+*Archived: 2026-06-22 (change prsylsrq)*
+
+When it auto-fits on the screen, you simply can't read the text anymore. I think this needs some brainstorming of ideas.
+
+- ~~Collapse repeated cards down in the inbox and outbox.~~ That didn't look very good at all.
+- Introduce a cave or warehouse which can house factory cards.
+
+**Resolved with a buildable Warehouse.** Drag a factory onto a Warehouse to
+*house* it: the factory keeps fully running (its timer ticks, its bay drone keeps
+feeding it, other factories keep pulling from its output tray) but it leaves the
+tabletop layout entirely — so the endgame board stays readable. Pull it back out
+at will. Implemented as a new `housed { warehouseCardId }` `Location` variant
+(housed cards drop out of VPSC packing automatically; the feeding path in
+`engine.ts`/`resolvers.ts` was taught to treat a housed host as live), a fixed
+capacity of 6 cards per warehouse, build as many as you like. Built at the
+Workshop from `blueprint_warehouse` (3 Components), research-gated mid-game right
+after the Refinery (`need: { metal: 1 }`). Client: `Warehouse.svelte` renders up
+to 6 nested mini factories, each with a live countdown ring and an eject button.
+
 # [x] When stackable cards is done, an autolayout button
 
 *Archived: 2026-06-21 (change lpmxvzomulqz)*

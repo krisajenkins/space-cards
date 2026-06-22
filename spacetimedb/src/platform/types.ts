@@ -31,6 +31,12 @@ export const Location = t.enum("Location", {
   tabletop: t.object("Tabletop", { x: t.f32(), y: t.f32() }),
   slotted: t.object("Slotted", { verbCardId: t.u64(), slotIndex: t.u32() }),
   output: t.object("Output", { verbCardId: t.u64() }),
+  // A verb card stored INSIDE a Warehouse. It leaves the tabletop packing
+  // entirely (layout relief) but keeps fully running — its situation/timer ticks,
+  // its bay drone feeds it, other machines pull from its tray. Only the verb's OWN
+  // location becomes `housed`; its slotted children + output cards reference it by
+  // id and are spatially independent, so they stay put. See houseCard / unhouseCard.
+  housed: t.object("Housed", { warehouseCardId: t.u64() }),
 });
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -143,4 +149,7 @@ export type SlottedCard = Card & {
 };
 export type OutputCard = Card & {
   location: Extract<LocationValue, { tag: "output" }>;
+};
+export type HousedCard = Card & {
+  location: Extract<LocationValue, { tag: "housed" }>;
 };

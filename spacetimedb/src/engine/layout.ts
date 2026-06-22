@@ -135,8 +135,25 @@ export function clusterOf(ctx: Ctx, boardId: bigint, card: Card): Card[] {
 // can never overlap because the live card is always <= this box. Derived from
 // outputCap + slot count (a deliberate generous over-estimate of the CSS) since
 // the server has no DOM to measure.
+// The Warehouse reserves room for its FULL contents: a 3×2 grid of mini housed
+// cards (it caps at 6). Each mini card is ~144px wide × ~176px tall (a compact
+// VerbStation-like view), laid out 3 to a row, plus the card's header band and
+// padding. Sized to the MAX (6 housed) so the layout stays put as it fills —
+// same footprint discipline as every verb. MUST match Warehouse.svelte's render.
+const WAREHOUSE_COLS = 3;
+const WAREHOUSE_ROWS = 2; // 3×2 = capacity 6
+const MINI_W = 144;
+const MINI_H = 176;
+const MINI_GAP = 10;
+
 function footprint(ctx: Ctx, c: Card): { w: number; h: number } {
   const def = ctx.db.cardDef.defId.find(c.defId);
+  if (def && def.defId === "warehouse") {
+    const gridW = WAREHOUSE_COLS * MINI_W + (WAREHOUSE_COLS - 1) * MINI_GAP;
+    const gridH = WAREHOUSE_ROWS * MINI_H + (WAREHOUSE_ROWS - 1) * MINI_GAP;
+    // + horizontal padding (32) and a header band (~64) + vertical padding (28).
+    return { w: gridW + 32, h: gridH + 64 + 28 };
+  }
   if (!def || !def.isVerb) return { w: TOKEN_W, h: TOKEN_H };
   // Input holes only count toward the holes grid; a drone bay (droneLevel > 0)
   // renders separately, top-right of the header, so it adds to the header band,

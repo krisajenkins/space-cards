@@ -91,6 +91,11 @@ export const GraphNode = __t.object("GraphNode", {
 });
 export type GraphNode = __Infer<typeof GraphNode>;
 
+export const Housed = __t.object("Housed", {
+  warehouseCardId: __t.u64(),
+});
+export type Housed = __Infer<typeof Housed>;
+
 export const Identity = __t.object("Identity", {
   id: __t.identity(),
   userId: __t.u64(),
@@ -118,6 +123,9 @@ export const Location = __t.enum("Location", {
   },
   get Output() {
     return Output;
+  },
+  get Housed() {
+    return Housed;
   },
 });
 export type Location = __Infer<typeof Location>;

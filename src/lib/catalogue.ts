@@ -116,6 +116,10 @@ const G = {
   // Rocket (launchpad): the pre-launch craft standing on a gantry.
   rocket: `<path d="M12 3c2.4 2.6 3.5 6 3.5 9.5V16h-7v-3.5C8.5 9 9.6 5.6 12 3Z"/><circle cx="12" cy="9.5" r="1.4" fill="currentColor" stroke="none"/><path d="M8.5 14H6v6M15.5 14H18v6"/><path d="M9 16l-1 4M15 16l1 4" stroke-linecap="round"/>`,
 
+  // Warehouse: a stacked-crate store with a wide doorway — the container that
+  // houses factory cards.
+  warehouse: `<path d="M3 9l9-4 9 4v11H3z"/><path d="M3 9h18"/><path d="M9 20v-6h6v6"/><path d="M9 14h6" stroke-linecap="round"/>`,
+
   // Generic fallback.
   token: `<rect x="5" y="5" width="14" height="14" rx="3"/>`,
 };
@@ -134,6 +138,7 @@ const BLUEPRINT_FAMILY: Record<string, string> = {
   chem_reactor: "station",
   assembler: "station",
   rocket: "launchpad",
+  warehouse: "warehouse",
   drone_1: "drone",
   drone_2: "drone",
   drone_3: "drone",
@@ -198,6 +203,7 @@ const BY_DEF: Record<string, Visual> = {
   chem_reactor: { color: "var(--cat-fuel)", glyph: G.chem_reactor },
   assembler: { color: "var(--cat-station)", glyph: G.assembler },
   rocket: { color: "var(--cat-launchpad)", glyph: G.rocket },
+  warehouse: { color: "var(--cat-warehouse)", glyph: G.warehouse },
 
   // Blueprints (colour-coded by the family they build)
   ...BLUEPRINT_DEFS,
@@ -225,6 +231,7 @@ const BY_CATEGORY: Record<string, Visual> = {
   station: { color: "var(--cat-station)", glyph: G.workshop },
   avatar: { color: "var(--cat-avatar)", glyph: G.survivor },
   launchpad: { color: "var(--cat-launchpad)", glyph: G.rocket },
+  warehouse: { color: "var(--cat-warehouse)", glyph: G.warehouse },
   endgame: { color: "var(--cat-escape)", glyph: G.escape },
   blueprint: { color: "var(--cat-blueprint)", glyph: G.blueprint },
   debris: { color: "var(--ink-faint)", glyph: G.exhausted_wreck },
@@ -272,6 +279,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   heat_shield: "Heat Shield",
   blueprint: "Blueprint",
   station: "Station",
+  warehouse: "Warehouse",
   launchpad: "Launchpad",
   avatar: "Survivor",
   endgame: "Escape",
@@ -314,7 +322,7 @@ export function holeLabels(
 // ── Location helpers ───────────────────────────────────────────────────────
 // The generated `Location` enum tag may arrive capitalised ("Tabletop") or
 // lower-cased depending on codegen; normalise so comparisons are stable.
-export type Place = "tabletop" | "slotted" | "output";
+export type Place = "tabletop" | "slotted" | "output" | "housed";
 
 export function placeOf(card: Card): Place {
   return card.location.tag.toLowerCase() as Place;

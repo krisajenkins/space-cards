@@ -111,8 +111,13 @@ export function maybeAutostart(ctx: Ctx, verbCardId: bigint): void {
   // where it does its work. A drone on the table has no host and stays dormant.
   const def = ctx.db.cardDef.defId.find(verb.defId);
   const baseDrone = !!def && def.category === "drone";
+  // A HOUSED verb is also runnable: housing is pure layout relief — the factory
+  // keeps producing inside its Warehouse exactly as it did on the table, so a
+  // freshly-filled hole (player or bay drone) must still autostart it. Without
+  // `housed` here, an idle housed machine would never pick its work back up.
   const runnable =
     verb.location.tag === "tabletop" ||
+    verb.location.tag === "housed" ||
     (verb.location.tag === "slotted" && baseDrone);
   if (!runnable) return;
   const s = ctx.db.situation.cardId.find(verbCardId);

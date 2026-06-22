@@ -38,6 +38,10 @@ export const BUILDS: Record<string, Build> = {
   blueprint_chem_reactor: { output: "chem_reactor", cost: 5 },
   blueprint_assembler: { output: "assembler", cost: 5 },
   blueprint_rocket: { output: "rocket", cost: 6 },
+  // The Warehouse — a buildable container that houses factory cards to shrink the
+  // endgame tabletop. One-and-done (not `keep`); the player builds as many as they
+  // like, each holding up to 6 housed cards (capacity enforced in houseCard).
+  blueprint_warehouse: { output: "warehouse", cost: 3 },
   // Drones (the automation layer — built the same way, but the blueprint is kept
   // so the player can build a whole fleet from one manual). Cost rises with the
   // Mk so automating a higher tier is a bigger investment.
@@ -107,6 +111,9 @@ export const RESEARCH_TREE: Research[] = [
   { target: "solar", need: { component: 1 } },
   // The smelting line: refine raw → Metal, fabricate Metal → Component.
   { target: "refinery", need: { raw: 1, power: 1 } },
+  // Warehouse: a mid-game layout-relief container, unlocked right after the
+  // Refinery (you have metal flowing by now). One-and-done blueprint.
+  { target: "warehouse", need: { metal: 1 } },
   { target: "fabricator", need: { metal: 1, power: 1 } },
   { target: "kiln", need: { raw: 1, power: 1 } },
   { target: "drone_2", need: { metal: 3 }, requires: ["blueprint_drone_1"] },

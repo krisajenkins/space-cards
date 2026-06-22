@@ -20,6 +20,7 @@ import type {
 import { placeOf, stateOf, microsToMillis, type RunState } from "./catalogue";
 import CardToken from "./CardToken.svelte";
 import VerbStation from "./VerbStation.svelte";
+import Warehouse from "./Warehouse.svelte";
 
 let { boardId }: { boardId: bigint } = $props();
 
@@ -43,6 +44,8 @@ const slotCard = useReducer(reducers.slotCard);
 const collectAndSlot = useReducer(reducers.collectAndSlot);
 const moveCard = useReducer(reducers.moveCard);
 const autoLayout = useReducer(reducers.autoLayout);
+const houseCard = useReducer(reducers.houseCard);
+const unhouseCard = useReducer(reducers.unhouseCard);
 
 // ── Catalogue lookups ──────────────────────────────────────────────────────
 const defsById = $derived(
@@ -86,6 +89,10 @@ const verbOf = (c: Card): bigint => (c.location.value as Slotted | Output).verbC
 const slotOf = (c: Card): number => (c.location.value as Slotted).slotIndex;
 const txOf = (c: Card): number => (c.location.value as Tabletop).x;
 const tyOf = (c: Card): number => (c.location.value as Tabletop).y;
+// A housed card's warehouse id. Generated tag is `Housed`/`housed`; placeOf
+// guards first, so we cast to the payload shape (mirrors the accessors above).
+const whOf = (c: Card): bigint =>
+  (c.location.value as { warehouseCardId: bigint }).warehouseCardId;
 
 // Paint loose cards top-to-bottom by y so a server-stacked pile (a straight
 // vertical fan) layers correctly: the card lower on screen paints last, i.e. in
@@ -101,6 +108,18 @@ const looseByDepth = $derived(
       (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   ),
 );
+
+// Warehouses are inert tabletop cards rendered with their own component (a crate
+// holding mini housed-cards), so they're pulled out of the plain-token loop below.
+const warehouseCards = $derived(
+  looseCards.filter((c) => c.defId === "warehouse"),
+);
+// The factory cards stored inside a given warehouse (location `housed`).
+function housedFor(warehouseId: bigint): Card[] {
+  return onBoard.filter(
+    (c) => placeOf(c) === "housed" && whOf(c) === warehouseId,
+  );
+}
 
 function slottedFor(verbId: bigint): Map<number, Card> {
   const m = new Map<number, Card>();
@@ -123,6 +142,13 @@ const TOKEN_W = 130;
 const TOKEN_H = 160;
 function footprintOf(c: Card): { w: number; h: number } {
   const def = defsById.get(c.defId);
+  // Warehouse: a 3×2 grid of ~144×176 mini housed-cards + header — mirrors
+  // layout.ts footprint() so the zoom-fit reserves the same box.
+  if (c.defId === "warehouse") {
+    const gridW = 3 * 144 + 2 * 10;
+    const gridH = 2 * 176 + 1 * 10;
+    return { w: gridW + 32, h: gridH + 64 + 28 };
+  }
   if (!def || !def.isVerb) return { w: TOKEN_W, h: TOKEN_H };
   const allSlots = slotsByDef.get(def.defId) ?? [];
   const hasBay = allSlots.some((s) => s.droneLevel > 0);
@@ -424,6 +450,25 @@ function onUp(e: PointerEvent) {
   d.px = e.clientX;
   d.py = e.clientY;
 
+  // House a factory: a VERB card dropped onto a Warehouse is stored inside it
+  // (house_card). Checked before the socket logic so a machine landing on a
+  // warehouse is housed rather than repositioned. A warehouse is inert (not a
+  // verb), so dragging a warehouse never triggers this.
+  if (d.def?.isVerb && placeOf(d.card) === "tabletop") {
+    const whEl = document
+      .elementsFromPoint(d.px, d.py)
+      .find((el) => (el as HTMLElement).dataset?.warehouse) as
+      | HTMLElement
+      | undefined;
+    if (whEl) {
+      const warehouseCardId = BigInt(whEl.dataset.cardId!);
+      if (warehouseCardId !== d.card.id) {
+        houseCard({ cardId: d.card.id, warehouseCardId });
+        return;
+      }
+    }
+  }
+
   // The whole verb card is the drop target: a resource (or a drone, bound for the
   // bay) dropped anywhere on it auto-fills the first open socket. Machines never
   // slot — they reposition.
@@ -523,10 +568,38 @@ function onUp(e: PointerEvent) {
     {/if}
   {/each}
 
+  <!-- Warehouses: inert tabletop crates that house factory cards. A verb dropped
+       onto one is housed (house_card); the eject control pulls a housed card back
+       out (unhouse_card). data-warehouse marks it as a house-drop target. -->
+  {#each warehouseCards as wh (wh.id)}
+    {@const def = defsById.get(wh.defId)}
+    {#if def}
+      <div
+        class="placed"
+        role="button"
+        tabindex="0"
+        aria-label="{def.name} (drag to reposition · drop a factory on it to store it)"
+        data-warehouse="1"
+        data-card-id={wh.id}
+        class:lifted={drag?.card.id === wh.id}
+        style="left: {txOf(wh) + PAD}px; top: {tyOf(wh) + PAD}px"
+        onpointerdown={(e) => startDrag(e, wh)}
+      >
+        <Warehouse
+          {def}
+          housed={housedFor(wh.id)}
+          {defsById}
+          runInfoFor={runInfo}
+          onEject={(cardId) => unhouseCard({ cardId })}
+        />
+      </div>
+    {/if}
+  {/each}
+
   <!-- Loose resource cards (painted top-to-bottom so piles layer correctly) -->
   {#each looseByDepth as c (c.id)}
     {@const def = defsById.get(c.defId)}
-    {#if def && !def.isVerb}
+    {#if def && !def.isVerb && c.defId !== "warehouse"}
       <div
         class="placed token-wrap"
         role="button"

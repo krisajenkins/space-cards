@@ -38,12 +38,14 @@ import AutoLayoutReducer from "./auto_layout_reducer";
 import BootstrapFirstAdminReducer from "./bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "./collect_and_slot_reducer";
 import DevGrantReducer from "./dev_grant_reducer";
+import HouseCardReducer from "./house_card_reducer";
 import MarkAchievementSeenReducer from "./mark_achievement_seen_reducer";
 import MoveCardReducer from "./move_card_reducer";
 import NewGameReducer from "./new_game_reducer";
 import RelayoutBoardReducer from "./relayout_board_reducer";
 import ReseedCatalogueReducer from "./reseed_catalogue_reducer";
 import SlotCardReducer from "./slot_card_reducer";
+import UnhouseCardReducer from "./unhouse_card_reducer";
 
 // Import all procedure arg schemas
 
@@ -197,12 +199,14 @@ const reducersSchema = __reducers(
   __reducerSchema("bootstrap_first_admin", BootstrapFirstAdminReducer),
   __reducerSchema("collect_and_slot", CollectAndSlotReducer),
   __reducerSchema("dev_grant", DevGrantReducer),
+  __reducerSchema("house_card", HouseCardReducer),
   __reducerSchema("mark_achievement_seen", MarkAchievementSeenReducer),
   __reducerSchema("move_card", MoveCardReducer),
   __reducerSchema("new_game", NewGameReducer),
   __reducerSchema("relayout_board", RelayoutBoardReducer),
   __reducerSchema("reseed_catalogue", ReseedCatalogueReducer),
   __reducerSchema("slot_card", SlotCardReducer),
+  __reducerSchema("unhouse_card", UnhouseCardReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

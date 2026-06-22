@@ -10,12 +10,14 @@ import AutoLayoutReducer from "../auto_layout_reducer";
 import BootstrapFirstAdminReducer from "../bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "../collect_and_slot_reducer";
 import DevGrantReducer from "../dev_grant_reducer";
+import HouseCardReducer from "../house_card_reducer";
 import MarkAchievementSeenReducer from "../mark_achievement_seen_reducer";
 import MoveCardReducer from "../move_card_reducer";
 import NewGameReducer from "../new_game_reducer";
 import RelayoutBoardReducer from "../relayout_board_reducer";
 import ReseedCatalogueReducer from "../reseed_catalogue_reducer";
 import SlotCardReducer from "../slot_card_reducer";
+import UnhouseCardReducer from "../unhouse_card_reducer";
 
 export type AutoLayoutParams = __Infer<typeof AutoLayoutReducer>;
 export type BootstrapFirstAdminParams = __Infer<
@@ -23,6 +25,7 @@ export type BootstrapFirstAdminParams = __Infer<
 >;
 export type CollectAndSlotParams = __Infer<typeof CollectAndSlotReducer>;
 export type DevGrantParams = __Infer<typeof DevGrantReducer>;
+export type HouseCardParams = __Infer<typeof HouseCardReducer>;
 export type MarkAchievementSeenParams = __Infer<
   typeof MarkAchievementSeenReducer
 >;
@@ -31,3 +34,4 @@ export type NewGameParams = __Infer<typeof NewGameReducer>;
 export type RelayoutBoardParams = __Infer<typeof RelayoutBoardReducer>;
 export type ReseedCatalogueParams = __Infer<typeof ReseedCatalogueReducer>;
 export type SlotCardParams = __Infer<typeof SlotCardReducer>;
+export type UnhouseCardParams = __Infer<typeof UnhouseCardReducer>;

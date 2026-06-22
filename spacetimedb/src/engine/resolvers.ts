@@ -236,11 +236,16 @@ function hostHoles(ctx: Ctx, hostId: bigint, boardId: bigint): SlottedCard[] {
 function droneResolve(ctx: Ctx, verb: Card): Effects {
   const idle: Effects = { consume: [], produce: [], again: false };
   const tick: Effects = { consume: [], produce: [], again: true };
-  // Only a drone slotted into a live tabletop machine works; on the table (no
-  // host) it falls dormant until it's dropped into a bay.
+  // Only a drone slotted into a live machine works; on the table (no host) it
+  // falls dormant until it's dropped into a bay. A live host is one ON the table
+  // OR HOUSED in a warehouse — housing is pure layout relief, the machine keeps
+  // producing inside its warehouse, so its bay drone must keep feeding it. (A host
+  // that is itself slotted/output isn't a running machine, so the drone idles.)
   if (verb.location.tag !== "slotted") return idle;
   const host = ctx.db.card.id.find(verb.location.value.verbCardId);
-  if (!host || host.location.tag !== "tabletop") return idle;
+  if (!host) return idle;
+  if (host.location.tag !== "tabletop" && host.location.tag !== "housed")
+    return idle;
 
   // The Assembler is a CHOICE machine: a blind feed would load whatever's lying
   // around and build a random (or already-owned) subsystem. A Mk IV drone there
