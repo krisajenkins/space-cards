@@ -25,6 +25,7 @@ let {
   dragDefId,
   dragCategory,
   rejectingId,
+  flashingIds,
   onSlottedPointerDown,
   onOutputPointerDown,
   onHoleEnter,
@@ -41,6 +42,9 @@ let {
   dragDefId: string | null;
   dragCategory: string | null;
   rejectingId: bigint | null;
+  // Ids of cards that should flash because they could fill a hovered empty hole —
+  // here, used to glow this verb's own output-tray cards (an "outbox" source).
+  flashingIds: Set<bigint>;
   onSlottedPointerDown: (e: PointerEvent, card: Card) => void;
   onOutputPointerDown: (e: PointerEvent, card: Card) => void;
   // Hovering an empty hole / drone bay bubbles its accept-criteria to the Board,
@@ -245,6 +249,7 @@ const stateLabel = $derived(
             <div
               class="out-card"
               class:reject={rejectingId === cell.id}
+              class:flashing={flashingIds.has(cell.id)}
               role="button"
               tabindex="0"
               title="Drag out to collect"
@@ -572,6 +577,23 @@ header {
 .out-card {
   cursor: grab;
   animation: pop 0.28s cubic-bezier(0.2, 1.3, 0.5, 1);
+}
+/* Hovering an empty hole flashes every card that could fill it — including a tray
+   card here — mirroring the loose-card glow in Board.svelte's .placed.flashing. */
+.out-card.flashing {
+  animation: out-flash 0.9s ease-in-out infinite;
+}
+@keyframes out-flash {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent) brightness(1) saturate(1);
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(116, 199, 214, 0.95)) brightness(1.4)
+      saturate(1.35);
+    transform: scale(1.08);
+  }
 }
 @keyframes pop {
   from {

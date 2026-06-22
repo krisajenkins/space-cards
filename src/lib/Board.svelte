@@ -296,17 +296,20 @@ function cardMatchesHole(
   return hole.accepts.includes(card.defId) || hole.accepts.includes(def.category);
 }
 
-// The loose-card ids that should flash for the hovered hole.
+// The card ids that should flash for the hovered hole: every card that could fill
+// it without being picked up first — loose on the table, or sitting in another
+// verb's output tray (an "outbox"), since a tray card collect-and-slots in one go.
 const flashing = $derived.by(() => {
   if (!hoveredHole) return new Set<bigint>();
-  return new Set(
-    looseCards
-      .filter((c) => {
-        const d = defsById.get(c.defId);
-        return d && !d.isVerb && cardMatchesHole(c, hoveredHole!);
-      })
-      .map((c) => c.id),
-  );
+  const ids = new Set<bigint>();
+  for (const c of looseCards) {
+    const d = defsById.get(c.defId);
+    if (d && !d.isVerb && cardMatchesHole(c, hoveredHole)) ids.add(c.id);
+  }
+  for (const c of onBoard) {
+    if (placeOf(c) === "output" && cardMatchesHole(c, hoveredHole)) ids.add(c.id);
+  }
+  return ids;
 });
 
 // Any non-verb card can be slotted (output/slotted cards collect first), and so
@@ -545,6 +548,7 @@ function onUp(e: PointerEvent) {
           {dragDefId}
           {dragCategory}
           rejectingId={rejecting}
+          flashingIds={flashing}
           onSlottedPointerDown={startDragChild}
           onOutputPointerDown={startDragChild}
           onHoleEnter={(hole) => (hoveredHole = hole)}
@@ -698,10 +702,13 @@ function onUp(e: PointerEvent) {
 @keyframes hole-flash {
   0%,
   100% {
-    filter: drop-shadow(0 0 0 transparent);
+    filter: drop-shadow(0 0 0 transparent) brightness(1) saturate(1);
+    transform: scale(1);
   }
   50% {
-    filter: drop-shadow(0 0 14px rgba(116, 199, 214, 0.85));
+    filter: drop-shadow(0 0 18px rgba(116, 199, 214, 0.95)) brightness(1.4)
+      saturate(1.35);
+    transform: scale(1.08);
   }
 }
 
