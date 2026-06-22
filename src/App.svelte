@@ -51,11 +51,9 @@ const board = $derived($boards[0]);
   <main class="hero">
     <div class="hero-glow"></div>
     <div class="hero-inner">
-      <p class="eyebrow">A tabletop engine of verbs &amp; resources</p>
-      <h1>Space&nbsp;Cards</h1>
-      <p class="tagline">
-        Feed cards into the machines. Watch them turn time into something new.
-      </p>
+      <p class="eyebrow">A card game, a factory game</p>
+      <h1>Escape the Moon</h1>
+      <p class="tagline">You've crash-landed. Your only hopes lie through knowledge, effort, and whatever you can scrounge up from the moon's surface.</p>
       <div class="hero-cta">
         {#if $conn.isActive}
           <SignIn />

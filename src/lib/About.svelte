@@ -8,16 +8,16 @@ let open = $state(false);
 
 // Who made this.
 const me = [
-  { label: "Bluesky", href: "https://bsky.app/profile/krisajenkins.com" },
   { label: "LinkedIn", href: "https://www.linkedin.com/in/krisjenkins/" },
+  { label: "Bluesky", href: "https://bsky.app/profile/krisajenkins.com" },
+  { label: "Youtube", href: "http://youtube.com/@developervoices" },
 ];
 
 // What it's built on.
 const builtWith = [
-  { label: "SpacetimeDB", href: "https://spacetimedb.com/" },
-  { label: "Svelte", href: "https://svelte.dev/" },
-  { label: "Vite", href: "https://vite.dev/" },
-  { label: "WebCola", href: "https://ialab.it.monash.edu/webcola/" },
+  { label: "SpacetimeDB (Engine)", href: "https://spacetimedb.com/" },
+  { label: "Svelte (UI)", href: "https://svelte.dev/" },
+  { label: "WebCola (Layout)", href: "https://ialab.it.monash.edu/webcola/" },
 ];
 
 function close() {
@@ -59,14 +59,14 @@ function onKeydown(e: KeyboardEvent) {
     >
       <button class="about-close" aria-label="Close" onclick={close}>×</button>
 
-      <p class="about-eyebrow">A tabletop engine of verbs &amp; resources</p>
+      <p class="about-eyebrow">A tabletop engine of factories &amp; resources</p>
       <h2 class="about-title">Space&nbsp;Cards</h2>
 
       <p class="about-body">
         Crash-land on the Moon and claw your way home: gather regolith, refine
         metal, fabricate parts, set drones to work, and build a rocket out of
-        the wreck. A card is either a resource or a <em>verb</em> — a little
-        machine you feed cards into and wait for it to turn time into something
+        the wreck. Cards are either resources or processes — little
+        machines you feed cards to and wait for it to turn time into something
         new.
       </p>
 
