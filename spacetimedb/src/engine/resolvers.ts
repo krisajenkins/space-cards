@@ -1,5 +1,6 @@
 import {
   DRONE_TICK,
+  DRONE_IDLE_TICK,
   EFFORT,
   SOLAR,
   GATHER,
@@ -235,7 +236,6 @@ function hostHoles(ctx: Ctx, hostId: bigint, boardId: bigint): SlottedCard[] {
 // by completeSituation's generic `moves` handling.
 function droneResolve(ctx: Ctx, verb: Card): Effects {
   const idle: Effects = { consume: [], produce: [], again: false };
-  const tick: Effects = { consume: [], produce: [], again: true };
   // Only a drone slotted into a live machine works; on the table (no host) it
   // falls dormant until it's dropped into a bay. A live host is one ON the table
   // OR HOUSED in a warehouse — housing is pure layout relief, the machine keeps
@@ -246,6 +246,21 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
   if (!host) return idle;
   if (host.location.tag !== "tabletop" && host.location.tag !== "housed")
     return idle;
+
+  // "Nothing to feed right now" — keep watching, but back off the poll when the
+  // host can't use a feed anyway. A host that is actively `ongoing` is consuming
+  // its inputs and will free a hole within one cycle, so we stay on the fast 2s
+  // cadence to top it back up promptly. A host that is `stalled` (full output
+  // tray) or idle won't consume for a long time, so its drone polls slowly — this
+  // is what tames the saturated endgame board (a dozen-plus drones over full
+  // machines). A real feed move re-fires at DRONE_TICK regardless.
+  const hostSit = ctx.db.situation.cardId.find(host.id);
+  const tick: Effects = {
+    consume: [],
+    produce: [],
+    again: true,
+    againDelay: hostSit?.state.tag === "ongoing" ? DRONE_TICK : DRONE_IDLE_TICK,
+  };
 
   // The Assembler is a CHOICE machine: a blind feed would load whatever's lying
   // around and build a random (or already-owned) subsystem. A Mk IV drone there
@@ -329,9 +344,19 @@ function nextSubsystem(ctx: Ctx, boardId: bigint): Recipe | null {
 // holds all five subsystems, and picks back up if one is later spent.
 function assemblerDroneResolve(ctx: Ctx, host: Card): Effects {
   // Like every bayed drone, never stop the heartbeat while we have a host — return
-  // `tick` (again: true) when there's nothing to do, so the drone resumes the
-  // instant a subsystem is spent (e.g. flown into the Rocket) and needs rebuilding.
-  const tick: Effects = { consume: [], produce: [], again: true };
+  // `tick` (again: true) when there's nothing to do, so the drone resumes when a
+  // subsystem is spent (e.g. flown into the Rocket) and needs rebuilding. It polls
+  // fast while the Assembler is actively `ongoing` (it'll free holes within a
+  // cycle) and slowly otherwise — once all five subsystems are built (the endgame
+  // saturation), the Assembler sits idle, so its drone polls on DRONE_IDLE_TICK.
+  // A real feed move snaps it back to the fast DRONE_TICK regardless.
+  const hostSit = ctx.db.situation.cardId.find(host.id);
+  const tick: Effects = {
+    consume: [],
+    produce: [],
+    again: true,
+    againDelay: hostSit?.state.tag === "ongoing" ? DRONE_TICK : DRONE_IDLE_TICK,
+  };
   const holes = hostHoles(ctx, host.id, host.boardId);
   const filled = new Set(holes.map((c) => c.location.value.slotIndex));
   const slots = [...ctx.db.slotDef.defId.filter(host.defId)]

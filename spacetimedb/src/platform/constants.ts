@@ -9,6 +9,13 @@
 export const MINUTE = 60_000_000n; // engine default fallback for an unknown verb
 
 export const DRONE_TICK = 2_000_000n; // a bay drone feeds its machine one card per tick
+// When a drone wakes and finds nothing to do (host stalled, every input hole
+// full, or no loot to fetch) it backs off to this slower poll instead of the
+// 2s feed cadence. A saturated endgame board can carry a dozen-plus idle drones;
+// polling each every 2s dominated completeSituation CPU, so idle drones tick
+// ~6×/min instead of 30×/min. They snap back to DRONE_TICK the moment they find
+// real work to do (a feed move). See droneResolve / tryBeginRun.
+export const DRONE_IDLE_TICK = 10_000_000n; // idle bay drone re-poll interval
 export const EFFORT = 6_000_000n; // the Survivor producing one Effort
 export const SOLAR = 5_000_000n; // the Solar Array producing one Power
 export const GATHER = 4_000_000n; // gathering one raw (Field / Wreck) per Effort

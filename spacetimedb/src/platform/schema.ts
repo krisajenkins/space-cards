@@ -305,7 +305,7 @@ export const completeSituation = spacetimedb.reducer(
     }
 
     if (eff.again && verbReady(ctx, verbCardId)) {
-      tryBeginRun(ctx, verbCardId);
+      tryBeginRun(ctx, verbCardId, eff.againDelay);
     } else {
       ctx.db.situation.cardId.update({
         ...s,

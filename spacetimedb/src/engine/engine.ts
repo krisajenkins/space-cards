@@ -70,7 +70,14 @@ export function verbReady(ctx: Ctx, verbCardId: bigint): boolean {
 }
 
 // Begin (or re-begin) a run, unless the output tray is full → then stall.
-export function tryBeginRun(ctx: Ctx, verbCardId: bigint): void {
+// `delayOverride` (microseconds) replaces the resolver's `duration()` for this
+// run only — an idle drone uses it to back off to a slow poll. Omit it for the
+// usual `duration()`-derived length.
+export function tryBeginRun(
+  ctx: Ctx,
+  verbCardId: bigint,
+  delayOverride?: bigint,
+): void {
   const s = ctx.db.situation.cardId.find(verbCardId);
   const verb = ctx.db.card.id.find(verbCardId);
   if (!s || !verb) return;
@@ -85,7 +92,8 @@ export function tryBeginRun(ctx: Ctx, verbCardId: bigint): void {
     return;
   }
   const r = RESOLVERS[verb.defId];
-  const dur = r ? r.duration(holeCards(ctx, verbCardId)) : MINUTE;
+  const dur =
+    delayOverride ?? (r ? r.duration(holeCards(ctx, verbCardId)) : MINUTE);
   const endMicros = ctx.timestamp.microsSinceUnixEpoch + dur;
   ctx.db.situation.cardId.update({
     ...s,

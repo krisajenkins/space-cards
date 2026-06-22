@@ -75,6 +75,9 @@ export const MemberRole = t.enum("MemberRole", {
 // as this one completes (if its holes are still filled); when false it falls
 // idle and waits for the player. The next run's length is recomputed from
 // `duration()` — `again` does not carry it.
+// `againDelay` overrides that re-fire length for THIS re-fire only (microseconds).
+// A drone that found nothing to feed sets it to back off to a slow idle poll
+// instead of its 2s feed cadence; omit it for the normal `duration()` length.
 // `moves` relocates cards that already exist on the board, rather than creating
 // or destroying them — the Worker uses it to shuttle a card out of an output
 // tray and into an open hole. Each entry sets a card's `location` to `to`; the
@@ -85,6 +88,7 @@ export type Effects = {
   consume: bigint[];
   produce: string[];
   again: boolean;
+  againDelay?: bigint;
   become?: string;
   moves?: { cardId: bigint; to: LocationValue }[];
 };
