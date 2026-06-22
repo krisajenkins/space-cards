@@ -261,7 +261,6 @@ const stateLabel = $derived(
         </div>
       {/each}
     </div>
-    <span class="tray-label">output · {outputs.length}/{def.outputCap}</span>
   </div>
   {/if}
 </div>
@@ -579,14 +578,5 @@ header {
     transform: scale(0.6);
     opacity: 0;
   }
-}
-.tray-label {
-  display: block;
-  margin-top: 0.4rem;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
 }
 </style>
