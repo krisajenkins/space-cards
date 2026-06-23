@@ -78,26 +78,38 @@ export const recipeSatisfied = (
 // that powers achievements), so "what you've discovered" gates "what you can
 // research" — exactly the resource-graph gating the seeded model used, now made
 // explicit:
-//   • a MACHINE blueprint unlocks once you've created ≥1 of EACH input category
-//     its machine consumes (so you must have discovered the inputs first; the
-//     tech-tree order falls straight out of the dependency graph). One-of-each,
-//     not the full recipe — you still build it at the Workshop afterwards.
-//   • a DRONE blueprint unlocks once you've done that tier's manual chore ≥3
-//     times (created ≥3 of a representative tier output) — the §2 "automate the
-//     work you've outgrown" rhythm.
-// The needs are CATEGORIES, summed over every defId in the category (so "raw"
-// counts Regolith + Scrap, "component" counts Salvage too). Easy to re-tune.
+//   • a MACHINE blueprint (`need`) unlocks once you've created ≥1 of EACH input
+//     category its machine consumes (so you must have discovered the inputs
+//     first; the tech-tree order falls straight out of the dependency graph).
+//     One-of-each, not the full recipe — you still build it at the Workshop.
+//   • a DRONE blueprint (`chore`) unlocks once you've done that tier's manual
+//     work enough times — the §2 "automate the work you've outgrown" rhythm. The
+//     trigger is "you've done N tasks a drone of this Mk could have done", so the
+//     gate SUMS the lifetime counts of the machines-of-that-tier OUTPUT
+//     categories (Mk II ⇒ metal+silicon+glass+water, Mk III ⇒
+//     circuit+hydrogen+oxygen+fuel, …) and fires at `count`. Summed, not AND-ed
+//     like `need`, because a drone retires a whole tier: ANY of that tier's
+//     outputs counts as having done the chore (so "3 metal" or "2 metal + 1
+//     silicon" both unlock Mk II). This also makes Mk II/III arrive sooner than
+//     a single-category gate would. We sum OUTPUT categories rather than counting
+//     machine firings — no new history is needed, the existing per-category tally
+//     already has it (and the player can hit the count however they like).
+// The needs/chores are CATEGORIES, summed over every defId in the category (so
+// "raw" counts Regolith + Scrap, "component" counts Salvage too). Easy to re-tune.
 //
 // `requires` is an optional list of blueprint defIds that must ALREADY have been
-// discovered before this entry can be offered. The category `need`s alone can't
+// discovered before this entry can be offered. The category gates alone can't
 // express "this tier comes after that one" because every blueprint shares the
 // `blueprint` category — and the chore gates can be met out of order (e.g. a
-// player rushing Fuel for the rocket can hit `fuel ≥ 3` before ever making 3
+// player rushing Fuel for the rocket can hit the Mk III chore before ever making
 // circuits). The drone Marks are a strict LADDER, so each higher Mk lists the Mk
 // below as a prerequisite — Mk IV can never be researched before Mk III.
+//
+// Exactly one of `need` / `chore` is set per entry (machine vs drone).
 export type Research = {
   target: string;
-  need: Record<string, number>;
+  need?: Record<string, number>; // AND: ≥1 of EACH (machine inputs)
+  chore?: { of: string[]; count: number }; // SUM these output categories ≥ count (drone tier chore)
   requires?: string[];
 };
 export const RESEARCH_TREE: Research[] = [
@@ -106,7 +118,7 @@ export const RESEARCH_TREE: Research[] = [
   // genuinely useful thing to unlock, well before you need Power. So drone_1
   // outranks the Solar Array: as soon as you've worked the gatherers a few times
   // (raw ≥ 3), this is what Research hands you.
-  { target: "drone_1", need: { raw: 3 } },
+  { target: "drone_1", chore: { of: ["raw"], count: 3 } },
   // Then Power — the spine that opens every big machine.
   { target: "solar", need: { component: 1 } },
   // The smelting line: refine raw → Metal, fabricate Metal → Component.
@@ -116,12 +128,26 @@ export const RESEARCH_TREE: Research[] = [
   { target: "warehouse", need: { metal: 1 } },
   { target: "fabricator", need: { metal: 1, power: 1 } },
   { target: "kiln", need: { raw: 1, power: 1 } },
-  { target: "drone_2", need: { metal: 3 }, requires: ["blueprint_drone_1"] },
+  // Mk II retires the tier-2 smelting/mining line (Refinery, Fabricator, Kiln,
+  // Ice Mine). Any of its DISTINCTIVE outputs counts — Component is excluded
+  // because the Mk I Printer makes it from turn one, which would unlock Mk II
+  // prematurely.
+  {
+    target: "drone_2",
+    chore: { of: ["metal", "silicon", "glass", "water"], count: 3 },
+    requires: ["blueprint_drone_1"],
+  },
   // Electronics + chemistry sub-trees.
   { target: "ice_mine", need: { power: 1 } },
   { target: "electronics_fab", need: { silicon: 1, power: 1 } },
   { target: "electrolysis", need: { water: 1, power: 1 } },
-  { target: "drone_3", need: { circuit: 3 }, requires: ["blueprint_drone_2"] },
+  // Mk III retires the tier-3 electronics/chemistry line (Electronics Fab,
+  // Electrolysis, Chem Reactor).
+  {
+    target: "drone_3",
+    chore: { of: ["circuit", "hydrogen", "oxygen", "fuel"], count: 3 },
+    requires: ["blueprint_drone_2"],
+  },
   { target: "chem_reactor", need: { hydrogen: 1, oxygen: 1, power: 1 } },
   // Assembly + liftoff.
   {
@@ -129,7 +155,15 @@ export const RESEARCH_TREE: Research[] = [
     need: { component: 1, circuit: 1, glass: 1, water: 1 },
   },
   { target: "rocket", need: { subsystem: 1, fuel: 1 } },
-  { target: "drone_4", need: { fuel: 3 }, requires: ["blueprint_drone_3"] },
+  // Mk IV retires hand-loading the Assembler. Hand-build 2 subsystems, then
+  // automate the rest (the Assembler's Mk IV drone targets the missing ones, and
+  // it ferries fuel/subsystems into the Rocket). Threshold is 2, not 3: only five
+  // subsystems exist, so a 3-gate would leave the drone almost nothing to do.
+  {
+    target: "drone_4",
+    chore: { of: ["subsystem"], count: 2 },
+    requires: ["blueprint_drone_3"],
+  },
 ];
 
 // ── The Wreck's manifest ───────────────────────────────────────────────────

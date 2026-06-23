@@ -141,13 +141,17 @@ export function buildProgressionGraph(ctx: GraphCtx): {
   }
 
   // ── research: prerequisite category → the blueprint Research unlocks ───────
-  // The Research bench earns a blueprint once the board has created enough of
-  // each `need` category. Draw an edge from each prerequisite category's cards
-  // to the unlocked blueprint, so the unlock dependencies are visible.
+  // The Research bench earns a blueprint once the board has created enough of its
+  // gate categories — a machine's `need` (≥1 of each input) or a drone's `chore`
+  // (the tier's output categories, summed). Draw an edge from each prerequisite
+  // category's cards to the unlocked blueprint, so the unlock deps are visible.
   for (const r of RESEARCH_TREE) {
     const bp = `blueprint_${r.target}`;
     add("research", bp, "produce");
-    for (const [cat, n] of Object.entries(r.need)) {
+    const gate: Record<string, number> = r.chore
+      ? Object.fromEntries(r.chore.of.map((cat) => [cat, r.chore!.count]))
+      : (r.need ?? {});
+    for (const [cat, n] of Object.entries(gate)) {
       const members = membersOf.get(cat) ?? [cat];
       for (const m of members) add(m, bp, "research", `${cat} x${n}`);
     }

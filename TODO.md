@@ -1,16 +1,3 @@
-# [ ] What is the order of revealed blueprints?
-
-> ⚠ Blocked (2026-06-21): Mechanism is trivial (reveal order = array order of
-> `RESEARCH_TREE` in `content/recipes.ts`, with category `need` thresholds + the
-> `requires` ladder). The open call is *pacing*: (1) what overall reveal order do
-> you want for the ~14 blueprints? (2) how much sooner should drone Mk2/Mk3
-> arrive — earlier list position, lower thresholds, or both? (3) keep the
-> Mk-N-needs-Mk-(N-1) ladder when pulling higher Marks earlier?
-
-Let's talk about it. This feels like a key playthrough decision.
-
-For starters, drone mk 2 & 3 blueprints need to be available sooner.
-
 # [ ] Achievements text needs human attention
 
 > ⚠ Blocked (2026-06-21): All 21 entries in `ACHIEVEMENT_DEFS`

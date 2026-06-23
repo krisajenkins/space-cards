@@ -148,9 +148,17 @@ is the unambiguous output selector — no fragile count-matching.
 > - a **machine** blueprint unlocks once you've created **≥1 of each input
 >   category** its machine consumes (so you must have *discovered* the inputs
 >   first); and
-> - a **drone** blueprint unlocks once you've done that tier's manual chore **≥3
->   times** (created ≥3 of a representative tier output) — the §2 "automate the
->   work you've outgrown" rhythm, now an explicit gate.
+> - a **drone** blueprint unlocks once you've done that tier's manual chore enough
+>   times — "you've done N tasks a drone of this Mk could've done" — the §2
+>   "automate the work you've outgrown" rhythm, now an explicit gate. The gate
+>   **sums** the lifetime counts of that tier's *output* categories and fires at a
+>   threshold (Mk I: `raw`≥3 · Mk II: `metal+silicon+glass+water`≥3 · Mk III:
+>   `circuit+hydrogen+oxygen+fuel`≥3 · Mk IV: `subsystem`≥2). Summed, not AND-ed,
+>   because a drone retires a whole tier — *any* of its outputs counts (so "3
+>   metal" or "2 metal + 1 silicon" both unlock Mk II), which also lets Mk II/III
+>   arrive sooner than a single-category gate. Mk II excludes Component (the Mk I
+>   Printer makes it from turn one); Mk IV uses 2, not 3, since only five
+>   subsystems exist.
 >
 > The **tech-tree ORDER still falls out of the resource dependency graph** — you
 > can't research the Refinery before you have raw + power, can't research the

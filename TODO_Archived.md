@@ -9,6 +9,25 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] What is the order of revealed blueprints?
+
+*Archived: 2026-06-23 (change vsozyynslmwo)*
+
+Answer: What I want is, "once you've done three tasks that could have been done by a drone, you unlock the blueprint for that drone." So Kiln and Refiner both take level 2 drones. So you 3 metal or 3 silicon or 2 metal and one silicon would do it.
+I suspect that encoding this as "how many times have these factories built something" might need a lot of new code. If that's the case, I'm happy to precompute which outputs we're talking about. ie. `count(metal)+count(silicon)+... >= 3` would be fine.
+
+Let's talk about it. This feels like a key playthrough decision.
+
+For starters, drone mk 2 & 3 blueprints need to be available sooner.
+
+Resolved: drone research-gates now SUM the lifetime counts of that Mk's machine
+output categories and fire at a threshold — Mk I `raw`≥3 · Mk II
+`metal+silicon+glass+water`≥3 · Mk III `circuit+hydrogen+oxygen+fuel`≥3 · Mk IV
+`subsystem`≥2. Mk II excludes Component (the Mk I Printer makes it from turn one);
+Mk IV uses 2 since only five subsystems exist. The summing (vs the old
+single-category gate) is what makes Mk II/III arrive sooner. Reuses the existing
+`histCategory` tally — no new "count factory firings" history needed.
+
 # [x] Endgame layout is too large
 
 *Archived: 2026-06-22 (change prsylsrq)*

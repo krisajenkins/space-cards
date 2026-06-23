@@ -164,9 +164,17 @@ function researchTarget(ctx: Ctx, boardId: bigint): string | null {
     // the category needs alone can be met out of order.
     if ((r.requires ?? []).some((req) => !discovered(ctx, boardId, req)))
       continue;
-    const ok = Object.entries(r.need).every(
-      ([cat, n]) => histCategory(ctx, boardId, cat) >= BigInt(n),
-    );
+    // A drone `chore` SUMS the lifetime counts of its tier's output categories
+    // and fires at the threshold ("3 tasks a drone of this Mk could've done"); a
+    // machine `need` AND-checks ≥1 of each input category. Exactly one is set.
+    const ok = r.chore
+      ? r.chore.of.reduce(
+          (sum, cat) => sum + histCategory(ctx, boardId, cat),
+          0n,
+        ) >= BigInt(r.chore.count)
+      : Object.entries(r.need ?? {}).every(
+          ([cat, n]) => histCategory(ctx, boardId, cat) >= BigInt(n),
+        );
     if (ok) return bp;
   }
   return null;
