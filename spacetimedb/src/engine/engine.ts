@@ -1,8 +1,11 @@
 import { ScheduleAt, Timestamp } from "spacetimedb";
-import { MINUTE } from "../platform/constants";
 import { RESOLVERS } from "./resolvers";
 import { awardAchievements } from "../content/achievements";
 import type { Ctx, Card, SlottedCard } from "../platform/types";
+
+// Fallback run length for a verb with no resolver — engine infrastructure, not
+// an Escape-the-Moon balance number (those live in content/durations.ts).
+const MINUTE = 60_000_000n; // microseconds
 
 // ──────────────────────────────────────────────────────────────────────────
 // Engine helpers

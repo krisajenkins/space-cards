@@ -16,7 +16,7 @@ import {
   CHEM,
   ASSEMBLE,
   LAUNCH,
-} from "../platform/constants";
+} from "../content/durations";
 import type { Ctx, Card, Effects, SlottedCard } from "../platform/types";
 import {
   BUILDS,
