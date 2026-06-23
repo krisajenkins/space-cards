@@ -68,6 +68,16 @@ function take(
 const hasPower = (holes: SlottedCard[]) =>
   holes.some((h) => h.defId === "power");
 
+// How many cards of `defId` sit in a verb's own output tray. Lets a producer
+// see what's piling up unconsumed and steer its next output accordingly.
+const trayCount = (ctx: Ctx, verb: Card, defId: string): number =>
+  [...ctx.db.card.boardId.filter(verb.boardId)].filter(
+    (c) =>
+      c.defId === defId &&
+      c.location.tag === "output" &&
+      c.location.value.verbCardId === verb.id,
+  ).length;
+
 // The slotted INPUT cards — everything a verb actually consumes, excluding any
 // drone sitting in its drone bay. Single-input stations (gatherers, the Printer)
 // read `inputs(...)[0]`; without this filter a lone drone in the bay would be
@@ -545,15 +555,30 @@ export const RESOLVERS: Record<string, Resolver> = {
   fabricator: poweredOne(FABRICATE, "metal", "component"),
   electronics_fab: poweredOne(ELECTRONICS, "silicon", "circuit"),
 
-  // Kiln: raw → Silicon (or, 50% of the time, Glass). Powered.
+  // Kiln: raw → Silicon or Glass, Powered. It bakes whichever of the two its
+  // own outbox currently holds the FEWER of (coin-toss on a tie). Because a
+  // consumed product (Silicon, pulled on for circuits) stays low in the tray
+  // while an unwanted one (Glass, once the Heat Shield is built) plateaus, this
+  // self-balances toward what's actually being used — and stops a dead product
+  // from saturating the shared 5-slot tray and starving the other, which would
+  // otherwise hard-lock the silicon→circuit→engine line. See docs/ESCAPE_THE_MOON.
   kiln: {
     duration: () => KILN,
     ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, "raw") > 0,
-    resolve: (ctx, holes) => {
+    resolve: (ctx, holes, verb) => {
       const power = take(ctx, holes, "power", 1);
       const input = take(ctx, holes, "raw", 1);
       if (power.length === 0 || input.length === 0) return NOOP;
-      const out = ctx.random() < 0.5 ? "silicon" : "glass";
+      const silicon = trayCount(ctx, verb, "silicon");
+      const glass = trayCount(ctx, verb, "glass");
+      const out =
+        silicon < glass
+          ? "silicon"
+          : glass < silicon
+            ? "glass"
+            : ctx.random() < 0.5
+              ? "silicon"
+              : "glass";
       return {
         consume: [...power, ...input, ...workerCost(ctx, holes)],
         produce: [out],
@@ -578,6 +603,15 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Electrolysis: Water + Power → Hydrogen + Oxygen.
+  //
+  // This is a DUAL-output producer feeding one shared, capped tray — the same
+  // shape that hard-locked the Kiln (silicon trapped behind un-consumed glass).
+  // It's safe ONLY because H2 and O2 are produced 1:1 here and consumed 1:1 by
+  // their sole consumer (the Chem Reactor), so neither can ever pile up behind
+  // the other; the even cap (6) packs the 2-per-cycle output cleanly too. If you
+  // ever add a recipe that consumes H2 or O2 ALONE, or in a non-1:1 ratio, that
+  // symmetry breaks and this clogs exactly like the Kiln did — at which point
+  // give it the Kiln's demand-aware "emit whichever the tray holds least of".
   electrolysis: {
     duration: () => ELECTROLYSIS,
     ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, "water") > 0,
