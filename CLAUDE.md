@@ -115,6 +115,34 @@ Local iteration loop: `spacetime start` (server) → `pnpm spacetime:publish:loc
 → `pnpm spacetime:generate` → `pnpm dev`. `spacetime dev` automates rebuild +
 publish + bindings if you prefer it.
 
+### `spacetime` CLI gotchas (driving a local DB by hand)
+
+Verifying behaviour by `call`/`sql` against a local DB has sharp edges — these
+cost real time, so:
+
+- **`call` / `sql` default to the `maincloud` server.** Always pass `--server
+  local` (or `-s local`) for local work, or you'll silently query/mutate
+  production. Symptom of forgetting: the result URL points at
+  `maincloud.spacetimedb.com`.
+- **Hyphenated DB names don't resolve as the positional `[DATABASE]` arg.**
+  `spacetime sql -s local spacecards-drtest "SELECT …"` does NOT target
+  `spacecards-drtest`; the CLI falls back to the configured default DB
+  (`spacecards`) and folds the name into the query — you get
+  `sql parser error: Expected an SQL statement, found: spacecards`. Use a
+  hyphen-free name (e.g. publish your throwaway to local `spacecards` itself with
+  `--delete-data -y`), or it won't work even though `spacetime list` shows the
+  name.
+- **SQL dialect is restricted.** `COUNT(*)` needs an alias (`COUNT(*) AS n`);
+  `WHERE x IN (…)` is unsupported; and you can't filter on a sum-type's inner
+  fields — `WHERE location.slotted.verbCardId = 10` errors. To inspect a card's
+  place, `SELECT id, location FROM card WHERE defId = '…'` and read the rendered
+  `(slotted = (verb_card_id = …))` value yourself.
+- **Setup for an admin-gated scenario:** `bootstrap_first_admin '"you@x.com"'`
+  (one-shot; links the CLI identity + flips `isAdmin`) → `new_game` → then
+  `dev_grant <boardId> '"defId"' <x> <y>` to drop cards, `slot_card`,
+  `collect_and_slot`, `move_card` to drive them. Reducers return nothing — read
+  state back via `sql` (e.g. `situation` / `situation_timer` for run state).
+
 There is no test suite. Type-check the client with `svelte-check`.
 
 ## Architecture notes specific to this codebase
