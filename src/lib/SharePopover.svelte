@@ -10,9 +10,11 @@ import { copyLink, shareLinks } from "./share";
 let {
   text,
   open = $bindable(),
+  placement = "below",
 }: {
   text: string;
   open: boolean;
+  placement?: "above" | "below";
 } = $props();
 
 const links = $derived(shareLinks({ text }));
@@ -52,6 +54,7 @@ function onWindowPointerdown() {
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="share-menu"
+    class:above={placement === "above"}
     role="menu"
     tabindex="-1"
     aria-label="Share Escape the Moon"
@@ -93,10 +96,21 @@ function onWindowPointerdown() {
     0 24px 50px -18px rgba(0, 0, 0, 0.85);
   animation: share-rise 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+.share-menu.above {
+  top: auto;
+  bottom: calc(100% + 0.5rem);
+  animation-name: share-rise-above;
+}
 @keyframes share-rise {
   from {
     opacity: 0;
     transform: translateY(-6px);
+  }
+}
+@keyframes share-rise-above {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 }
 .share-item {

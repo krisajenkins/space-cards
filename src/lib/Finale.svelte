@@ -169,7 +169,11 @@ onDestroy(() => {
             <span class="share-glyph" aria-hidden="true">↗</span>
             Share your escape
           </button>
-          <SharePopover text="I escaped the Moon! 🚀" bind:open={shareOpen} />
+          <SharePopover
+            text="I escaped the Moon! 🚀"
+            bind:open={shareOpen}
+            placement="above"
+          />
         </div>
         <button class="cw-btn" onclick={(e) => { e.stopPropagation(); onClose(); }}>
           Back to the board
