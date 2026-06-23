@@ -6,6 +6,7 @@ import Board from "./lib/Board.svelte";
 import Achievements from "./lib/Achievements.svelte";
 import About from "./lib/About.svelte";
 import Privacy from "./lib/Privacy.svelte";
+import Modal from "./lib/Modal.svelte";
 import ProgressionTree from "./lib/ProgressionTree.svelte";
 import SoundEffects from "./lib/SoundEffects.svelte";
 import Finale from "./lib/Finale.svelte";
@@ -42,10 +43,6 @@ const board = $derived(
   })[0],
 );
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === "Escape") confirmNew = false;
-}
-
 // Start a fresh game. Because `board` derives onto the *latest* board, the new
 // game (with a newer createdAt) becomes the one we render the moment its row
 // lands — the old game stays in the DB, just no longer reachable.
@@ -54,8 +51,6 @@ function startNewGame() {
   confirmNew = false;
 }
 </script>
-
-<svelte:window onkeydown={onKeydown} />
 
 {#if !signedIn}
   <!-- ── Signed-out: the title screen ─────────────────────────────────── -->
@@ -91,7 +86,7 @@ function startNewGame() {
       <div class="topbar-right">
         {#if board}
           <button
-            class="tree-trigger"
+            class="pill"
             title="Start a new game"
             onclick={() => (confirmNew = true)}
           >
@@ -100,7 +95,7 @@ function startNewGame() {
         {/if}
         <div class="share-anchor">
           <button
-            class="tree-trigger share-trigger"
+            class="pill share-trigger"
             title="Share Escape the Moon"
             aria-haspopup="menu"
             aria-expanded={shareOpen}
@@ -127,14 +122,14 @@ function startNewGame() {
         </button>
         {#if isAdmin}
           <button
-            class="tree-trigger"
+            class="pill"
             title="Progression tree (admin)"
             onclick={() => (treeOpen = true)}
           >
             Tree
           </button>
           <button
-            class="tree-trigger"
+            class="pill"
             title="Preview the endgame cinematic (admin)"
             onclick={() => playFinale()}
           >
@@ -182,51 +177,31 @@ function startNewGame() {
     {/if}
 
     {#if confirmNew}
-      <!-- Backdrop: click outside the panel to dismiss. The × button and Escape
-           (svelte:window above) are the keyboard-accessible close affordances. -->
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <div
-        class="confirm-backdrop"
-        role="presentation"
-        onclick={(e) => {
-          if (e.target === e.currentTarget) confirmNew = false;
-        }}
+      <Modal
+        label="Start a new game"
+        eyebrow="Crash-land again?"
+        title="Start a New Game"
+        onClose={() => (confirmNew = false)}
       >
-        <div
-          class="confirm-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Start a new game"
-        >
+        <p class="modal-body">
+          This deals a fresh table and drops you straight into it. Your current
+          game isn't deleted — it's kept safe — but there's no way back to it
+          for now, so you'll be starting over from the wreck.
+        </p>
+
+        <div class="modal-actions">
+          <button class="pill pill--lg" onclick={() => (confirmNew = false)}>
+            Cancel
+          </button>
           <button
-            class="confirm-close"
-            aria-label="Close"
-            onclick={() => (confirmNew = false)}>×</button
+            class="pill pill--lg pill--go"
+            onclick={startNewGame}
+            disabled={!$conn.isActive}
           >
-
-          <p class="confirm-eyebrow">Crash-land again?</p>
-          <h2 class="confirm-title">Start a New Game</h2>
-
-          <p class="confirm-body">
-            This deals a fresh table and drops you straight into it. Your current
-            game isn't deleted — it's kept safe — but there's no way back to it
-            for now, so you'll be starting over from the wreck.
-          </p>
-
-          <div class="confirm-actions">
-            <button class="confirm-btn" onclick={() => (confirmNew = false)}>
-              Cancel
-            </button>
-            <button
-              class="confirm-btn confirm-btn-go"
-              onclick={startNewGame}
-              disabled={!$conn.isActive}
-            >
-              Start New Game
-            </button>
-          </div>
+            Start New Game
+          </button>
         </div>
-      </div>
+      </Modal>
     {/if}
   </div>
 {/if}
@@ -394,26 +369,6 @@ function startNewGame() {
   pointer-events: none;
 }
 
-/* The admin-only progression-tree toggle, styled to match About's pill. */
-.tree-trigger {
-  appearance: none;
-  padding: 0.3rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid var(--panel-edge);
-  background: rgba(20, 26, 46, 0.7);
-  color: var(--ink-soft);
-  font-family: var(--body);
-  font-weight: 600;
-  font-size: 0.85rem;
-  line-height: 1;
-  transition:
-    color 0.12s ease,
-    border-color 0.12s ease;
-}
-.tree-trigger:hover {
-  color: var(--brass-bright);
-  border-color: rgba(201, 214, 255, 0.25);
-}
 /* The share pill + its popover live in a positioned wrapper so the menu can
    anchor to the button. */
 .share-anchor {
@@ -478,123 +433,6 @@ function startNewGame() {
   max-width: 36ch;
   margin: 0 0 0.6rem;
 }
-/* ── New-game confirmation modal ───────────────────────────────────────── */
-/* Adapted from About.svelte's backdrop/panel so the two modals match. */
-.confirm-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  background: rgba(4, 6, 14, 0.66);
-  backdrop-filter: blur(3px);
-  animation: confirm-fade 0.16s ease both;
-}
-@keyframes confirm-fade {
-  from {
-    opacity: 0;
-  }
-}
-.confirm-panel {
-  position: relative;
-  width: min(30rem, 100%);
-  background: linear-gradient(180deg, var(--panel), var(--void-2));
-  border: 1px solid var(--panel-edge);
-  border-radius: 16px;
-  padding: 2rem 2.2rem 2.2rem;
-  box-shadow:
-    0 1px 0 rgba(255, 240, 200, 0.08) inset,
-    0 30px 70px -20px rgba(0, 0, 0, 0.9);
-  animation: confirm-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-@keyframes confirm-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-}
-.confirm-close {
-  position: absolute;
-  top: 0.8rem;
-  right: 0.9rem;
-  appearance: none;
-  border: none;
-  background: none;
-  color: var(--ink-faint);
-  font-size: 1.6rem;
-  line-height: 1;
-  padding: 0.2rem 0.4rem;
-  cursor: pointer;
-  transition: color 0.12s ease;
-}
-.confirm-close:hover {
-  color: var(--ink);
-}
-.confirm-eyebrow {
-  font-family: var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.28em;
-  font-size: 0.62rem;
-  color: var(--astral);
-  margin: 0 0 0.6rem;
-  padding-left: 0.28em;
-}
-.confirm-title {
-  font-family: var(--display);
-  font-weight: 900;
-  font-size: 2rem;
-  line-height: 1;
-  margin: 0 0 1.1rem;
-  background: linear-gradient(180deg, #fbf4e2 8%, var(--brass) 92%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.confirm-body {
-  color: var(--ink-soft);
-  line-height: 1.55;
-  margin: 0 0 1.8rem;
-}
-.confirm-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.8rem;
-}
-.confirm-btn {
-  appearance: none;
-  padding: 0.5rem 1.1rem;
-  border-radius: 999px;
-  border: 1px solid var(--panel-edge);
-  background: rgba(20, 26, 46, 0.7);
-  color: var(--ink-soft);
-  font-family: var(--body);
-  font-weight: 600;
-  font-size: 0.9rem;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    color 0.12s ease,
-    border-color 0.12s ease,
-    opacity 0.12s ease;
-}
-.confirm-btn:hover {
-  color: var(--brass-bright);
-  border-color: rgba(201, 214, 255, 0.25);
-}
-.confirm-btn-go {
-  color: var(--brass-bright);
-  border-color: var(--brass);
-  background: rgba(203, 166, 90, 0.14);
-}
-.confirm-btn-go:hover {
-  border-color: var(--brass-bright);
-}
-.confirm-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .begin-orb {
   width: 84px;
   height: 84px;

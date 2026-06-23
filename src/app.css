@@ -188,6 +188,123 @@ button {
   filter: none;
 }
 
+/* ── Pill button ───────────────────────────────────────────────────────────
+   The topbar triggers (About, Privacy, Sign out, Tree, New Game, Share) and the
+   modal action buttons share one shape: a rounded, panel-edged chip with a quiet
+   inset highlight that brightens to brass on hover. Add `.pill--lg` for the
+   larger modal-action size, and a tone modifier for affirmative/destructive. */
+.pill {
+  appearance: none;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  background: rgba(20, 26, 46, 0.7);
+  color: var(--ink-soft);
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1;
+  box-shadow: 0 1px 0 rgba(255, 240, 200, 0.05) inset;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+.pill:hover:not(:disabled) {
+  color: var(--brass-bright);
+  border-color: rgba(201, 214, 255, 0.25);
+  background: rgba(28, 36, 62, 0.8);
+}
+.pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Larger variant for modal action rows. */
+.pill--lg {
+  padding: 0.5rem 1.1rem;
+  font-size: 0.9rem;
+}
+
+/* Brass-filled affirmative ("go"). */
+.pill--go {
+  color: var(--brass-bright);
+  border-color: var(--brass);
+  background: rgba(203, 166, 90, 0.14);
+}
+.pill--go:hover:not(:disabled) {
+  border-color: var(--brass-bright);
+  background: rgba(203, 166, 90, 0.14);
+}
+
+/* Ember-toned destructive text. */
+.pill--danger {
+  color: var(--ember);
+  border-color: rgba(210, 96, 58, 0.4);
+}
+.pill--danger:hover:not(:disabled) {
+  color: #ff8a63;
+  border-color: rgba(210, 96, 58, 0.7);
+  background: rgba(20, 26, 46, 0.7);
+}
+
+/* Ember-filled destructive "go". */
+.pill--danger-go {
+  color: #ff8a63;
+  border-color: rgba(210, 96, 58, 0.6);
+  background: rgba(210, 96, 58, 0.14);
+}
+.pill--danger-go:hover:not(:disabled) {
+  color: #ffae90;
+  border-color: rgba(210, 96, 58, 0.9);
+  background: rgba(210, 96, 58, 0.14);
+}
+
+/* ── Modal content helpers ───────────────────────────────────────────────────
+   Used inside <Modal> bodies. Those bodies are written in the *calling*
+   component's markup, so Svelte's scoped styles can't reach them — these live
+   here as globals alongside the rest of the shell's shared utilities. */
+.modal-body {
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin: 0;
+}
+.modal-body p {
+  margin: 0 0 0.8rem;
+}
+.modal-body p:last-child {
+  margin-bottom: 0;
+}
+.modal-body strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.modal-body a {
+  color: var(--astral);
+  text-decoration: none;
+  font-weight: 600;
+}
+.modal-body a:hover {
+  color: var(--astral-bright);
+  text-decoration: underline;
+}
+.modal-body h3 {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.66rem;
+  font-weight: 400;
+  color: var(--ink-faint);
+  margin: 1.4rem 0 0.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  margin-top: 1.8rem;
+}
+
 /* Rejection flash — a card bounced off an invalid target shakes in place.
    Global so both loose cards (Board) and slotted/output cards (VerbStation)
    can use it. */
