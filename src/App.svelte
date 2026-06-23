@@ -8,25 +8,13 @@ import About from "./lib/About.svelte";
 import ProgressionTree from "./lib/ProgressionTree.svelte";
 import SoundEffects from "./lib/SoundEffects.svelte";
 import Finale from "./lib/Finale.svelte";
+import SharePopover from "./lib/SharePopover.svelte";
 import { muted, toggleMute } from "./lib/audio";
 import { finalePlaying, playFinale, endFinale } from "./lib/finale";
-import { share } from "./lib/share";
 
 const conn = useSpacetimeDB();
 
-let shareLabel = $state("Share");
-let shareTimer: ReturnType<typeof setTimeout> | undefined;
-async function shareGame() {
-  const result = await share({
-    title: "Escape the Moon",
-    text: "Playing Escape the Moon 🌙 — can you escape?",
-  });
-  if (result === "copied") {
-    shareLabel = "Link copied!";
-    clearTimeout(shareTimer);
-    shareTimer = setTimeout(() => (shareLabel = "Share"), 2000);
-  }
-}
+let shareOpen = $state(false);
 
 const [me, meReady] = useTable(tables.meView);
 const [boards, boardsReady] = useTable(tables.myBoards);
@@ -107,14 +95,23 @@ function startNewGame() {
             New Game
           </button>
         {/if}
-        <button
-          class="tree-trigger share-trigger"
-          title="Share Escape the Moon"
-          onclick={shareGame}
-        >
-          <span class="share-glyph" aria-hidden="true">↗</span>
-          {shareLabel}
-        </button>
+        <div class="share-anchor">
+          <button
+            class="tree-trigger share-trigger"
+            title="Share Escape the Moon"
+            aria-haspopup="menu"
+            aria-expanded={shareOpen}
+            onpointerdown={(e) => e.stopPropagation()}
+            onclick={() => (shareOpen = !shareOpen)}
+          >
+            <span class="share-glyph" aria-hidden="true">↗</span>
+            Share
+          </button>
+          <SharePopover
+            text="Playing Escape the Moon 🌙 — can you escape?"
+            bind:open={shareOpen}
+          />
+        </div>
         <button
           class="mute-trigger"
           class:muted={$muted}
@@ -408,6 +405,12 @@ function startNewGame() {
 .tree-trigger:hover {
   color: var(--brass-bright);
   border-color: rgba(201, 214, 255, 0.25);
+}
+/* The share pill + its popover live in a positioned wrapper so the menu can
+   anchor to the button. */
+.share-anchor {
+  position: relative;
+  display: inline-flex;
 }
 /* The share pill carries a small upload glyph before its label. */
 .share-trigger {

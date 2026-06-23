@@ -14,24 +14,12 @@
 // the board or the server — it's pure send-off. Closing returns to the board.
 import { onMount, onDestroy } from "svelte";
 import { playLaunch } from "./audio";
-import { share } from "./share";
+import SharePopover from "./SharePopover.svelte";
 import Astronaut from "./Astronaut.svelte";
 
 let { onClose }: { onClose: () => void } = $props();
 
-let shareLabel = $state("Share your escape");
-let shareTimer: ReturnType<typeof setTimeout> | undefined;
-async function shareWin() {
-  const result = await share({
-    title: "Escape the Moon",
-    text: "I escaped the Moon! 🚀",
-  });
-  if (result === "copied") {
-    shareLabel = "Link copied!";
-    clearTimeout(shareTimer);
-    shareTimer = setTimeout(() => (shareLabel = "Share your escape"), 2000);
-  }
-}
+let shareOpen = $state(false);
 
 type Phase = "rise" | "ignite" | "launch" | "done";
 let phase = $state<Phase>("rise");
@@ -76,7 +64,6 @@ onMount(() => {
 
 onDestroy(() => {
   clearTimers();
-  clearTimeout(shareTimer);
 });
 </script>
 
@@ -171,13 +158,19 @@ onDestroy(() => {
         into a way home.
       </p>
       <div class="outro-actions">
-        <button
-          class="cw-btn cw-btn-share"
-          onclick={(e) => { e.stopPropagation(); shareWin(); }}
-        >
-          <span class="share-glyph" aria-hidden="true">↗</span>
-          {shareLabel}
-        </button>
+        <div class="share-anchor">
+          <button
+            class="cw-btn cw-btn-share"
+            aria-haspopup="menu"
+            aria-expanded={shareOpen}
+            onpointerdown={(e) => e.stopPropagation()}
+            onclick={(e) => { e.stopPropagation(); shareOpen = !shareOpen; }}
+          >
+            <span class="share-glyph" aria-hidden="true">↗</span>
+            Share your escape
+          </button>
+          <SharePopover text="I escaped the Moon! 🚀" bind:open={shareOpen} />
+        </div>
         <button class="cw-btn" onclick={(e) => { e.stopPropagation(); onClose(); }}>
           Back to the board
         </button>
@@ -449,6 +442,10 @@ onDestroy(() => {
   flex-wrap: wrap;
   gap: 0.7rem;
   justify-content: center;
+}
+.share-anchor {
+  position: relative;
+  display: inline-flex;
 }
 .cw-btn-share {
   display: inline-flex;

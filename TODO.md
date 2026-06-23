@@ -66,8 +66,3 @@ blueprints neatly stored.
 > or (3) split downstream demand so subsystems need Fabricator-grade Components the
 > Printer can't make? Which differentiation do you want?
 
-# [ ] Sharing needs revisiting
-
-On my machine it pops up the OSX sharing dialog, which isn't what I want. I
-want prefilled tweets, linkedin posts, bluesky/mastodon posts, etc., as well
-whatsapp and so on.

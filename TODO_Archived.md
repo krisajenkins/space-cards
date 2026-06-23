@@ -9,6 +9,14 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Sharing needs revisiting
+
+*Archived: 2026-06-23 (change kyzyxrmz)*
+
+On my machine it pops up the OSX sharing dialog, which isn't what I want. I
+want prefilled tweets, linkedin posts, bluesky/mastodon posts, etc., as well
+whatsapp and so on.
+
 # [x] There should be a "start new game" button in the toolbar, with a confirmation.
 
 *Archived: 2026-06-23 (change yxumpqov)*
