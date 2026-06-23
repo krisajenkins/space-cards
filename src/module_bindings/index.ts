@@ -34,7 +34,6 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
-import AutoLayoutReducer from "./auto_layout_reducer";
 import BootstrapFirstAdminReducer from "./bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "./collect_and_slot_reducer";
 import DevGrantReducer from "./dev_grant_reducer";
@@ -195,7 +194,6 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
-  __reducerSchema("auto_layout", AutoLayoutReducer),
   __reducerSchema("bootstrap_first_admin", BootstrapFirstAdminReducer),
   __reducerSchema("collect_and_slot", CollectAndSlotReducer),
   __reducerSchema("dev_grant", DevGrantReducer),

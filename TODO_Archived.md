@@ -9,6 +9,12 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] We should remove "tidy board" and all the code connected to it
+
+*Archived: 2026-06-23 (change uppkvuwq)*
+
+(change lpmxvzom) Now that we have warehouses it's not actually needed. And it never worked perfectly.
+
 # [x] What is the order of revealed blueprints?
 
 *Archived: 2026-06-23 (change vsozyynslmwo)*

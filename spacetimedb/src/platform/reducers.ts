@@ -8,7 +8,7 @@ import {
   tryBeginRun,
   wakeBayDrones,
 } from "../engine/engine";
-import { relayout, clusterOf, autoArrange } from "../engine/layout";
+import { relayout, clusterOf } from "../engine/layout";
 import {
   OPENING_BOARD_NAME,
   OPENING_STATIONS,
@@ -45,21 +45,6 @@ export const relayoutBoard = spacetimedb.reducer(
     if (!me.isAdmin) throw new SenderError("admin only");
     requireMember(ctx, boardId);
     relayout(ctx, boardId);
-  },
-);
-
-// Tidy the board into its story order — available to any board MEMBER (players
-// AND admins), unlike relayoutBoard which is an admin-only operational tool. It
-// re-seeds every card into a legible arrangement (verbs across the top in
-// progression order, resources piled in a band beneath) and then runs the usual
-// minimum-displacement VPSC layout from that seed — so it never violates the
-// layout philosophy, it just chooses a better starting arrangement. See
-// autoArrange + docs/LAYOUT.md.
-export const autoLayout = spacetimedb.reducer(
-  { boardId: t.u64() },
-  (ctx, { boardId }) => {
-    requireMember(ctx, boardId);
-    autoArrange(ctx, boardId);
   },
 );
 

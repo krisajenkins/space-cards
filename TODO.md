@@ -8,10 +8,6 @@
 
 One for you, Kris.
 
-# [ ] We should remove "tidy board" and all the code connected to it
-
-(change lpmxvzom) Now that we have warehouses it's not actually needed. And it never worked perfectly.
-
 # [ ] It bugs me that we can pull a workshop from the wreck
 
 > ⚠ Blocked (2026-06-21): Mechanism is clear (rename Workshop→Workbench, add a
