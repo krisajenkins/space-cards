@@ -35,8 +35,15 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
 
 - `spacetimedb/src/` — the server module (its own pnpm package). `index.ts` is
   the aggregator SpacetimeDB bundles from (it re-exports the schema + every
-  reducer/view/hook). The rest is split into **three folders by what the thing
-  _is_**, so code lives where you'd guess to look for it:
+  reducer/view/hook). The rest is grouped into **three concern-groups by what the
+  thing _is_**, so code lives where you'd guess to look for it. These are
+  concern-groups, **not** a clean dependency stack: `platform/schema.ts` (the
+  schema object + its row types in `platform/types.ts`) is the shared **hub** that
+  the others spoke off — row types derive from it (`Infer<typeof …rowType>`),
+  reducers and views attach to it, and `content/` + `engine/` both depend on it.
+  So `platform/{schema,types}` is the foundation everything sits on, even though it
+  lives in the "surface" folder; the groups below organise concerns, they don't
+  layer dependencies top-to-bottom.
   - **`content/`** — "what the game IS" (authoring + data). `catalogue.ts`
     (`seedCatalogue` — the `card_def` / `slot_def` / `achievement_def` authoring:
     **this is where the cards are defined**), `recipes.ts` (the recipe DATA tables
@@ -44,7 +51,8 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
     contents, the build costs, the research tree, the subsystem recipes),
     `achievements.ts` (both halves of each milestone — the display text
     `ACHIEVEMENT_DEFS` **and** the earning conditions `ACHIEVEMENTS` + the
-    `awardAchievements` funnel).
+    `awardAchievements` funnel), `durations.ts` (the per-verb run lengths — the
+    timing-balance sibling of `recipes.ts`, read by `engine/resolvers.ts`).
   - **`engine/`** — "how it RUNS" (mechanism). `engine.ts` (the generic verb
     engine — assembly, runs, output caps, spawning, the `tally`), `resolvers.ts`
     (the `RESOLVERS` map: per-verb behaviour, the bay-drone feeder, and the
@@ -57,7 +65,10 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
     `collectAndSlot`, `moveCard`, and admin `devGrant` / `relayoutBoard`),
     `views.ts` (the `my_*` read views), `graph.ts` (the admin progression-graph
     projection), `lifecycle.ts` (`init`/`reseedCatalogue` wiring, connect/disconnect,
-    first-admin bootstrap), `auth.ts`, `constants.ts`, `types.ts`.
+    first-admin bootstrap), `auth.ts`, `constants.ts` (platform-level constants
+    only — a dependency-free leaf the Svelte client can also import; today that's
+    just the public Google-auth contract. Game-balance numbers like durations are
+    content and live under `content/`, not here), `types.ts`.
 
   Reducer names are snake_cased on the wire (`new_game`, `slot_card`, …). The
   client imports the public auth constants from `spacetimedb/src/platform/constants.ts`.
