@@ -188,7 +188,7 @@ function onKeydown(e: KeyboardEvent) {
   font-family: var(--display);
   font-weight: 900;
   font-size: 2.4rem;
-  line-height: 1;
+  line-height: 1.3;
   margin: 0 0 1.1rem;
   background: linear-gradient(180deg, #fbf4e2 8%, var(--brass) 92%);
   -webkit-background-clip: text;

@@ -5,6 +5,7 @@ import SignIn from "./lib/SignIn.svelte";
 import Board from "./lib/Board.svelte";
 import Achievements from "./lib/Achievements.svelte";
 import About from "./lib/About.svelte";
+import Privacy from "./lib/Privacy.svelte";
 import ProgressionTree from "./lib/ProgressionTree.svelte";
 import SoundEffects from "./lib/SoundEffects.svelte";
 import Finale from "./lib/Finale.svelte";
@@ -75,6 +76,8 @@ function startNewGame() {
     <footer class="hero-foot">
       <span class="link-status" class:on={$conn.isActive}></span>
       {$conn.isActive ? "connected" : "connecting"}
+      <span class="foot-sep">·</span>
+      <Privacy link />
     </footer>
   </main>
 {:else}
@@ -139,6 +142,7 @@ function startNewGame() {
           </button>
         {/if}
         <About />
+        <Privacy />
         <SignIn />
       </div>
     </header>
@@ -316,6 +320,10 @@ function startNewGame() {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+.foot-sep {
+  color: var(--ink-faint);
+  opacity: 0.5;
 }
 .link-status {
   width: 8px;
