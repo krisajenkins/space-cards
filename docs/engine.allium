@@ -1,0 +1,705 @@
+-- allium: 3
+-- engine.allium
+--
+-- The generic verb engine — the Cultist-Simulator-style tabletop that could run
+-- ANY such game. Distilled from spacetimedb/src/engine/ and spacetimedb/src/platform/.
+-- Source of truth for intent: docs/DATA_MODEL.md.
+--
+-- Companion spec: escape-the-moon.allium is ONE game built on this engine. The
+-- engine names no game card; it defines the lifecycle and the RESOLVER CONTRACT
+-- (VerbResolver) that a game fulfils, one resolver per verb definition.
+--
+-- Scope — what the engine IS:
+--   - the catalogue model (CardDef / SlotDef): what cards exist, what holes accept
+--   - ownership + identity (User / Identity / Board / BoardMember)
+--   - a card's place (the Location sum: tabletop / slotted / output / housed)
+--   - the verb lifecycle: assemble -> run -> complete -> recycle / become / retire,
+--     output-cap back-pressure (stall), and the worker-bay gate
+--   - the abstract per-verb resolver contract (duration / ready / resolve -> Effects)
+--
+-- Excludes (modelled abstractly so the engine stays port-friendly):
+--   - SpacetimeDB substrate: private tables + the per-player `my_*` read views are
+--     modelled as the BoardView surface; the per-situation scheduled timer as a
+--     temporal trigger (Situation.ends_at <= now); the server-authoritative VPSC
+--     overlap-removal pass as the @LayoutSettled guarantee, not a rule.
+--   - The Svelte client: rendering, the drag gesture, the rAF countdown clock.
+--   - Google OAuth verification (issuer / audience / JWT): a trusted sign-in is a
+--     GoogleSignIn stimulus already carrying the verified email. The
+--     cross-provider linking-by-email logic IS in scope.
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+enum IdentityProvider { google | spacetime }
+enum MemberRole { player | spectator }
+
+------------------------------------------------------------
+-- Value Types
+------------------------------------------------------------
+
+-- The outcome a verb's resolver returns for one completed run. Declarative: it
+-- DECIDES what happens; the engine APPLIES it (CompleteRun). The four effects are
+-- (almost) mutually exclusive in practice but the type permits combinations.
+value Effects {
+    -- Cards consumed by this run (deleted). Drawn from the verb's filled holes;
+    -- a resolver chooses which holes are eaten and which are kept (e.g. a tool
+    -- card that stays, an ingredient that is used up).
+    consume: Set<Card>
+
+    -- New cards to create in the verb's output tray, one row per entry. Subject to
+    -- the output cap (a full tray stalls the verb instead of overflowing).
+    produce: List<CardDef>
+
+    -- Re-fire flag: when true AND the verb is still ready, the engine immediately
+    -- begins another run on completion (a self-emitter, a draining queue). When
+    -- false the verb falls idle (back to assembling) and waits for the player.
+    again: Boolean
+
+    -- Transform-in-place: the verb card metamorphoses into a fresh card of this
+    -- def where it stood, instead of producing into a tray. Supersedes
+    -- produce/recycle — the verb is gone after the swap (a planted Seed -> Forest;
+    -- a spent Wreck -> husk; a finished Rocket -> Escape).
+    become: CardDef?
+
+    -- Relocations of cards that ALREADY exist (not created/destroyed): a courier
+    -- drone shuttling a card from a tray into another verb's hole. The engine
+    -- applies each move and then runs the same side-effects a player gesture would
+    -- (a vacated tray un-stalls its emitter; a filled hole autostarts its verb).
+    relocations: List<CardMove>
+}
+
+-- One relocation: the card to move and where it lands. `target_verb` + `slot_index`
+-- describe a Slotted destination; absent means the tabletop. (A simplification of
+-- the implementation's `to: Location`.)
+value CardMove {
+    card: Card
+    target_verb: Card?
+    slot_index: Integer?
+}
+
+------------------------------------------------------------
+-- Contracts
+------------------------------------------------------------
+
+-- The seam between engine and game. The engine drives the lifecycle; a game
+-- supplies ONE resolver per verb definition, dispatched by def_id. A resolver is
+-- pure and deterministic given the holes (it may read board state and the engine's
+-- deterministic clock/RNG, never the outside world).
+contract VerbResolver {
+    -- The run length for THIS firing, recomputed each time from what's in the holes
+    -- (durations are not static columns — the same verb can run fast or slow
+    -- depending on what fed it).
+    duration: (holes: Set<Card>) -> Duration
+
+    -- An OPTIONAL extra readiness predicate consulted on top of the generic
+    -- required-holes check (see Card.verb_ready). Lets one verb offer a CHOICE of
+    -- whole recipes that the per-hole `required` flag cannot express (it can only
+    -- AND holes together). Absent → generic readiness alone decides.
+    ready: (holes: Set<Card>) -> Boolean
+
+    -- The behaviour: given the filled holes and the verb card, decide what to
+    -- consume, produce, become, move, and whether to re-fire.
+    resolve: (holes: Set<Card>, verb: Card) -> Effects
+
+    @invariant ReadyAgreesWithResolve
+        -- If `ready` returns true, `resolve` must do observable work. A resolver
+        -- that reports ready then no-ops would spin: the engine re-fires it, it
+        -- does nothing, the trigger fires again. (The drone feeder routes both
+        -- through one "next move" function so they can never disagree.)
+
+    @invariant NoFailureOutcome
+        -- Every run "succeeds". A disappointing result is an OUTCOME (produce
+        -- nothing, or hand back the inputs), never an error. There is no failed
+        -- state and no thrown error from resolve.
+
+    @guidance
+        -- A resolver decides duration, what is consumed, what is produced, whether
+        -- to re-fire, and whether to metamorphose — all at runtime from the holes.
+        -- It must not assume an idle verb: holes can be topped up mid-run.
+}
+
+------------------------------------------------------------
+-- Entities
+------------------------------------------------------------
+
+-- Catalogue: authored content describing what cards exist. A CardDef is a
+-- template; a Card is an instance. Verb-ness and its run-flags live here. PUBLIC:
+-- the catalogue is openly readable (empty holes show what they want).
+entity CardDef {
+    def_id: String              -- stable key: 'power', 'refinery', 'drone_1'
+    name: String
+    category: String            -- coarse nominal type a hole can accept ('raw', 'power')
+    is_verb: Boolean            -- false → inert resource/token; true → a verb
+    reusable: Boolean           -- verb only: survive completion and re-arm?
+    output_cap: Integer         -- verb only: max cards the tray holds (0 = no tray)
+    drone_level: Integer        -- >0 → this card is a worker drone of this Mk; 0 → not
+
+    slots: SlotDef with card_def = this
+    input_slots: slots where drone_level = 0       -- material holes
+    bay_slots: slots where drone_level > 0         -- the worker bay (at most one)
+
+    is_drone: drone_level > 0
+    has_bay: bay_slots.count > 0
+}
+
+-- One hole on a verb. `accepts` holds category names and/or def_ids; a card fits
+-- if EITHER its def_id or its category is listed. A hole with drone_level > 0 is
+-- the verb's WORKER BAY — it takes a worker (Effort or a drone of >= that Mk), is
+-- never consumed as an input, and its occupant's job is to feed the OTHER holes.
+entity SlotDef {
+    card_def: CardDef
+    slot_index: Integer
+    accepts: Set<String>
+    required: Boolean
+    drone_level: Integer        -- 0 → material input hole; >0 → worker bay of this min Mk
+
+    is_bay: drone_level > 0
+}
+
+-- A human. MANY identities (one per authenticated principal) point at one user, so
+-- signing in from several providers/devices is one account. primary_email is the
+-- lower-cased cross-provider join key. (DATA_MODEL §11.)
+entity User {
+    primary_email: String
+    display_name: String
+    picture_url: String?
+    is_admin: Boolean
+    created_at: Timestamp
+
+    identities: Identity with user = this
+    memberships: BoardMember with user = this
+}
+
+-- One row per linked authenticated principal (ctx.sender). The presence of an
+-- Identity row is the access gate: an unlinked principal can read the public
+-- catalogue but sees no game data and can take no action.
+entity Identity {
+    principal: String
+    user: User
+    provider: IdentityProvider
+    linked_at: Timestamp
+}
+
+-- A play surface ("the table"). Board-level ownership: the owner is the sole
+-- authority to hand cards off the board.
+entity Board {
+    name: String
+    owner: User
+    created_at: Timestamp
+
+    members: BoardMember with board = this
+    cards: Card with board = this
+    situations: Situation with board = this
+}
+
+entity BoardMember {
+    board: Board
+    user: User
+    role: MemberRole
+}
+
+-- A card instance. Its place is a mutually-exclusive sum (the Location type),
+-- modelled as a `place` discriminator with state-dependent fields rather than
+-- separate nullable columns. THERE IS NO QUANTITY: "3 metal" is three Card rows.
+entity Card {
+    board: Board
+    def: CardDef
+    place: tabletop | slotted | output | housed
+
+    -- tabletop: a free position on the surface
+    x: Decimal when place = tabletop
+    y: Decimal when place = tabletop
+
+    -- slotted | output: bound to a holder verb card
+    holder: Card when place = slotted | output
+    -- slotted only: which hole of the holder
+    slot_index: Integer when place = slotted
+
+    -- housed: stored inside a Warehouse card (pure layout relief — a housed verb
+    -- keeps running exactly as on the table). The container is itself a card.
+    container: Card when place = housed
+
+    situation: Situation with card = this   -- present only for verb cards
+
+    -- Holes and tray of THIS card (meaningful only when it is a verb).
+    held_cards: Card with holder = this
+    slotted_cards: held_cards where place = slotted
+    output_cards: held_cards where place = output
+
+    output_count: output_cards.count
+    at_capacity: def.output_cap > 0 and output_count >= def.output_cap
+
+    -- Where the card's worker bay (if any) sits, and whether it is manned.
+    bay_indices: def.bay_slots -> slot_index
+    bay_cards: slotted_cards where slot_index in bay_indices
+    input_cards: slotted_cards where slot_index not in bay_indices
+    bay_manned: bay_cards.count > 0
+
+    -- Readiness — the generic gate, before any resolver `ready` hook:
+    --   1. if the verb has a bay, it must be manned (a worker is present);
+    --   2. every REQUIRED material hole is filled;
+    --   3. if it has any material holes at all, at least one is filled (so an
+    --      all-optional inbox fires on one card and idles when drained, while a
+    --      hole-less emitter is always ready).
+    filled_input_indices: input_cards -> slot_index
+    required_inputs: def.input_slots where required
+    all_required_filled: required_inputs.all(s => s.slot_index in filled_input_indices)
+    has_inputs: def.input_slots.count > 0
+    some_inputs_filled: input_cards.count > 0
+    bay_ok: not def.has_bay or bay_manned
+    verb_ready: bay_ok and all_required_filled and (not has_inputs or some_inputs_filled)
+
+    -- A verb runs only while "live": on the tabletop (the grows-once-planted gate),
+    -- or housed (a Warehouse is just off-table storage), or — for a drone — slotted
+    -- in a bay, which is exactly where a drone does its work.
+    is_live: place = tabletop or place = housed or (place = slotted and def.is_drone)
+
+    transitions place {
+        tabletop -> slotted     -- SlotCard / a resolver relocation
+        slotted -> tabletop     -- MoveCard (unslot)
+        output -> tabletop      -- MoveCard (collect)
+        slotted -> slotted      -- CollectAndSlot (from another hole)
+        output -> slotted       -- CollectAndSlot / a courier drone
+        tabletop -> housed      -- HouseCard
+        housed -> tabletop      -- UnhouseCard
+    }
+}
+
+-- Runtime state of an active verb card. 1:1 with the verb card. A run lives as
+-- `ongoing` until its deadline, then a completion rule resolves it. A full tray
+-- back-pressures the verb into `stalled`; vacating the tray resumes it.
+entity Situation {
+    card: Card
+    board: Board
+    state: assembling | ongoing | stalled
+    ends_at: Timestamp when state = ongoing
+
+    -- A verb begins when idle, live, and ready — unless its tray is full (→ stall).
+    can_begin: state = assembling and card.is_live and card.verb_ready
+    -- A stalled emitter resumes once its tray has room again.
+    can_resume: state = stalled and card.is_live and not card.at_capacity and card.verb_ready
+
+    transitions state {
+        assembling -> ongoing   -- BeginRun
+        assembling -> stalled   -- BeginRun, tray full
+        ongoing -> assembling   -- CompleteRun (recycle, reusable + idle)
+        ongoing -> ongoing       -- CompleteRun (re-fire: again + ready)
+        stalled -> ongoing      -- UnstallProducer
+    }
+}
+
+------------------------------------------------------------
+-- Config
+------------------------------------------------------------
+
+config {
+    -- The engine's fallback run length for a verb that has no resolver. NOT a
+    -- game-balance number — those live in the game spec (durations). This is pure
+    -- engine infrastructure.
+    default_duration: Duration = 60.seconds
+}
+
+------------------------------------------------------------
+-- Rules
+------------------------------------------------------------
+
+-- ── Spawning ─────────────────────────────────────────────
+
+-- Every verb card gets run-state when it enters play, via either birth path
+-- (dealt onto the table, or produced into a tray). A tray-born verb does NOT begin
+-- until collected onto the tabletop (can_begin requires a live place).
+rule InitVerbSituation {
+    when: card: Card.created
+    requires: card.def.is_verb
+    ensures: Situation.created(card: card, board: card.board, state: assembling)
+}
+
+-- ── The run lifecycle ────────────────────────────────────
+
+-- A ready verb begins a run — unless its output tray is full, in which case it
+-- stalls instead. Re-arming a reusable verb (back to assembling) re-triggers this.
+rule BeginRun {
+    when: situation: Situation.can_begin
+    let resolver = situation.card.def     -- dispatched by def_id; supplies duration()
+    ensures:
+        if situation.card.at_capacity:
+            situation.state = stalled
+        else:
+            situation.state = ongoing
+            situation.ends_at = now + duration(resolver, situation.card.input_cards)
+}
+
+-- Vacating a card from a full tray (collect / collect-and-slot / a courier move)
+-- makes room, so a stalled emitter picks up where it left off.
+rule UnstallProducer {
+    when: situation: Situation.can_resume
+    let resolver = situation.card.def
+    ensures:
+        situation.state = ongoing
+        situation.ends_at = now + duration(resolver, situation.card.input_cards)
+}
+
+-- The generic completion. ONE rule for every verb — the per-verb variation is
+-- entirely inside the resolver's Effects (this is the §6 "code per verb", now a
+-- contract the engine applies uniformly). Fires when the scheduled deadline passes.
+rule CompleteRun {
+    when: situation: Situation.ends_at <= now
+    requires: situation.state = ongoing
+    let verb = situation.card
+    let effects = resolve(verb.def, verb.input_cards, verb)
+    ensures:
+        -- 1. consume inputs this run ate
+        for c in effects.consume:
+            not exists c
+        -- 2. relocate any cards the resolver shuttles (courier drones)
+        for m in effects.relocations:
+            if exists m.target_verb:
+                m.card.place = slotted
+                m.card.holder = m.target_verb
+                m.card.slot_index = m.slot_index
+            else:
+                m.card.place = tabletop
+        -- 3a. metamorphose: become supersedes produce + recycle; the verb is gone
+        if exists effects.become:
+            Card.created(board: verb.board, def: effects.become, place: tabletop,
+                         x: verb.x, y: verb.y)
+            not exists verb
+            not exists situation
+        else:
+            -- 3b. produce into the tray
+            for d in effects.produce:
+                Card.created(board: verb.board, def: d, place: output, holder: verb)
+            -- 4. recycle or retire
+            if not verb.def.reusable:
+                not exists verb
+                not exists situation
+            else if effects.again and verb.verb_ready:
+                situation.state = ongoing
+                situation.ends_at = now + duration(verb.def, verb.input_cards)
+            else:
+                situation.state = assembling
+                situation.ends_at = null
+
+    @guidance
+        -- A no-op completion (cancelled or state-changed mid-run) is handled by the
+        -- `state = ongoing` guard. The implementation also re-checks parked bay
+        -- drones after any consume/produce, since the board's inventory changed.
+}
+
+-- ── Player gestures ──────────────────────────────────────
+
+-- Drop a loose tabletop card into a verb's empty, accepting hole. The verb need
+-- not be idle — topping up a hole mid-run is what makes an inbox a drainable queue.
+-- Filling a hole may satisfy can_begin and start the verb (BeginRun).
+rule SlotCard {
+    when: SlotCard(actor, card, verb, slot_index)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = tabletop
+    requires: card.board = verb.board
+    requires: verb.def.is_verb
+    let slot = SlotDef{card_def: verb.def, slot_index: slot_index}
+    requires: exists slot
+    requires: card.def.def_id in slot.accepts or card.def.category in slot.accepts
+    requires: not verb.slotted_cards.any(h => h.slot_index = slot_index)
+    ensures:
+        card.place = slotted
+        card.holder = verb
+        card.slot_index = slot_index
+}
+
+-- Move a slotted card back to the tabletop. A card bound to a RUNNING or STALLED
+-- verb cannot be pulled out — only one whose holder is still assembling.
+rule MoveSlottedToTabletop {
+    when: MoveCard(actor, card, x, y)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = slotted
+    requires: card.holder.situation.state = assembling
+    ensures:
+        card.place = tabletop
+        card.x = x
+        card.y = y
+}
+
+-- Collect a produced card off a tray onto the tabletop. Vacating the tray may
+-- un-stall the producing verb (UnstallProducer). A no-hole verb like a Seed begins
+-- the moment it lands on the table (BeginRun via can_begin).
+rule MoveOutputToTabletop {
+    when: MoveCard(actor, card, x, y)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = output
+    ensures:
+        card.place = tabletop
+        card.x = x
+        card.y = y
+}
+
+-- Reposition a card already on the tabletop.
+rule RepositionCard {
+    when: MoveCard(actor, card, x, y)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = tabletop
+    ensures:
+        card.x = x
+        card.y = y
+}
+
+-- One-gesture collect-then-slot, atomically (so the target verb can't slip out of
+-- assembling in the gap), for an output card. May un-stall the source's producer.
+rule CollectOutputIntoHole {
+    when: CollectAndSlot(actor, card, verb, slot_index)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = output
+    requires: card.board = verb.board
+    requires: verb.def.is_verb
+    let slot = SlotDef{card_def: verb.def, slot_index: slot_index}
+    requires: exists slot
+    requires: card.def.def_id in slot.accepts or card.def.category in slot.accepts
+    requires: not verb.slotted_cards.any(h => h.slot_index = slot_index)
+    ensures:
+        card.place = slotted
+        card.holder = verb
+        card.slot_index = slot_index
+}
+
+-- The same, for a card slotted in another verb's hole. The source verb must be
+-- assembling — you cannot strip a card from a running verb.
+rule CollectSlottedIntoHole {
+    when: CollectAndSlot(actor, card, verb, slot_index)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = slotted
+    requires: card.holder.situation.state = assembling
+    requires: card.board = verb.board
+    requires: verb.def.is_verb
+    let slot = SlotDef{card_def: verb.def, slot_index: slot_index}
+    requires: exists slot
+    requires: card.def.def_id in slot.accepts or card.def.category in slot.accepts
+    requires: not verb.slotted_cards.any(h => h.slot_index = slot_index)
+    ensures:
+        card.place = slotted
+        card.holder = verb
+        card.slot_index = slot_index
+}
+
+-- ── Housing (the Warehouse — layout relief) ──────────────
+
+-- Store a tabletop card inside a Warehouse container. A housed verb keeps running
+-- exactly as it did on the table (is_live includes housed).
+rule HouseCard {
+    when: HouseCard(actor, card, container)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = tabletop
+    requires: card.board = container.board
+    requires: container.def.category = warehouse
+    ensures:
+        card.place = housed
+        card.container = container
+}
+
+-- Take a housed card back out onto the tabletop.
+rule UnhouseCard {
+    when: UnhouseCard(actor, card, x, y)
+    requires: exists BoardMember{user: actor, board: card.board}
+    requires: card.place = housed
+    ensures:
+        card.place = tabletop
+        card.x = x
+        card.y = y
+}
+
+-- ── Identity & access ────────────────────────────────────
+
+-- A trusted Google sign-in from a NEW principal. Find-or-create the user by
+-- verified email (merging providers under one human), then link this principal.
+rule LinkGoogleIdentity {
+    when: GoogleSignIn(principal, email, display_name, picture?)
+    requires: not exists Identity{principal: principal}
+    let existing_user = User{primary_email: email}
+    ensures:
+        if exists existing_user:
+            Identity.created(principal: principal, user: existing_user,
+                             provider: google, linked_at: now)
+        else:
+            let u = User.created(primary_email: email, display_name: display_name,
+                                 picture_url: picture, is_admin: false, created_at: now)
+            Identity.created(principal: principal, user: u, provider: google, linked_at: now)
+}
+
+-- A trusted Google sign-in from a KNOWN principal: refresh only provider-owned
+-- fields. Never re-sync display_name (the human owns it once edited). Skip the
+-- email change if that address now belongs to a different user.
+rule RefreshGoogleProfile {
+    when: GoogleSignIn(principal, email, display_name, picture?)
+    let ident = Identity{principal: principal}
+    requires: exists ident
+    let collision = User{primary_email: email}
+    ensures:
+        if not exists collision or collision = ident.user:
+            ident.user.primary_email = email
+        ident.user.picture_url = picture ?? ident.user.picture_url
+}
+
+-- Explicit linking for non-auto providers (the CLI / SpacetimeAuth path), which
+-- also bootstraps the first admin. One-shot: refuses once any admin exists.
+rule BootstrapFirstAdmin {
+    when: BootstrapFirstAdmin(principal, email)
+    requires: not Users.any(u => u.is_admin)
+    let target = User{primary_email: email}
+    let existing = Identity{principal: principal}
+    requires: not exists existing or existing.user = target
+    ensures:
+        if exists target:
+            target.is_admin = true
+            if not exists existing:
+                Identity.created(principal: principal, user: target,
+                                 provider: spacetime, linked_at: now)
+        else:
+            let u = User.created(primary_email: email, display_name: email,
+                                 picture_url: null, is_admin: true, created_at: now)
+            Identity.created(principal: principal, user: u, provider: spacetime, linked_at: now)
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- Email is the cross-provider join key; two users cannot share one.
+invariant UniqueEmail {
+    for a in Users:
+        for b in Users:
+            a != b implies a.primary_email != b.primary_email
+}
+
+-- A principal links to exactly one user (no forked humans across devices).
+invariant OneUserPerPrincipal {
+    for a in Identities:
+        for b in Identities:
+            a != b implies a.principal != b.principal
+}
+
+-- A Situation exists only for a verb card.
+invariant SituationsAreVerbs {
+    for s in Situations:
+        s.card.def.is_verb
+}
+
+-- A card and its situation always sit on the same board.
+invariant SituationBoardMatchesCard {
+    for s in Situations:
+        s.board = s.card.board
+}
+
+-- A verb never overflows its output cap: that's the whole back-pressure mechanism.
+invariant TrayWithinCap {
+    for c in Cards:
+        c.def.output_cap > 0 implies c.output_count <= c.def.output_cap
+}
+
+------------------------------------------------------------
+-- Actor Declarations
+------------------------------------------------------------
+
+actor AuthenticatedUser {
+    identified_by: User where identities.count > 0
+}
+
+-- A member (player or spectator) of a particular board.
+actor Member {
+    within: Board
+    identified_by: User where exists BoardMember{user: this, board: within}
+}
+
+-- An operator. Admin actions (grant cards, force a relayout) are gated on this.
+actor Admin {
+    identified_by: User where is_admin
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- The tabletop a member sees and acts on. Mirrors the per-player `my_*` views: a
+-- member reads only boards they belong to, and a co-member's email never goes on
+-- the wire. The board's settled card positions are authoritative (server-side
+-- overlap removal); the client renders them and animates the countdown locally.
+surface BoardView {
+    facing viewer: Member
+    context board: Board
+
+    exposes:
+        for card in board.cards:
+            card.def
+            card.place
+        for situation in board.situations:
+            situation.state
+            situation.ends_at
+        for member in board.members:
+            member.user.display_name
+            member.role
+
+    provides:
+        SlotCard(viewer, card, verb, slot_index)
+        MoveCard(viewer, card, x, y)
+        CollectAndSlot(viewer, card, verb, slot_index)
+        HouseCard(viewer, card, container)
+        UnhouseCard(viewer, card, x, y)
+
+    @guarantee BoardScopedVisibility
+        -- A viewer sees only boards they are a member of. Another board's cards,
+        -- situations and players are invisible to non-members.
+
+    @guarantee EmailNotLeaked
+        -- A co-member's primary_email (the cross-provider join key) is never
+        -- projected to other players; only the caller sees their own.
+
+    @guarantee LayoutSettled
+        -- After any mutation that changes the board, card positions are settled
+        -- once, atomically, on the server (VPSC overlap removal), so every client
+        -- renders a non-overlapping tabletop. The pass is one-shot per mutation,
+        -- never a timer/loop.
+}
+
+-- "Me": the caller's own profile, including their own email (and nobody else's).
+surface MyProfile {
+    facing viewer: AuthenticatedUser
+    context me: User where exists Identity{user: me}
+
+    exposes:
+        me.display_name
+        me.primary_email
+        me.picture_url
+        me.is_admin
+}
+
+-- The contract a game module fulfils: one VerbResolver per verb def_id. The engine
+-- DEMANDS it (it drives the lifecycle and calls into resolvers); the game SUPPLIES
+-- it. escape-the-moon.allium is one such fulfilment.
+surface GameContent {
+    facing game: AuthenticatedUser
+
+    contracts:
+        demands VerbResolver
+
+    @guarantee EveryVerbHasAResolver
+        -- Every CardDef with is_verb has a resolver dispatched by its def_id. A
+        -- verb with no resolver falls back to config.default_duration and a no-op
+        -- completion (engine safety net, not intended game behaviour).
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+open question "The resolver contract is dispatched by def_id through a code map (RESOLVERS), not a registration table. The engine cannot statically guarantee EveryVerbHasAResolver — a verb authored with no resolver silently gets the fallback. Should the catalogue seed validate resolver coverage?"
+
+open question "verb_ready encodes a subtle three-part rule (bay manned + required filled + at-least-one-input) plus an optional resolver `ready` hook. The hook is the ONLY way to express a choice between whole recipes. Is per-hole `required` + a code hook the right factoring, or should the slot model gain native recipe-groups?"
+
+open question "A spectator membership is read-only in intent, but no rule rejects a spectator calling SlotCard/MoveCard. Should board gestures require role = player?"
+
+open question "Board.owner is documented as the sole authority to transfer cards between boards, but no cross-board transfer gesture exists — owner is declared and never read. Build the transfer flow or drop the field until needed."
+
+open question "Invitations: how does a BoardMember row come to exist for a SECOND user? Deliberately deferred; the views assume membership is the gate."
+
+open question "`become` can only land its new card on the tabletop (it reads the verb's x/y). A verb that metamorphoses while housed or slotted has no position — the implementation falls back to {0,0}. Should become preserve housing, or is metamorphosis inherently a tabletop event?"
+
+open question "The engine permits a non-reusable verb that retires WITHOUT `become` (produce into a tray, then delete itself, orphaning the tray). No game verb does this. Keep as a capability or forbid it?"

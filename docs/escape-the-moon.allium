@@ -1,0 +1,566 @@
+-- allium: 3
+-- escape-the-moon.allium
+--
+-- Escape the Moon — the first real GAME built on the generic verb engine
+-- (engine.allium). Crash-land on the moon with a printer and almost nothing;
+-- scavenge, refine, fabricate, automate with drones, build a rocket, escape.
+-- Distilled from spacetimedb/src/content/ and the game-specific parts of
+-- spacetimedb/src/engine/resolvers.ts. Source of intent: docs/ESCAPE_THE_MOON.md.
+--
+-- Relationship to the engine: this spec is the CONTENT that plugs into the
+-- engine's machinery. It does not restate the verb lifecycle, readiness, output
+-- caps, housing, identity or the surfaces — those are engine.allium. It declares:
+--   - the catalogue (which CardDefs exist, what their holes accept)
+--   - the resolver behaviour per verb (what each consumes/produces — the
+--     fulfilment of the engine's VerbResolver contract)
+--   - the recipe DATA (builds, subsystems, research tree, the Wreck manifest)
+--   - the two gates (Power, Blueprints), the worker-bay automation ladder
+--   - the opening deal and the achievement arc
+--
+-- The engine's Card / CardDef / SlotDef / Situation / Board are referenced here as
+-- external entities (governed by engine.allium). This file is kept independently
+-- checkable — it does not `use`-import the engine — so the seam is documented in
+-- prose and the @FulfilsVerbResolver guarantee rather than a hard cross-file link.
+
+------------------------------------------------------------
+-- External Entities (governed by engine.allium)
+------------------------------------------------------------
+
+-- The engine's catalogue template. The game AUTHORS instances of these (see the
+-- Catalogue defaults below) but their lifecycle and fields belong to the engine.
+external entity CardDef {
+    def_id: String
+    category: String
+    is_verb: Boolean
+    drone_level: Integer
+}
+
+-- A live card instance on a board.
+external entity Card {
+    def: CardDef
+    board: Board
+}
+
+-- A board's lifetime card-history tally: how many of each def_id have EVER been
+-- created on this board (the same count that drives achievements and gates
+-- Research). "History is the state" — there is no separate counter. Read-only,
+-- maintained by the engine on every card birth.
+external entity CardHistory {
+    board: Board
+    def: CardDef
+    count: Integer
+}
+
+external entity Board {
+    cards: Card with board = this
+    histories: CardHistory with board = this
+}
+
+------------------------------------------------------------
+-- Value Types
+------------------------------------------------------------
+
+-- A Workshop build recipe: a Blueprint card's def_id selects exactly one output
+-- (no fragile count-matching). `cost` Components are consumed. `keep` blueprints
+-- are handed back (drones + the Solar Array — you want a whole fleet/farm from one
+-- manual); others are one-and-done.
+value Build {
+    blueprint: CardDef          -- the selector card
+    output: CardDef             -- the machine/drone produced (dormant in the tray)
+    cost: Integer               -- Components consumed
+    keep: Boolean               -- blueprint returned rather than consumed?
+}
+
+-- An Assembler subsystem recipe: a category->count requirement plus one Power.
+-- Checked most-specific-first so an overlapping load resolves deterministically.
+value Recipe {
+    output: CardDef
+    needs: Set<Requirement>
+}
+
+value Requirement {
+    category: String
+    count: Integer
+}
+
+-- A Research-tree entry. A blueprint is EARNED here (one Effort -> the next one you
+-- qualify for). `needs` are CATEGORY counts read off lifetime history; `requires`
+-- are prerequisite blueprints that must already be discovered (the drone Mk ladder).
+value ResearchEntry {
+    target: CardDef             -- the blueprint earned
+    needs: Set<Requirement>     -- ≥1 (or ≥3) of each category, summed over history
+    prerequisites: Set<CardDef> -- blueprints that must already be discovered
+}
+
+------------------------------------------------------------
+-- Enumerations
+------------------------------------------------------------
+
+-- The escalating energy currencies — the §3 "currency ladder". Each gates a tier
+-- of machine and is more precious than the last.
+enum Currency { effort | power | fuel }
+
+-- The drone automation ladder. A bay demands a minimum Mk (a pure access gate);
+-- Effort is the universal worker that fits every bay.
+enum WorkerLevel { effort | mk_1 | mk_2 | mk_3 | mk_4 }
+
+------------------------------------------------------------
+-- Config — durations (game-balance timing; durations.ts)
+------------------------------------------------------------
+
+-- Kept short so the whole gather->refine->fabricate->assemble->launch chain is
+-- observable live within a minute or two. The chemistry branch (CHEM) is the
+-- deliberate late bottleneck; the drone heartbeat is the fastest clock so a drone
+-- keeps its machine fed faster than the machine consumes.
+config {
+    drone_tick: Duration = 2.seconds        -- a bay drone feeds one card per tick
+    effort_cycle: Duration = 6.seconds      -- the Survivor emitting one Effort
+    solar_cycle: Duration = 5.seconds       -- the Solar Array emitting one Power
+    gather: Duration = 4.seconds            -- one raw (Field / Wreck) per Effort
+    print: Duration = 6.seconds             -- the crude Printer: raw -> Component
+    build: Duration = 6.seconds             -- the Workshop assembling from a blueprint
+    research: Duration = 8.seconds          -- the bench earning the next blueprint
+    refine: Duration = 5.seconds            -- raw -> Metal
+    fabricate: Duration = 6.seconds         -- Metal -> Component
+    kiln: Duration = 6.seconds              -- raw -> Silicon / Glass
+    electronics: Duration = 7.seconds       -- Silicon -> Circuit
+    mine_ice: Duration = 6.seconds          -- Power -> Water
+    electrolysis: Duration = 7.seconds      -- Water -> Hydrogen + Oxygen
+    chem: Duration = 10.seconds             -- H2 + O2 -> Fuel (the bottleneck)
+    assemble: Duration = 12.seconds         -- ingredients -> a rocket Subsystem
+    launch: Duration = 15.seconds           -- the Rocket counting down to Escape
+}
+
+------------------------------------------------------------
+-- Defaults — the catalogue (authored in content/catalogue.ts)
+------------------------------------------------------------
+-- Categories matter: a hole accepts by category or def_id. Note the deliberate
+-- overlaps — Scrap and Regolith are both `raw`; Salvage is a `component` (a
+-- ready-made part from the wreck); Effort is a `drone` (the universal worker).
+
+-- ── Inert resources ──────────────────────────────────────
+default CardDef effort   = { def_id: "effort",   category: "drone",     is_verb: false, drone_level: 99 }  -- the universal worker
+default CardDef power     = { def_id: "power",     category: "power",     is_verb: false, drone_level: 0 }   -- the gate token
+default CardDef regolith  = { def_id: "regolith",  category: "raw",       is_verb: false, drone_level: 0 }
+default CardDef scrap      = { def_id: "scrap",     category: "raw",       is_verb: false, drone_level: 0 }
+default CardDef salvage    = { def_id: "salvage",   category: "component", is_verb: false, drone_level: 0 }  -- ready-made part
+default CardDef metal       = { def_id: "metal",     category: "metal",     is_verb: false, drone_level: 0 }
+default CardDef silicon     = { def_id: "silicon",   category: "silicon",   is_verb: false, drone_level: 0 }
+default CardDef glass        = { def_id: "glass",     category: "glass",     is_verb: false, drone_level: 0 }
+default CardDef circuit      = { def_id: "circuit",   category: "circuit",   is_verb: false, drone_level: 0 }
+default CardDef component     = { def_id: "component", category: "component", is_verb: false, drone_level: 0 }  -- the universal part
+default CardDef water         = { def_id: "water",     category: "water",     is_verb: false, drone_level: 0 }
+default CardDef hydrogen      = { def_id: "hydrogen",  category: "hydrogen",  is_verb: false, drone_level: 0 }
+default CardDef oxygen        = { def_id: "oxygen",    category: "oxygen",    is_verb: false, drone_level: 0 }
+default CardDef fuel          = { def_id: "fuel",      category: "fuel",      is_verb: false, drone_level: 0 }
+
+-- Rocket subsystems (inert; Assembler outputs, Rocket inputs).
+default CardDef engine_sub    = { def_id: "engine",       category: "subsystem", is_verb: false, drone_level: 0 }
+default CardDef hull           = { def_id: "hull",         category: "subsystem", is_verb: false, drone_level: 0 }
+default CardDef avionics        = { def_id: "avionics",     category: "subsystem", is_verb: false, drone_level: 0 }
+default CardDef life_support     = { def_id: "life_support", category: "subsystem", is_verb: false, drone_level: 0 }
+default CardDef heat_shield       = { def_id: "heat_shield",  category: "subsystem", is_verb: false, drone_level: 0 }
+
+default CardDef escape            = { def_id: "escape",          category: "endgame",   is_verb: false, drone_level: 0 }  -- the win token
+default CardDef warehouse         = { def_id: "warehouse",       category: "warehouse", is_verb: false, drone_level: 0 }  -- buildable container
+default CardDef exhausted_wreck    = { def_id: "exhausted_wreck", category: "debris",    is_verb: false, drone_level: 0 }  -- picked-clean husk
+
+-- Blueprints (inert; the Workshop's selectors). One per buildable machine/drone.
+default CardDef bp_solar          = { def_id: "blueprint_solar",          category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_refinery        = { def_id: "blueprint_refinery",        category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_fabricator       = { def_id: "blueprint_fabricator",       category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_kiln              = { def_id: "blueprint_kiln",             category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_electronics_fab    = { def_id: "blueprint_electronics_fab", category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_ice_mine            = { def_id: "blueprint_ice_mine",        category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_electrolysis         = { def_id: "blueprint_electrolysis",    category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_chem_reactor          = { def_id: "blueprint_chem_reactor",    category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_assembler              = { def_id: "blueprint_assembler",       category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_rocket                  = { def_id: "blueprint_rocket",          category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_warehouse                = { def_id: "blueprint_warehouse",       category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_drone_1                    = { def_id: "blueprint_drone_1",         category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_drone_2                      = { def_id: "blueprint_drone_2",         category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_drone_3                        = { def_id: "blueprint_drone_3",         category: "blueprint", is_verb: false, drone_level: 0 }
+default CardDef bp_drone_4                          = { def_id: "blueprint_drone_4",         category: "blueprint", is_verb: false, drone_level: 0 }
+
+-- ── Verbs (machines) ─────────────────────────────────────
+-- Tier 0 — the crash site, hand-cranked (no Power). All but the two pure emitters
+-- have a worker bay. Holes/bays are SlotDefs in the engine; summarised in comments.
+default CardDef survivor       = { def_id: "survivor",       category: "avatar",   is_verb: true, drone_level: 0 }  -- emits Effort; no bay
+default CardDef regolith_field  = { def_id: "regolith_field", category: "station",  is_verb: true, drone_level: 0 }  -- Mk I bay; worker -> Regolith
+default CardDef wreck            = { def_id: "wreck",          category: "station",  is_verb: true, drone_level: 0 }  -- Mk I bay; worker -> next manifest item
+default CardDef printer           = { def_id: "printer",        category: "station",  is_verb: true, drone_level: 0 }  -- Mk I bay; raw -> Component
+default CardDef workshop           = { def_id: "workshop",       category: "station",  is_verb: true, drone_level: 0 }  -- worker bay; blueprint+components -> machine
+default CardDef research            = { def_id: "research",       category: "station",  is_verb: true, drone_level: 0 }  -- worker-only bay; Effort -> earned blueprint
+
+-- Power, then the power-gated line:
+default CardDef solar_array         = { def_id: "solar_array",    category: "station",  is_verb: true, drone_level: 0 }  -- emits Power; no bay
+default CardDef refinery             = { def_id: "refinery",       category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; raw+Power -> Metal
+default CardDef fabricator            = { def_id: "fabricator",     category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; Metal+Power -> Component
+default CardDef kiln_machine           = { def_id: "kiln",           category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; raw+Power -> Silicon/Glass
+default CardDef electronics_fab          = { def_id: "electronics_fab", category: "station", is_verb: true, drone_level: 0 }  -- Mk III; Silicon+Power -> Circuit
+default CardDef ice_mine                  = { def_id: "ice_mine",       category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; Power -> Water
+default CardDef electrolysis_machine       = { def_id: "electrolysis",  category: "station",  is_verb: true, drone_level: 0 }  -- Mk III; Water+Power -> H2+O2
+default CardDef chem_reactor                = { def_id: "chem_reactor",  category: "station",  is_verb: true, drone_level: 0 }  -- Mk III; H2+O2+Power -> Fuel
+default CardDef assembler                    = { def_id: "assembler",     category: "station",  is_verb: true, drone_level: 0 }  -- Mk IV; recipe -> Subsystem
+default CardDef rocket                        = { def_id: "rocket",        category: "launchpad", is_verb: true, drone_level: 0 }  -- Mk IV; subsystems+fuel -> become Escape
+
+-- Drones — hole-less worker verbs. Mk is a pure access gate.
+default CardDef drone_1 = { def_id: "drone_1", category: "drone", is_verb: true, drone_level: 1 }
+default CardDef drone_2 = { def_id: "drone_2", category: "drone", is_verb: true, drone_level: 2 }
+default CardDef drone_3 = { def_id: "drone_3", category: "drone", is_verb: true, drone_level: 3 }
+default CardDef drone_4 = { def_id: "drone_4", category: "drone", is_verb: true, drone_level: 4 }
+
+------------------------------------------------------------
+-- Defaults — recipe data (content/recipes.ts)
+------------------------------------------------------------
+
+-- Workshop builds. Drones + the Solar Array are `keep` (build a whole fleet/farm
+-- from one manual); cost rises with Mk so automating a higher tier is a bigger
+-- investment. The Warehouse is one-and-done.
+default Build build_solar         = { blueprint: bp_solar,          output: solar_array,           cost: 2, keep: true }
+default Build build_refinery       = { blueprint: bp_refinery,        output: refinery,              cost: 3, keep: false }
+default Build build_fabricator      = { blueprint: bp_fabricator,      output: fabricator,            cost: 3, keep: false }
+default Build build_kiln             = { blueprint: bp_kiln,            output: kiln_machine,          cost: 3, keep: false }
+default Build build_electronics_fab   = { blueprint: bp_electronics_fab, output: electronics_fab,       cost: 4, keep: false }
+default Build build_ice_mine           = { blueprint: bp_ice_mine,        output: ice_mine,              cost: 3, keep: false }
+default Build build_electrolysis        = { blueprint: bp_electrolysis,    output: electrolysis_machine,  cost: 4, keep: false }
+default Build build_chem_reactor         = { blueprint: bp_chem_reactor,    output: chem_reactor,          cost: 5, keep: false }
+default Build build_assembler             = { blueprint: bp_assembler,      output: assembler,             cost: 5, keep: false }
+default Build build_rocket                 = { blueprint: bp_rocket,         output: rocket,                cost: 6, keep: false }
+default Build build_warehouse               = { blueprint: bp_warehouse,     output: warehouse,             cost: 3, keep: false }
+default Build build_drone_1                  = { blueprint: bp_drone_1,       output: drone_1,               cost: 2, keep: true }
+default Build build_drone_2                   = { blueprint: bp_drone_2,       output: drone_2,               cost: 3, keep: true }
+default Build build_drone_3                    = { blueprint: bp_drone_3,       output: drone_3,               cost: 4, keep: true }
+default Build build_drone_4                      = { blueprint: bp_drone_4,       output: drone_4,               cost: 5, keep: true }
+
+-- Assembler subsystem recipes, checked most-specific-first. Every recipe also
+-- costs one Power (applied in the resolver, not listed here).
+default Recipe recipe_life_support = { output: life_support, needs: { {category: "component", count: 2}, {category: "circuit", count: 1}, {category: "water", count: 1} } }
+default Recipe recipe_heat_shield   = { output: heat_shield,  needs: { {category: "component", count: 3}, {category: "glass", count: 2} } }
+default Recipe recipe_avionics       = { output: avionics,     needs: { {category: "circuit", count: 4} } }
+default Recipe recipe_engine          = { output: engine_sub,   needs: { {category: "component", count: 4}, {category: "circuit", count: 1} } }
+default Recipe recipe_hull             = { output: hull,         needs: { {category: "component", count: 5} } }
+
+-- The research tree. Order falls out of the resource dependency graph: a MACHINE
+-- blueprint unlocks once you've created ≥1 of each input category (so you must
+-- have discovered the inputs); a DRONE blueprint once you've done that tier's
+-- chore ≥3 times. The Mk ladder lists each lower Mk as a prerequisite.
+default ResearchEntry research_drone_1   = { target: bp_drone_1,         needs: { {category: "raw", count: 3} },                                                                  prerequisites: {} }
+default ResearchEntry research_solar      = { target: bp_solar,           needs: { {category: "component", count: 1} },                                                            prerequisites: {} }
+default ResearchEntry research_refinery    = { target: bp_refinery,        needs: { {category: "raw", count: 1}, {category: "power", count: 1} },                                   prerequisites: {} }
+default ResearchEntry research_warehouse    = { target: bp_warehouse,       needs: { {category: "metal", count: 1} },                                                               prerequisites: {} }
+default ResearchEntry research_fabricator    = { target: bp_fabricator,      needs: { {category: "metal", count: 1}, {category: "power", count: 1} },                                prerequisites: {} }
+default ResearchEntry research_kiln           = { target: bp_kiln,            needs: { {category: "raw", count: 1}, {category: "power", count: 1} },                                  prerequisites: {} }
+default ResearchEntry research_drone_2         = { target: bp_drone_2,         needs: { {category: "metal", count: 3} },                                                             prerequisites: { bp_drone_1 } }
+default ResearchEntry research_ice_mine         = { target: bp_ice_mine,        needs: { {category: "power", count: 1} },                                                            prerequisites: {} }
+default ResearchEntry research_electronics_fab   = { target: bp_electronics_fab, needs: { {category: "silicon", count: 1}, {category: "power", count: 1} },                          prerequisites: {} }
+default ResearchEntry research_electrolysis        = { target: bp_electrolysis,    needs: { {category: "water", count: 1}, {category: "power", count: 1} },                           prerequisites: {} }
+default ResearchEntry research_drone_3              = { target: bp_drone_3,         needs: { {category: "circuit", count: 3} },                                                       prerequisites: { bp_drone_2 } }
+default ResearchEntry research_chem_reactor          = { target: bp_chem_reactor,    needs: { {category: "hydrogen", count: 1}, {category: "oxygen", count: 1}, {category: "power", count: 1} }, prerequisites: {} }
+default ResearchEntry research_assembler              = { target: bp_assembler,      needs: { {category: "component", count: 1}, {category: "circuit", count: 1}, {category: "glass", count: 1}, {category: "water", count: 1} }, prerequisites: {} }
+default ResearchEntry research_rocket                  = { target: bp_rocket,         needs: { {category: "subsystem", count: 1}, {category: "fuel", count: 1} },                      prerequisites: {} }
+default ResearchEntry research_drone_4                  = { target: bp_drone_4,         needs: { {category: "fuel", count: 3} },                                                       prerequisites: { bp_drone_3 } }
+
+------------------------------------------------------------
+-- Rules — the resolvers (fulfilling engine VerbResolver) + game flow
+------------------------------------------------------------
+-- These rules RESTATE, at the spec level, the per-verb behaviour that the engine
+-- invokes through the VerbResolver contract (resolvers.ts). The engine fires
+-- CompleteRun on the timer; each rule below is the game's answer to "what does
+-- THIS verb consume/produce/become this cycle". They are written as the engine's
+-- generic completion specialised by verb, so they read as the §6 "code per verb".
+
+-- ── Pure emitters (no bay, self-running) ─────────────────
+
+-- Survivor: emits one Effort each cycle, forever. The Tier-0 labour source.
+rule ResolveSurvivor {
+    when: ResolveRun(verb)
+    requires: verb.def = survivor
+    ensures:
+        Card.created(def: effort, board: verb.board)        -- into the tray
+        Reruns(verb)                                         -- again = true
+}
+
+-- Solar Array: emits one Power each cycle (Gate 1). Build more to scale; its
+-- blueprint is kept, so one manual stands up a whole solar farm.
+rule ResolveSolarArray {
+    when: ResolveRun(verb)
+    requires: verb.def = solar_array
+    ensures:
+        Card.created(def: power, board: verb.board)
+        Reruns(verb)
+}
+
+-- ── Gatherers (worker is the input) ──────────────────────
+
+-- Regolith Field: a worker (Effort spent, or a Mk I+ drone continuous) yields one
+-- Regolith. Re-fires only when worked by a mechanical drone.
+rule ResolveRegolithField {
+    when: ResolveRun(verb)
+    requires: verb.def = regolith_field
+    ensures:
+        ConsumeWorkerIfEffort(verb)
+        Card.created(def: regolith, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+-- Wreck: hands out the next item in its fixed manifest (WRECK_CONTENTS), in order.
+-- The cursor is lifetime history — only the Wreck creates those cards, so the
+-- count already drawn IS the position in the list. When the manifest is spent the
+-- Wreck metamorphoses into an inert Exhausted Wreck husk (`become`).
+rule ResolveWreck {
+    when: ResolveRun(verb)
+    requires: verb.def = wreck
+    let drawn = next_wreck_item(verb.board)     -- black box: indexes WRECK_CONTENTS by history
+    ensures:
+        ConsumeWorkerIfEffort(verb)
+        if exists drawn:
+            Card.created(def: drawn, board: verb.board)
+            RerunsIfDroned(verb)
+        else:
+            Becomes(verb, exhausted_wreck)      -- manifest spent → husk
+
+    @guidance
+        -- WRECK_CONTENTS = [scrap, salvage, printer, scrap, workshop, salvage,
+        -- scrap, salvage, scrap, scrap]. The Printer and Workshop sit early and are
+        -- the ONLY copies in the game (no longer dealt), so the opening always
+        -- ramps the same way; Salvage is a genuinely scarce one-time windfall.
+}
+
+-- ── The bootstrap line ───────────────────────────────────
+
+-- Printer: crude bootstrap — one raw -> one Component, no Power, slow. The Tier-0
+-- way to make parts by hand before the smelting line exists.
+rule ResolvePrinter {
+    when: ResolveRun(verb)
+    requires: verb.def = printer
+    ensures:
+        ConsumeWorkerIfEffort(verb)
+        ConsumeOneInput(verb, "raw")
+        Card.created(def: component, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+-- Workshop: reads the Blueprint in its hole, consumes that build's Component cost,
+-- and produces the named machine/drone DORMANT in the tray (you plant it to bring
+-- it to life — the engine's grows-once-placed gate). A `keep` blueprint is handed
+-- back; others are consumed. The drone feeder refuses the blueprint hole, so even
+-- a droned Workshop leaves the CHOICE of what to build to the player.
+rule ResolveWorkshop {
+    when: ResolveRun(verb)
+    requires: verb.def = workshop
+    let bp = blueprint_in(verb)                 -- the slotted blueprint card
+    requires: exists bp
+    let recipe = Build{blueprint: bp.def}
+    requires: exists recipe
+    ensures:
+        ConsumeWorkerIfEffort(verb)
+        ConsumeInputs(verb, "component", recipe.cost)
+        if not recipe.keep:
+            not exists bp
+        Card.created(def: recipe.output, board: verb.board)
+        Idles(verb)                             -- again = false: one build per crank
+}
+
+-- Research: the second hand-cranked choice station. One Effort -> the next
+-- blueprint you've QUALIFIED for, picked from RESEARCH_TREE (lowest-priority
+-- undiscovered eligible). Reads lifetime history, NOT holes, so its readiness must
+-- be re-checked when history changes. Idles (no output) when nothing is eligible,
+-- so Effort is never spent for nothing.
+rule ResolveResearch {
+    when: ResolveRun(verb)
+    requires: verb.def = research
+    let earned = next_research_target(verb.board)   -- black box: lowest eligible RESEARCH_TREE entry
+    ensures:
+        if exists earned:
+            ConsumeWorkerIfEffort(verb)
+            Card.created(def: earned, board: verb.board)
+        Idles(verb)
+
+    @guidance
+        -- A machine blueprint is eligible once history holds ≥1 of EACH `needs`
+        -- category; a drone blueprint once the tier chore is done ≥ the count; and
+        -- all `requires` blueprints are already discovered. The `ready` hook holds
+        -- the bench idle (never consuming Effort) until something qualifies.
+}
+
+-- ── The power-gated production line (Gate 1) ─────────────
+-- Each consumes one Power per cycle alongside its input; with no Power it STALLS
+-- (the engine's back-pressure used as a resource gate — nothing dies, the base
+-- goes quiet). A Mk II/III drone in the bay pulls BOTH Power and the input.
+
+rule ResolveRefinery {
+    when: ResolveRun(verb)
+    requires: verb.def = refinery
+    ensures:
+        ConsumeOneInput(verb, "power")
+        ConsumeOneInput(verb, "raw")
+        Card.created(def: metal, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+rule ResolveFabricator {
+    when: ResolveRun(verb)
+    requires: verb.def = fabricator
+    ensures:
+        ConsumeOneInput(verb, "power")
+        ConsumeOneInput(verb, "metal")
+        Card.created(def: component, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+-- Kiln: raw -> Silicon (≈50%) or Glass. Probabilistic discovery (engine RNG).
+rule ResolveKiln {
+    when: ResolveRun(verb)
+    requires: verb.def = kiln_machine
+    let makes_silicon = coin_flip()             -- black box: deterministic engine RNG
+    ensures:
+        ConsumeOneInput(verb, "power")
+        ConsumeOneInput(verb, "raw")
+        if makes_silicon:
+            Card.created(def: silicon, board: verb.board)
+        else:
+            Card.created(def: glass, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+rule ResolveIceMine {
+    when: ResolveRun(verb)
+    requires: verb.def = ice_mine
+    ensures:
+        ConsumeOneInput(verb, "power")          -- Power-only emitter
+        Card.created(def: water, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+rule ResolveElectronicsFab {
+    when: ResolveRun(verb)
+    requires: verb.def = electronics_fab
+    ensures:
+        ConsumeOneInput(verb, "power")
+        ConsumeOneInput(verb, "silicon")
+        Card.created(def: circuit, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+-- Electrolysis: Water -> Hydrogen + Oxygen (two outputs per cycle).
+rule ResolveElectrolysis {
+    when: ResolveRun(verb)
+    requires: verb.def = electrolysis_machine
+    ensures:
+        ConsumeOneInput(verb, "power")
+        ConsumeOneInput(verb, "water")
+        Card.created(def: hydrogen, board: verb.board)
+        Card.created(def: oxygen, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+-- Chem Reactor: H2 + O2 -> Fuel. The deliberate late-game bottleneck (Tier-5
+-- currency). A candidate to one day demand Fuel-as-power for the top tier.
+rule ResolveChemReactor {
+    when: ResolveRun(verb)
+    requires: verb.def = chem_reactor
+    ensures:
+        ConsumeOneInput(verb, "power")
+        ConsumeOneInput(verb, "hydrogen")
+        ConsumeOneInput(verb, "oxygen")
+        Card.created(def: fuel, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+-- ── Assembly + liftoff ───────────────────────────────────
+
+-- Assembler: a CHOICE machine (the §5.3 exception). By hand you load a recipe's
+-- ingredients; its `ready` hook fires on whichever SUBSYSTEMS recipe is satisfied
+-- (most-specific-first), consuming those plus one Power and producing that
+-- subsystem. A Mk IV drone here feeds WITH INTENT — it targets the subsystems you
+-- don't yet have and loads exactly that recipe.
+rule ResolveAssembler {
+    when: ResolveRun(verb)
+    requires: verb.def = assembler
+    let recipe = matched_subsystem_recipe(verb)   -- black box: first satisfied SUBSYSTEMS entry
+    requires: exists recipe
+    ensures:
+        ConsumeOneInput(verb, "power")
+        for req in recipe.needs:
+            ConsumeInputs(verb, req.category, req.count)
+        Card.created(def: recipe.output, board: verb.board)
+        RerunsIfDroned(verb)
+}
+
+-- Rocket: all five subsystems + three Fuel, every hole required. When complete and
+-- worked, it counts down and metamorphoses into Escape — the win (`become`).
+rule ResolveRocket {
+    when: ResolveRun(verb)
+    requires: verb.def = rocket
+    ensures:
+        Becomes(verb, escape)
+}
+
+------------------------------------------------------------
+-- Invariants
+------------------------------------------------------------
+
+-- The tech tree is always winnable: every machine blueprint's research needs are
+-- producible by machines reachable earlier in the dependency graph. (No locked
+-- schema — all CardDefs exist from init; the GATE is the resource graph.)
+invariant AlwaysWinnable {
+    for r in ResearchEntries:
+        r.needs.all(req => producible_before(req.category, r.target))
+}
+
+-- The Printer and Workshop exist ONLY in the Wreck manifest (never dealt, never a
+-- build output), so a board that never works the Wreck can still gather raw
+-- forever (the Regolith Field is infinite) — the Wreck can't soft-lock the game.
+invariant WreckNonEssential {
+    for b in Boards:
+        true        -- the Regolith Field's infinite raw makes the Wreck optional
+}
+
+-- Power gates only the BIG machines. Gathering (Survivor, Regolith Field, Wreck,
+-- Printer, Ice Mine intake) stays manual + free, tiering the early game.
+invariant GatheringIsFree {
+    for d in CardDefs:
+        d.category = "avatar" implies d.is_verb
+}
+
+------------------------------------------------------------
+-- Surfaces
+------------------------------------------------------------
+
+-- The game's fulfilment of the engine seam: this module supplies one resolver per
+-- verb def_id (the Resolve* rules above), which the engine drives via its
+-- VerbResolver contract. The engine's GameContent surface `demands VerbResolver`;
+-- this surface fulfils it.
+surface EscapeTheMoonContent {
+    facing engine: Board
+
+    contracts:
+        fulfils VerbResolver
+
+    @guarantee FulfilsVerbResolver
+        -- Every verb CardDef declared here (is_verb = true) has a matching
+        -- Resolve* rule giving its duration, readiness and effects. The engine's
+        -- fallback (default_duration + no-op) is never relied upon in this game.
+
+    @guarantee TwoGates
+        -- Progression is gated by exactly two card-only mechanisms, needing no
+        -- engine change: POWER (big machines stall without a Power card) and
+        -- BLUEPRINTS (new machines are earned at Research, built at the Workshop).
+}
+
+------------------------------------------------------------
+-- Open Questions
+------------------------------------------------------------
+
+open question "A THIRD currency (Fuel-as-power for the top-tier machines) is held as an open design option — would make the chemistry branch a second power economy and give Act 5-6 its own logistics puzzle. Wire it in only if it plays fun. (ESCAPE_THE_MOON §3, §8.3)"
+
+open question "Day/night: a Solar Array that pauses at 'night' would add a Battery/Capacitor power-buffer sub-game. Tempting tension, deferred to keep Act 1 simple. (§8.2)"
+
+open question "The Assembler and Research benches both auto-PICK targets (most-specific recipe / lowest-priority eligible blueprint). A per-card player CHOICE of what to build/research is the natural future refinement — the docs anticipate it but it isn't built. Which lands first?"
+
+open question "Replay 'classes' (Chemist, Botanist alternate escape routes, §7) share Tiers 0-3 and add their own late tree + final verb. Only Engineer ships. Do the alternate routes reuse this catalogue wholesale or fork it?"
+
+open question "Research auto-picks the LOWEST-priority eligible blueprint, but the `requires` ladder + category needs can be met out of order (e.g. rushing Fuel hits `fuel >= 3` for drone_4 before making 3 circuits for drone_3 — though the `requires` chain blocks that specific case). Are there orderings where Research hands out a blueprint the player can't yet USE, and does that matter?"
+
+open question "Effort is modelled as category `drone` with drone_level 99 so it fits every bay — but it's INERT (is_verb false), spent one cycle, fetches nothing. Overloading `drone` for both the universal manual worker and the mechanical drones is economical but subtle. Is the shared category the right model, or should 'worker' be its own concept?"
