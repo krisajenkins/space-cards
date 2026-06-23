@@ -32,4 +32,5 @@ export const OPENING_STATIONS = [
 export const OPENING_OUTPUTS: { def: string; into: string }[] = [
   { def: "effort", into: "survivor" },
   { def: "effort", into: "survivor" },
+  { def: "effort", into: "survivor" },
 ];

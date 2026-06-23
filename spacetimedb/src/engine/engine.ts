@@ -73,14 +73,7 @@ export function verbReady(ctx: Ctx, verbCardId: bigint): boolean {
 }
 
 // Begin (or re-begin) a run, unless the output tray is full → then stall.
-// `delayOverride` (microseconds) replaces the resolver's `duration()` for this
-// run only — an idle drone uses it to back off to a slow poll. Omit it for the
-// usual `duration()`-derived length.
-export function tryBeginRun(
-  ctx: Ctx,
-  verbCardId: bigint,
-  delayOverride?: bigint,
-): void {
+export function tryBeginRun(ctx: Ctx, verbCardId: bigint): void {
   const s = ctx.db.situation.cardId.find(verbCardId);
   const verb = ctx.db.card.id.find(verbCardId);
   if (!s || !verb) return;
@@ -95,8 +88,7 @@ export function tryBeginRun(
     return;
   }
   const r = RESOLVERS[verb.defId];
-  const dur =
-    delayOverride ?? (r ? r.duration(holeCards(ctx, verbCardId)) : MINUTE);
+  const dur = r ? r.duration(holeCards(ctx, verbCardId)) : MINUTE;
   const endMicros = ctx.timestamp.microsSinceUnixEpoch + dur;
   ctx.db.situation.cardId.update({
     ...s,
@@ -134,6 +126,29 @@ export function maybeAutostart(ctx: Ctx, verbCardId: bigint): void {
   const s = ctx.db.situation.cardId.find(verbCardId);
   if (!s || s.state.tag !== "assembling") return;
   if (verbReady(ctx, verbCardId)) tryBeginRun(ctx, verbCardId);
+}
+
+// Wake the board's parked bay drones to re-check for work. Drones are event-driven,
+// not polled: one with nothing to feed parks (assembling, no timer), so SOMETHING
+// has to re-fire it when the board changes in a way that might give it work — a new
+// loot card appearing, or one of its host's input holes emptying. Rather than
+// detect which of those happened, every reducer that creates / moves / removes a
+// card calls this at the end; it re-checks each parked drone via maybeAutostart,
+// whose readiness (nextDroneMove) is the single source of truth on whether there's
+// actually anything to do.
+//
+// Self-filtering, so a wake is cheap and a saturated/idle board settles to ZERO
+// timers (zero TPS): maybeAutostart no-ops on a drone that is still `ongoing`
+// (feeding under its own loop) or whose `ready` reports no work, and only the rest
+// arm a timer. When nothing can feed anything, every wake is a no-op and no drone
+// re-arms. (Output-tray vacating still un-stalls producers via tryBeginRun at the
+// call sites — that's the separate, pre-existing producer-side trigger.)
+export function wakeBayDrones(ctx: Ctx, boardId: bigint): void {
+  for (const c of ctx.db.card.boardId.filter(boardId)) {
+    if (c.location.tag !== "slotted") continue;
+    const def = ctx.db.cardDef.defId.find(c.defId);
+    if (def && def.category === "drone") maybeAutostart(ctx, c.id);
+  }
 }
 
 // Record one more of `defId` being created on this board. Called from the two

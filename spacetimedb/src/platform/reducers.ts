@@ -6,6 +6,7 @@ import {
   spawnCard,
   spawnOutput,
   tryBeginRun,
+  wakeBayDrones,
 } from "../engine/engine";
 import { relayout, clusterOf, autoArrange } from "../engine/layout";
 import {
@@ -29,6 +30,8 @@ export const devGrant = spacetimedb.reducer(
       throw new SenderError("no such card def");
     const c = spawnCard(ctx, boardId, defId, x, y);
     relayout(ctx, boardId, c.id);
+    // A gifted resource is loot a parked drone may want — re-check them.
+    wakeBayDrones(ctx, boardId);
   },
 );
 
@@ -229,6 +232,9 @@ export const collectAndSlot = spacetimedb.reducer(
 
     maybeAutostart(ctx, verbCardId);
     maybeAutostart(ctx, cardId);
+    // If the source was another verb's input hole, that hole just emptied — a
+    // parked bay drone there may now have a refill to do. Re-check the board.
+    wakeBayDrones(ctx, c.boardId);
     // Re-fan the remaining pile members if this consumed a card out of a pile.
     if (wasInPile) relayout(ctx, c.boardId);
   },
@@ -317,6 +323,10 @@ export const moveCard = spacetimedb.reducer(
     // Tidy the board around where the player dropped this card: pin it (it stays
     // exactly where they put it) and let any cards it overlaps give way.
     relayout(ctx, c.boardId, cardId);
+    // This card landed loose on the table (fresh loot) and/or vacated an input
+    // hole — both can hand a parked bay drone work, so re-check the board. (The
+    // pile-drag branch above returns early: it's a pure reposition, no wake.)
+    wakeBayDrones(ctx, c.boardId);
   },
 );
 

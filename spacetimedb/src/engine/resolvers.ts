@@ -1,6 +1,5 @@
 import {
   DRONE_TICK,
-  DRONE_IDLE_TICK,
   EFFORT,
   SOLAR,
   GATHER,
@@ -230,42 +229,34 @@ function hostHoles(ctx: Ctx, hostId: bigint, boardId: bigint): SlottedCard[] {
   );
 }
 
-// One service tick for a drone (`verb`) sitting in some host's bay: find the
-// host's first empty input hole and a card to drop into it. The actual relocation
-// + its side-effects (un-stalling the source tray, autostarting the host) are run
-// by completeSituation's generic `moves` handling.
-function droneResolve(ctx: Ctx, verb: Card): Effects {
-  const idle: Effects = { consume: [], produce: [], again: false };
+// The drone's SINGLE source of truth: the next feed move for a drone (`verb`)
+// sitting in some host's bay, or `null` when it has no work right now (not bayed,
+// host not running, every input hole already full, or no loot to fetch). BOTH the
+// `ready` hook and `resolve` below call this, so readiness and action can never
+// disagree — `ready` reporting "yes" while `resolve` does nothing would spin the
+// drone forever; the inverse would strand it. Keeping one function for both rules
+// that out by construction, which is what makes the event-driven wake reliable.
+//
+// A drone with no move parks (resolve returns `again:false` → assembling, no
+// timer); it is re-woken only when wakeBayDrones (engine.ts) re-checks it after a
+// reducer changed the board. The relocation + side-effects (un-stalling the source
+// tray, autostarting the host) are run by completeSituation's `moves` handling.
+function nextDroneMove(ctx: Ctx, verb: Card): Effects | null {
   // Only a drone slotted into a live machine works; on the table (no host) it
   // falls dormant until it's dropped into a bay. A live host is one ON the table
   // OR HOUSED in a warehouse — housing is pure layout relief, the machine keeps
   // producing inside its warehouse, so its bay drone must keep feeding it. (A host
   // that is itself slotted/output isn't a running machine, so the drone idles.)
-  if (verb.location.tag !== "slotted") return idle;
+  if (verb.location.tag !== "slotted") return null;
   const host = ctx.db.card.id.find(verb.location.value.verbCardId);
-  if (!host) return idle;
+  if (!host) return null;
   if (host.location.tag !== "tabletop" && host.location.tag !== "housed")
-    return idle;
-
-  // "Nothing to feed right now" — keep watching, but back off the poll when the
-  // host can't use a feed anyway. A host that is actively `ongoing` is consuming
-  // its inputs and will free a hole within one cycle, so we stay on the fast 2s
-  // cadence to top it back up promptly. A host that is `stalled` (full output
-  // tray) or idle won't consume for a long time, so its drone polls slowly — this
-  // is what tames the saturated endgame board (a dozen-plus drones over full
-  // machines). A real feed move re-fires at DRONE_TICK regardless.
-  const hostSit = ctx.db.situation.cardId.find(host.id);
-  const tick: Effects = {
-    consume: [],
-    produce: [],
-    again: true,
-    againDelay: hostSit?.state.tag === "ongoing" ? DRONE_TICK : DRONE_IDLE_TICK,
-  };
+    return null;
 
   // The Assembler is a CHOICE machine: a blind feed would load whatever's lying
   // around and build a random (or already-owned) subsystem. A Mk IV drone there
-  // instead targets the subsystems we still need — see assemblerDroneResolve.
-  if (host.defId === "assembler") return assemblerDroneResolve(ctx, host);
+  // instead targets the subsystems we still need — see assemblerDroneMove.
+  if (host.defId === "assembler") return assemblerDroneMove(ctx, host);
 
   const holes = hostHoles(ctx, host.id, host.boardId);
   // The Workshop keeps its hands off until you've chosen a blueprint: no pulling
@@ -276,13 +267,13 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
     host.defId === "workshop" &&
     !holes.some((c) => catOf(ctx, c) === "blueprint")
   )
-    return tick;
+    return null;
   const filled = new Set(holes.map((c) => c.location.value.slotIndex));
   // Input holes only (droneLevel 0); never the bay itself. Also never a blueprint
   // hole: a Mk I+ drone may crank the Workshop and load its Components, but choosing
   // WHAT to build stays a player decision — the drone never grabs a blueprint. (The
   // Workshop is the only machine with a blueprint hole; the Assembler choice is
-  // handled separately by assemblerDroneResolve above.)
+  // handled separately by assemblerDroneMove above.)
   const slots = [...ctx.db.slotDef.defId.filter(host.defId)]
     .filter((s) => s.droneLevel === 0 && !s.accepts.includes("blueprint"))
     .sort((a, b) => a.slotIndex - b.slotIndex);
@@ -293,7 +284,7 @@ function droneResolve(ctx: Ctx, verb: Card): Effects {
     if (!loot) continue;
     return feedMove(loot.id, host.id, sl.slotIndex);
   }
-  return tick; // nothing to feed right now — keep watching
+  return null; // nothing to feed right now — the drone parks until woken
 }
 
 // Does the board already hold a card of `defId` (anywhere — table, tray, or
@@ -340,23 +331,10 @@ function nextSubsystem(ctx: Ctx, boardId: bigint): Recipe | null {
 // blind drone would build duplicates or whatever happens to match first. Instead
 // it chooses a subsystem we don't have yet and loads EXACTLY that recipe (plus
 // Power), one card per tick; the Assembler's most-specific-first matcher then
-// resolves to precisely that part. Goes quiet (an idle heartbeat) once the board
-// holds all five subsystems, and picks back up if one is later spent.
-function assemblerDroneResolve(ctx: Ctx, host: Card): Effects {
-  // Like every bayed drone, never stop the heartbeat while we have a host — return
-  // `tick` (again: true) when there's nothing to do, so the drone resumes when a
-  // subsystem is spent (e.g. flown into the Rocket) and needs rebuilding. It polls
-  // fast while the Assembler is actively `ongoing` (it'll free holes within a
-  // cycle) and slowly otherwise — once all five subsystems are built (the endgame
-  // saturation), the Assembler sits idle, so its drone polls on DRONE_IDLE_TICK.
-  // A real feed move snaps it back to the fast DRONE_TICK regardless.
-  const hostSit = ctx.db.situation.cardId.find(host.id);
-  const tick: Effects = {
-    consume: [],
-    produce: [],
-    again: true,
-    againDelay: hostSit?.state.tag === "ongoing" ? DRONE_TICK : DRONE_IDLE_TICK,
-  };
+// resolves to precisely that part. Returns `null` (the drone parks) once the board
+// holds all five subsystems; when one is later spent (flown into the Rocket) the
+// wake after that consume re-checks it and it picks the rebuild back up.
+function assemblerDroneMove(ctx: Ctx, host: Card): Effects | null {
   const holes = hostHoles(ctx, host.id, host.boardId);
   const filled = new Set(holes.map((c) => c.location.value.slotIndex));
   const slots = [...ctx.db.slotDef.defId.filter(host.defId)]
@@ -372,10 +350,10 @@ function assemblerDroneResolve(ctx: Ctx, host: Card): Effects {
   };
 
   // Power first — the Assembler stalls without it (and every recipe needs one).
-  if (!hasPower(holes)) return feedInto("power") ?? tick;
+  if (!hasPower(holes)) return feedInto("power");
 
   const target = nextSubsystem(ctx, host.boardId);
-  if (!target) return tick; // we already hold all five subsystems — keep watching
+  if (!target) return null; // we already hold all five subsystems — park
 
   // Top each recipe category up to its required count, one card per tick. We feed
   // ONLY the categories this recipe lists, so the holes never satisfy a different
@@ -385,8 +363,17 @@ function assemblerDroneResolve(ctx: Ctx, host: Card): Effects {
     const move = feedInto(cat);
     if (move) return move;
   }
-  return tick; // recipe fully loaded (or nothing to fetch) — let the Assembler fire
+  return null; // recipe fully loaded (or nothing to fetch) — let the Assembler fire
 }
+
+// The shared drone behaviour (all four Marks). `ready` and `resolve` both go
+// through nextDroneMove so they can never disagree; `resolve` parks the drone
+// (again:false) when there's no move, leaving it to wakeBayDrones to re-fire.
+const droneResolver: Resolver = {
+  duration: () => DRONE_TICK,
+  ready: (ctx, _h, verb) => nextDroneMove(ctx, verb) !== null,
+  resolve: (ctx, _h, verb) => nextDroneMove(ctx, verb) ?? NOOP,
+};
 
 // ──────────────────────────────────────────────────────────────────────────
 // The resolver table — one entry per verb defId.
@@ -662,22 +649,15 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // ── The automation layer: drones ─────────────────────────────────────────
-  // One generic behaviour per Mk; the level is enforced by the host's bay, not
-  // here. Each ticks every DRONE_TICK while bayed and feeds its host.
-  drone_1: {
-    duration: () => DRONE_TICK,
-    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
-  },
-  drone_2: {
-    duration: () => DRONE_TICK,
-    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
-  },
-  drone_3: {
-    duration: () => DRONE_TICK,
-    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
-  },
-  drone_4: {
-    duration: () => DRONE_TICK,
-    resolve: (ctx, _h, verb) => droneResolve(ctx, verb),
-  },
+  // One generic behaviour per Mk (the level is enforced by the host's bay, not
+  // here), so all four share `droneResolver`. A drone is event-driven, not polled:
+  // it feeds one card per DRONE_TICK while it has work, then PARKS (resolve →
+  // again:false → assembling, no timer). The `ready` hook — same nextDroneMove the
+  // resolve uses — lets wakeBayDrones re-fire it only when a board change actually
+  // gave it something to do, so an idle board runs zero drone timers. See engine.ts
+  // wakeBayDrones and the nextDroneMove note above.
+  drone_1: droneResolver,
+  drone_2: droneResolver,
+  drone_3: droneResolver,
+  drone_4: droneResolver,
 };

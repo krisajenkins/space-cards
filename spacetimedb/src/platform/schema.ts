@@ -14,6 +14,7 @@ import {
   spawnOutput,
   tryBeginRun,
   verbReady,
+  wakeBayDrones,
 } from "../engine/engine";
 import { relayout } from "../engine/layout";
 
@@ -290,11 +291,21 @@ export const completeSituation = spacetimedb.reducer(
       // The new card holds the old verb's spot (pinned); its larger footprint
       // nudges neighbours aside if it now needs more room.
       relayout(ctx, verb.boardId, grown.id);
+      // The grown card may be loot a parked drone wants — wake them to re-check.
+      wakeBayDrones(ctx, verb.boardId);
       return;
     }
 
     for (const defId of eff.produce)
       spawnOutput(ctx, verb.boardId, defId, verbCardId);
+
+    // The board's card inventory changed if we consumed inputs (a host hole freed)
+    // or produced loot — either can give a parked bay drone work, so re-check them.
+    // A pure feed move (a drone tick: no consume, no produce) changes nothing a
+    // drone cares about, so we skip the wake on that high-frequency path. Runs for
+    // both the retire-on-completion path below and the re-fire/idle fall-through.
+    if (eff.consume.length > 0 || eff.produce.length > 0)
+      wakeBayDrones(ctx, verb.boardId);
 
     const def = ctx.db.cardDef.defId.find(verb.defId);
     const reusable = def ? def.reusable : false;
@@ -305,7 +316,7 @@ export const completeSituation = spacetimedb.reducer(
     }
 
     if (eff.again && verbReady(ctx, verbCardId)) {
-      tryBeginRun(ctx, verbCardId, eff.againDelay);
+      tryBeginRun(ctx, verbCardId);
     } else {
       ctx.db.situation.cardId.update({
         ...s,
