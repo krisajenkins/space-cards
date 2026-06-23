@@ -12,15 +12,10 @@ import type {
 import type spacetimedb from "./schema";
 import type {
   card,
-  cardHistory,
-  achievement,
-  achievementDef,
   situation,
   user,
   board,
   boardMember,
-  cardDef,
-  slotDef,
   identity,
 } from "./schema";
 
@@ -124,36 +119,25 @@ export const MyAchievementRow = t.object("MyAchievementRow", {
 // Engine and helper functions take these instead of `any` so a typo in a column
 // name or a missing null-check is a compile error.
 // ──────────────────────────────────────────────────────────────────────────
-export type Schema = InferSchema<typeof spacetimedb>;
+type Schema = InferSchema<typeof spacetimedb>;
 export type Ctx = ReducerCtx<Schema>;
-export type ViewContext = ViewCtx<Schema>;
+type ViewContext = ViewCtx<Schema>;
 // lookupCaller runs from both reducers (read+write db) and views (read-only db),
 // so its ctx is the union of the two.
 export type ReadCtx = Ctx | ViewContext;
 
 export type Card = Infer<typeof card.rowType>;
-export type CardHistory = Infer<typeof cardHistory.rowType>;
-export type Achievement = Infer<typeof achievement.rowType>;
-export type AchievementDef = Infer<typeof achievementDef.rowType>;
 export type Situation = Infer<typeof situation.rowType>;
 export type User = Infer<typeof user.rowType>;
 export type Board = Infer<typeof board.rowType>;
 export type BoardMember = Infer<typeof boardMember.rowType>;
-export type CardDef = Infer<typeof cardDef.rowType>;
-export type SlotDef = Infer<typeof slotDef.rowType>;
 export type IdentityRow = Infer<typeof identity.rowType>;
 
 // The `Location` sum type as a discriminated union, plus cards whose place is
-// statically known. A `SlottedCard` carries a `slotIndex`; an `OutputCard`
-// knows its producing verb — narrowing once (in holeCards / outputCount) lets
-// every downstream access reach `.location.value.slotIndex` without a cast.
-export type LocationValue = Infer<typeof Location>;
+// statically known. A `SlottedCard` carries a `slotIndex` — narrowing once (in
+// holeCards) lets every downstream access reach `.location.value.slotIndex`
+// without a cast.
+type LocationValue = Infer<typeof Location>;
 export type SlottedCard = Card & {
   location: Extract<LocationValue, { tag: "slotted" }>;
-};
-export type OutputCard = Card & {
-  location: Extract<LocationValue, { tag: "output" }>;
-};
-export type HousedCard = Card & {
-  location: Extract<LocationValue, { tag: "housed" }>;
 };

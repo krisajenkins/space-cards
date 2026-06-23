@@ -288,10 +288,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 // Turn a single accepts-token into its display name: a card's own name wins,
 // then the category map, then a humanised fallback (split on underscores,
 // Title-Case) so a brand-new token still reads as words.
-export function acceptLabel(
-  token: string,
-  defsById: Map<string, CardDef>,
-): string {
+function acceptLabel(token: string, defsById: Map<string, CardDef>): string {
   const def = defsById.get(token);
   if (def) return def.name;
   if (CATEGORY_LABELS[token]) return CATEGORY_LABELS[token];

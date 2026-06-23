@@ -22,7 +22,7 @@ export function holeCards(ctx: Ctx, verbCardId: bigint): SlottedCard[] {
     .sort((a, b) => a.location.value.slotIndex - b.location.value.slotIndex);
 }
 
-export function outputCount(ctx: Ctx, verbCardId: bigint): number {
+function outputCount(ctx: Ctx, verbCardId: bigint): number {
   const verb = ctx.db.card.id.find(verbCardId);
   if (!verb) return 0;
   return [...ctx.db.card.boardId.filter(verb.boardId)].filter(
@@ -139,7 +139,7 @@ export function maybeAutostart(ctx: Ctx, verbCardId: bigint): void {
 // Record one more of `defId` being created on this board. Called from the two
 // birth sites below, so every card that ever exists is counted exactly once.
 // See card_history (schema.ts) and the my_card_history view.
-export function tally(ctx: Ctx, boardId: bigint, defId: string): void {
+function tally(ctx: Ctx, boardId: bigint, defId: string): void {
   const existing = [
     ...ctx.db.cardHistory.by_board_def.filter([boardId, defId]),
   ][0];

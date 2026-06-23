@@ -37,7 +37,7 @@ const TOKEN_H = 160;
 // same-defId tokens are considered "adjacent" (≈ one token width). STACK_DX/DY
 // are the per-card offsets of the fan: dx=0 keeps the pile a straight vertical
 // column; dy is a small downward slip so you can see how deep it is.
-export const STACK_RADIUS = 130;
+const STACK_RADIUS = 130;
 const STACK_DX = 0; // straight-down pile (no horizontal lean)
 const STACK_DY = 14; // visible slip per card in the fan
 
@@ -64,7 +64,7 @@ function isStackable(ctx: Ctx, c: Card): boolean {
 // in sorted-by-id order keeps cluster membership deterministic, matching relayout's
 // constraint-generation discipline. Singletons (and every non-stackable card) are
 // left out — callers handle those as ordinary one-card rects.
-export function clusterTabletop(ctx: Ctx, cards: Card[]): Map<bigint, Card[]> {
+function clusterTabletop(ctx: Ctx, cards: Card[]): Map<bigint, Card[]> {
   const stackable = cards
     .filter((c) => isStackable(ctx, c))
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

@@ -20,7 +20,7 @@ import { relayout } from "../engine/layout";
 // ──────────────────────────────────────────────────────────────────────────
 // Catalogue (public). Authored content describing what cards exist.
 // ──────────────────────────────────────────────────────────────────────────
-export const cardDef = table(
+const cardDef = table(
   { name: "card_def", public: true },
   {
     defId: t.string().primaryKey(), // 'regolith', 'refinery', ...
@@ -33,7 +33,7 @@ export const cardDef = table(
   },
 );
 
-export const slotDef = table(
+const slotDef = table(
   { name: "slot_def", public: true },
   {
     id: t.u64().primaryKey().autoInc(),
@@ -51,7 +51,7 @@ export const slotDef = table(
 // the same `achId`, in content/achievements.ts (same split as card_def vs
 // RESOLVERS). Both halves (text + condition) live in content/achievements.ts;
 // the text is seeded by content/catalogue.ts (seedCatalogue) alongside the cards.
-export const achievementDef = table(
+const achievementDef = table(
   { name: "achievement_def", public: false },
   {
     achId: t.string().primaryKey(), // 'prospector', 'power_up', ...
@@ -162,7 +162,7 @@ export const cardHistory = table(
 // so each milestone fires exactly once. `seen` starts false; the client pops an
 // unseen row as a toaster and calls mark_achievement_seen to flip it true. No row
 // for an unearned achievement.
-export const achievement = table(
+const achievement = table(
   {
     name: "achievement",
     indexes: [
@@ -194,7 +194,7 @@ export const situation = table(
 );
 
 // One one-shot timer per running call (private; server-only).
-export const situationTimer = table(
+const situationTimer = table(
   { name: "situation_timer", scheduled: (): any => completeSituation },
   {
     scheduledId: t.u64().primaryKey().autoInc(),

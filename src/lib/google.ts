@@ -176,7 +176,7 @@ export async function renderGoogleButton(el: HTMLElement): Promise<void> {
   promptGoogle();
 }
 
-export async function promptGoogle(): Promise<void> {
+async function promptGoogle(): Promise<void> {
   if (!(await ensureInitialised())) return;
   gisId().prompt();
 }

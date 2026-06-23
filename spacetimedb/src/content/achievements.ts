@@ -187,7 +187,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
 ];
 
 // ── Conditions (the code keyed to each achId above) ─────────────────────────
-export type AchievementRule = {
+type AchievementRule = {
   id: string;
   earned: (counts: Map<string, bigint>) => boolean;
 };
@@ -206,7 +206,7 @@ const SUBSYSTEMS = [
   "heat_shield",
 ];
 
-export const ACHIEVEMENTS: AchievementRule[] = [
+const ACHIEVEMENTS: AchievementRule[] = [
   // The opening beat — fires at the deal (keyed on the always-dealt Survivor).
   { id: "crash", earned: (c) => has(c, "survivor") },
   { id: "prospector", earned: (c) => has(c, "regolith") },
