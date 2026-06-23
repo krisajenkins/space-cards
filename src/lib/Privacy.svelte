@@ -122,7 +122,8 @@ function onKeydown(e: KeyboardEvent) {
 {/if}
 
 <style>
-/* Topbar pill — matches About/Tree/Share triggers. */
+/* Topbar pill — matches About/Tree/Share triggers, with a quiet inset highlight
+   and a background-lift hover (shared with SignIn's account pill). */
 .privacy-trigger {
   appearance: none;
   padding: 0.3rem 0.85rem;
@@ -135,13 +136,16 @@ function onKeydown(e: KeyboardEvent) {
   font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 240, 200, 0.05) inset;
   transition:
     color 0.12s ease,
-    border-color 0.12s ease;
+    border-color 0.12s ease,
+    background 0.12s ease;
 }
 .privacy-trigger:hover {
   color: var(--brass-bright);
   border-color: rgba(201, 214, 255, 0.25);
+  background: rgba(28, 36, 62, 0.8);
 }
 
 /* Hero-footer link — quiet, inline with the connection status. */

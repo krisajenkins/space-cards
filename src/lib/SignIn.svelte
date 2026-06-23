@@ -72,7 +72,7 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
         <span class="avatar avatar-fallback">{initial}</span>
       {/if}
     </button>
-    <button onclick={signOutGoogle}>Sign out</button>
+    <button class="signout-btn" onclick={signOutGoogle}>Sign out</button>
   {:else}
     {#if GOOGLE_CLIENT_ID}
       <div bind:this={buttonEl}></div>
@@ -213,6 +213,33 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
   color: white;
   border-radius: 4px;
   padding: 0.1rem 0.35rem;
+}
+
+/* Account pill — matches the Privacy/About topbar pills, with a quiet inset
+   highlight and a brass hover. (Without this the button fell back to the bare
+   browser default and stood out against the styled topbar.) */
+.signout-btn {
+  appearance: none;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--panel-edge);
+  background: rgba(20, 26, 46, 0.7);
+  color: var(--ink-soft);
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 240, 200, 0.05) inset;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+.signout-btn:hover {
+  color: var(--brass-bright);
+  border-color: rgba(201, 214, 255, 0.25);
+  background: rgba(28, 36, 62, 0.8);
 }
 
 /* ── Profile modal ─────────────────────────────────────────────────────────
