@@ -9,6 +9,15 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] There should be a "start new game" button in the toolbar, with a confirmation.
+
+*Archived: 2026-06-23 (change yxumpqov)*
+
+For now, there's no way to go back to the old game, but we'll keep the data around.
+
+Logically this means that we should stop looking at game[0] in the
+lookup, and load the latest game instead.
+
 # [x] We should remove "tidy board" and all the code connected to it
 
 *Archived: 2026-06-23 (change uppkvuwq)*

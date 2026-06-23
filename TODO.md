@@ -66,13 +66,6 @@ blueprints neatly stored.
 > or (3) split downstream demand so subsystems need Fabricator-grade Components the
 > Printer can't make? Which differentiation do you want?
 
-# [ ] There should be a "start new game" button in the toolbar, with a confirmation.
-
-For now, there's no way to go back to the old game, but we'll keep the data around.
-
-Logically this means that we should stop looking at game[0] in the
-lookup, and load the latest game instead.
-
 # [ ] Sharing needs revisiting
 
 On my machine it pops up the OSX sharing dialog, which isn't what I want. I
