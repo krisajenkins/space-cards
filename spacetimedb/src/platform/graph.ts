@@ -5,6 +5,8 @@ import {
   SUBSYSTEMS,
   RESEARCH_TREE,
   WRECK_CONTENTS,
+  VERB_OUTPUTS,
+  VERB_BECOMES,
 } from "../content/recipes";
 
 // The graph builder only ever READS catalogue tables — it needs `ctx.db`, not
@@ -20,42 +22,15 @@ type GraphCtx = Pick<ReadCtx, "db">;
 // "This would be easy if all our recipes were data" — they aren't (verb
 // behaviour is code, by design; see CLAUDE.md), so this module is the bridge:
 // a pure function that walks the catalogue (card_def / slot_def) PLUS the
-// recipe maps from content/recipes.ts (BUILDS / SUBSYSTEMS /
-// RESEARCH_TREE / WRECK_CONTENTS) into a {nodes, edges} graph an admin can
-// SEE end-to-end. It changes nothing about how the game plays — it only reads.
+// recipe maps from content/recipes.ts (BUILDS / SUBSYSTEMS / RESEARCH_TREE /
+// WRECK_CONTENTS, plus the VERB_OUTPUTS / VERB_BECOMES relations) into a
+// {nodes, edges} graph an admin can SEE end-to-end. It changes nothing about
+// how the game plays — it only reads.
 //
-// The map of verb → produced cards is necessarily a small authored table here
-// (VERB_OUTPUTS): a verb's outputs live in its resolver code, not in any column,
-// so we restate them once, in one place, where they're easy to keep in step.
-// Everything else (nodes, consumption edges, build/research/wreck edges) is
-// computed from the live catalogue + the exported recipe maps.
+// Everything here is computed from the live catalogue + those exported content
+// maps; the maps themselves (including the verb → produced/becomes relations,
+// which restate resolver behaviour as data) all live in content/recipes.ts.
 // ──────────────────────────────────────────────────────────────────────────
-
-// What each verb defId produces — the one bit of resolver behaviour that has no
-// data home. Kept here (not in resolvers) so the graph is the single owner of
-// the "produces" relation. Drones produce nothing (they feed their host).
-// `wreck` and `rocket` metamorphose (a `become`) rather than producing — handled
-// separately below so the edge can be labelled "becomes".
-const VERB_OUTPUTS: Record<string, string[]> = {
-  survivor: ["effort"],
-  regolith_field: ["regolith"],
-  printer: ["component"],
-  solar_array: ["power"],
-  refinery: ["metal"],
-  fabricator: ["component"],
-  electronics_fab: ["circuit"],
-  kiln: ["silicon", "glass"],
-  ice_mine: ["water"],
-  electrolysis: ["hydrogen", "oxygen"],
-  chem_reactor: ["fuel"],
-};
-
-// Verbs that transform in place into another card (`become`) rather than
-// producing into a tray. Drawn as a distinct "becomes" edge.
-const VERB_BECOMES: Record<string, string> = {
-  wreck: "exhausted_wreck",
-  rocket: "escape",
-};
 
 // ── Graph row types (the shape emitted over the wire) ──────────────────────
 // A node is one card_def. A verb node also carries its produced-card list and a

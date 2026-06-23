@@ -8,6 +8,11 @@ import {
   tryBeginRun,
 } from "../engine/engine";
 import { relayout, clusterOf, autoArrange } from "../engine/layout";
+import {
+  OPENING_BOARD_NAME,
+  OPENING_STATIONS,
+  OPENING_OUTPUTS,
+} from "../content/opening";
 import { requireCaller, requireMember } from "./auth";
 import type { Ctx, Card } from "./types";
 
@@ -59,22 +64,19 @@ export const autoLayout = spacetimedb.reducer(
 // Reducers
 // ──────────────────────────────────────────────────────────────────────────
 
-// Start a fresh board: the crash site. Four hand-cranked tier-0 stations and
-// nothing else — no resources, no blueprints, and NOT the Printer or Workshop.
-// You crawl from the wreck with your hands and a Research bench; the Printer and
-// then the Workshop are dug out of the Wreck itself (33% each per scavenge while
-// you still lack them — see wreckDrop in resolvers.ts), which softens the opening
-// and tells the story of saving a few things from the crash. Everything else is
-// earned: gather by hand, RESEARCH your first blueprint (the Research bench turns
-// Effort into the next plan you've qualified for — see researchTarget in
-// resolvers.ts), BUILD it at the Workshop, and climb the tree to a Rocket.
-// Blueprints used to be dealt up-front; now the tech tree unfurls through
-// research, gated by what you've discovered. See docs/ESCAPE_THE_MOON.md.
+// Start a fresh board: the crash site. The board + the player's membership are
+// platform concerns and live here; the tableau dealt onto it — which tier-0
+// stations, the deliberately withheld Printer/Workshop, the starting Effort — is
+// content and lives in content/opening.ts. You crawl from the wreck with your
+// hands and a Research bench; the Printer and then the Workshop are dug out of
+// the Wreck itself (see wreckDrop in resolvers.ts). Everything else is earned:
+// gather by hand, RESEARCH a blueprint (researchTarget in resolvers.ts), BUILD
+// it at the Workshop, and climb the tree to a Rocket. See docs/ESCAPE_THE_MOON.md.
 export const newGame = spacetimedb.reducer((ctx) => {
   const { user: me } = requireCaller(ctx);
   const b = ctx.db.board.insert({
     id: 0n,
-    name: "Crash Site",
+    name: OPENING_BOARD_NAME,
     owner: me.id,
     createdAt: ctx.timestamp,
   });
@@ -85,25 +87,23 @@ export const newGame = spacetimedb.reducer((ctx) => {
     role: { tag: "player" },
   });
 
-  // Tier-0 stations along the top: the Survivor (your hands), the two gatherers,
-  // and the Research bench (earns blueprints). The Printer and Workshop are NOT
-  // dealt — you salvage them from the Wreck (resolvers.ts, wreckDrop). Rough
-  // coordinates — relayout tidies them below.
-  const survivor = spawnCard(ctx, b.id, "survivor", 40, 40);
-  spawnCard(ctx, b.id, "regolith_field", 540, 40);
-  spawnCard(ctx, b.id, "wreck", 300, 40);
-  spawnCard(ctx, b.id, "research", 40, 340);
+  // Deal the opening tableau (content/opening.ts). Spread the stations along the
+  // top at rough coordinates — relayout tidies them (size-aware, overlap-free,
+  // accounting for full footprints) below. Track the spawned cards by defId so
+  // the starting outputs can land in the right station's tray.
+  const dealt = new Map<string, Card>();
+  OPENING_STATIONS.forEach((defId, i) => {
+    dealt.set(defId, spawnCard(ctx, b.id, defId, 40 + i * 260, 40));
+  });
 
-  // Hand the player two Effort to start: seed them into the Survivor's output
-  // tray (produced-but-uncollected, exactly as a normal Survivor cycle leaves
-  // them — each Effort is its own card row, there is no quantity). The board
-  // opens with 2 Effort sitting under the Survivor, ready to crank a station.
-  spawnOutput(ctx, b.id, "effort", survivor.id);
-  spawnOutput(ctx, b.id, "effort", survivor.id);
+  // Starting outputs: seed each into its host station's tray (produced-but-
+  // uncollected, exactly as a normal cycle leaves it — each is its own card row,
+  // there is no quantity).
+  for (const { def, into } of OPENING_OUTPUTS) {
+    const host = dealt.get(into);
+    if (host) spawnOutput(ctx, b.id, def, host.id);
+  }
 
-  // Tidy the deal: the hand-placed coordinates above are rough; let the
-  // size-aware layout space everything cleanly (and account for the stations'
-  // full footprints) before the player sees it.
   relayout(ctx, b.id);
 });
 

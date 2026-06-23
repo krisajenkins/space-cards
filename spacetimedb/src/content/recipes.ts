@@ -151,3 +151,32 @@ export const WRECK_CONTENTS = [
   "scrap",
   "scrap",
 ];
+
+// ── Verb outputs (the "produces" relation) ─────────────────────────────────
+// What each verb defId emits each cycle. A verb's outputs live in its resolver
+// CODE (verb behaviour is code, by design — see CLAUDE.md), so this is a
+// deliberate restatement-as-data: the one place the produces-relation is written
+// down, for the admin progression graph (platform/graph.ts) to read. Keep it in
+// step with the resolvers. Drones produce nothing (they feed their host).
+export const VERB_OUTPUTS: Record<string, string[]> = {
+  survivor: ["effort"],
+  regolith_field: ["regolith"],
+  printer: ["component"],
+  solar_array: ["power"],
+  refinery: ["metal"],
+  fabricator: ["component"],
+  electronics_fab: ["circuit"],
+  kiln: ["silicon", "glass"],
+  ice_mine: ["water"],
+  electrolysis: ["hydrogen", "oxygen"],
+  chem_reactor: ["fuel"],
+};
+
+// ── Verb metamorphoses (the "becomes" relation) ────────────────────────────
+// Verbs that transform in place into another card (a `become`) rather than
+// producing into a tray. The Wreck picks clean into a husk; the Rocket launches
+// into escape. Read by platform/graph.ts to draw a distinct "becomes" edge.
+export const VERB_BECOMES: Record<string, string> = {
+  wreck: "exhausted_wreck",
+  rocket: "escape",
+};

@@ -48,7 +48,10 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
     (`seedCatalogue` — the `card_def` / `slot_def` / `achievement_def` authoring:
     **this is where the cards are defined**), `recipes.ts` (the recipe DATA tables
     — `BUILDS`, `SUBSYSTEMS`, `RESEARCH_TREE`, `WRECK_CONTENTS`: the Wreck's
-    contents, the build costs, the research tree, the subsystem recipes),
+    contents, the build costs, the research tree, the subsystem recipes; plus
+    `VERB_OUTPUTS` / `VERB_BECOMES`, the verb produces/becomes relations restated
+    as data for the admin graph to read), `opening.ts` (the turn-zero deal —
+    board name, tier-0 stations, starting Effort — that `newGame` interprets),
     `achievements.ts` (both halves of each milestone — the display text
     `ACHIEVEMENT_DEFS` **and** the earning conditions `ACHIEVEMENTS` + the
     `awardAchievements` funnel), `durations.ts` (the per-verb run lengths — the
