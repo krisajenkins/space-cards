@@ -113,6 +113,11 @@ function onKeydown(e: KeyboardEvent) {
 
 .modal-panel {
   position: relative;
+  /* The panel renders inline where <Modal> is mounted, so it can inherit a
+     parent's casing (e.g. the hero footer's text-transform: uppercase). Reset
+     it here; the eyebrow/title/dt rules that want uppercase set it themselves. */
+  text-transform: none;
+  letter-spacing: normal;
   background: linear-gradient(180deg, var(--panel), var(--void-2));
   border: 1px solid var(--panel-edge);
   border-radius: 16px;
