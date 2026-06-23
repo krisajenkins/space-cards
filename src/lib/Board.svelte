@@ -442,6 +442,11 @@ const snap = (v: number): number => Math.round(v / GRID) * GRID;
 function onUp(e: PointerEvent) {
   window.removeEventListener("pointermove", onMove);
   window.removeEventListener("pointerup", onUp);
+  // Drop a card into a hole and that empty hole-hover <div> is replaced by the
+  // filled slotted-card one — so its pointerleave never fires and `hoveredHole`
+  // would stay set, flashing every other matching card forever. A drop makes the
+  // hover stale whatever the outcome, so clear it here (before any early return).
+  hoveredHole = null;
   // Capture the ghost's rendered size before it unmounts (offset* ignores the
   // cosmetic rotate/scale, giving the token's true box).
   const ghostW = ghostEl?.offsetWidth ?? 0;
@@ -673,7 +678,10 @@ function onUp(e: PointerEvent) {
   transition:
     left 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
     top 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
-    filter 0.15s ease,
+    /* When the hole-flash animation is removed (hover ends) the browser eases
+       from the last animated filter back to the resting one — long enough to read
+       as a fade-out rather than a snap. */
+    filter 0.35s ease,
     transform 0.12s ease;
 }
 .placed:active {
@@ -694,21 +702,45 @@ function onUp(e: PointerEvent) {
 }
 /* Hovering an empty hole flashes every loose card that could fill it — a pulsing
    astral-cyan glow mirroring the open-hole / armed-station highlight, so the eye
-   is drawn straight to the answer to "what goes in here?". */
+   is drawn straight to the answer to "what goes in here?".
+
+   The glow rides on an ::after overlay's OPACITY, not a filter animation on the
+   card. That matters for the fade-out: a CSS `transition` only fires on a change
+   to a *declared* value, and removing an animation is not one — so an earlier
+   filter-keyframe version snapped back hard when hover ended (no declared change
+   to transition). Toggling the overlay's declared opacity 0↔1 with the .flashing
+   class IS a declared change, so it transitions in and out in every browser. The
+   pulse is a second opacity animation layered on top; it only needs to look right
+   while hovering, because the exit is carried by the opacity transition. The card
+   itself gets a static brightness/saturate lift (also a declared change, so it
+   eases out cleanly too). No geometry change — the hitbox never moves, which is
+   what stops the pointerenter/leave oscillation an earlier `scale` version had. */
 .placed.flashing {
-  animation: hole-flash 0.9s ease-in-out infinite;
   z-index: 6;
+  filter: brightness(1.3) saturate(1.25);
 }
-@keyframes hole-flash {
+.token-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 13px;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  box-shadow: 0 0 18px 3px rgba(116, 199, 214, 0.95);
+  transition: opacity 0.32s ease;
+}
+.token-wrap.flashing::after {
+  opacity: 1;
+  animation: glow-pulse 0.9s ease-in-out infinite;
+}
+@keyframes glow-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 0 transparent) brightness(1) saturate(1);
-    transform: scale(1);
+    opacity: 0.4;
   }
   50% {
-    filter: drop-shadow(0 0 18px rgba(116, 199, 214, 0.95)) brightness(1.4)
-      saturate(1.35);
-    transform: scale(1.08);
+    opacity: 1;
   }
 }
 

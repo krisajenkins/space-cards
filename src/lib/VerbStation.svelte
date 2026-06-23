@@ -576,23 +576,43 @@ header {
 }
 .out-card {
   cursor: grab;
+  position: relative;
   animation: pop 0.28s cubic-bezier(0.2, 1.3, 0.5, 1);
+  /* Eases the brightness lift back to rest when hover ends. */
+  transition: filter 0.32s ease;
 }
 /* Hovering an empty hole flashes every card that could fill it — including a tray
-   card here — mirroring the loose-card glow in Board.svelte's .placed.flashing. */
-.out-card.flashing {
-  animation: out-flash 0.9s ease-in-out infinite;
+   card here — mirroring the loose-card glow in Board.svelte's .placed.flashing.
+   The glow is an ::after overlay's opacity (a declared value the .flashing class
+   toggles, so it transitions out cleanly — removing a filter animation does not);
+   no `transform: scale`, so the tray card's hitbox stays put and can't trigger the
+   pointerenter/leave oscillation an earlier version had. See the longer note in
+   Board.svelte. */
+.out-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 13px;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0;
+  box-shadow: 0 0 16px 3px rgba(116, 199, 214, 0.95);
+  transition: opacity 0.32s ease;
 }
-@keyframes out-flash {
+.out-card.flashing {
+  filter: brightness(1.3) saturate(1.25);
+}
+.out-card.flashing::after {
+  opacity: 1;
+  animation: glow-pulse 0.9s ease-in-out infinite;
+}
+@keyframes glow-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 0 transparent) brightness(1) saturate(1);
-    transform: scale(1);
+    opacity: 0.4;
   }
   50% {
-    filter: drop-shadow(0 0 18px rgba(116, 199, 214, 0.95)) brightness(1.4)
-      saturate(1.35);
-    transform: scale(1.08);
+    opacity: 1;
   }
 }
 @keyframes pop {
