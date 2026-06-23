@@ -122,7 +122,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     sort: 11,
   },
   {
-    achId: "ice_mine",
+    achId: "water",
     title: "Water from Stone",
     description:
       "You haul water from buried lunar ice. Drink it, split it, or burn it - almost everything that comes next begins here.",
@@ -234,7 +234,7 @@ const ACHIEVEMENTS: AchievementRule[] = [
   { id: "fabricator", earned: (c) => has(c, "fabricator") },
   { id: "kiln", earned: (c) => has(c, "kiln") },
   { id: "drone_2", earned: (c) => has(c, "drone_2") },
-  { id: "ice_mine", earned: (c) => has(c, "ice_mine") },
+  { id: "water", earned: (c) => has(c, "water") },
   { id: "electronics_fab", earned: (c) => has(c, "electronics_fab") },
   { id: "electrolysis", earned: (c) => has(c, "electrolysis") },
   { id: "drone_3", earned: (c) => has(c, "drone_3") },

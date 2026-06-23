@@ -351,7 +351,7 @@ collapsing into a generic "first machine / first drone" toaster. The arc, in
 | 9 | `fabricator` | The Production Line | first **Fabricator** built |
 | 10 | `kiln` | Trial by Fire | first **Kiln** built |
 | 11 | `drone_2` | Second Shift | first **Mk II drone** built |
-| 12 | `ice_mine` | Water from Stone | first **Ice Mine** built |
+| 12 | `water` | Water from Stone | first **Water** produced |
 | 13 | `electronics_fab` | First Circuits | first **Electronics Fab** built |
 | 14 | `electrolysis` | Breaking Water | first **Electrolysis** built |
 | 15 | `drone_3` | Night Crew | first **Mk III drone** built |
