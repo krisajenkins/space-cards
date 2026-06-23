@@ -344,6 +344,27 @@ function nextSubsystem(ctx: Ctx, boardId: bigint): Recipe | null {
   return null;
 }
 
+// What the Assembler will actually build from what's loaded: the first recipe
+// that is both satisfied by the holes AND not already on the board. The second
+// clause makes every rocket part a SINGLETON. The Mk IV drone already won't LOAD
+// a duplicate (nextSubsystem), but gating the MACHINE here also stops a player
+// hand-loading a second Hull — the part is unique no matter who feeds it. (boardHas,
+// not lifetime history: a subsystem only ever leaves the board by flying into the
+// Rocket, which is terminal, so "on the board now" and "ever made" coincide for
+// these — and boardHas keeps the documented rebuild-if-spent path intact.)
+function chosenSubsystem(
+  ctx: Ctx,
+  holes: SlottedCard[],
+  boardId: bigint,
+): Recipe | null {
+  return (
+    SUBSYSTEMS.find(
+      (r) =>
+        subsystemSatisfied(ctx, holes, r) && !boardHas(ctx, boardId, r.output),
+    ) ?? null
+  );
+}
+
 // A Mk IV drone in the Assembler's bay. Unlike a generic feeder it can't just
 // shovel parts in — the Assembler picks its recipe from whatever's loaded, so a
 // blind drone would build duplicates or whatever happens to match first. Instead
@@ -649,16 +670,17 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Assembler: components → a rocket Subsystem. Recipe choice (`ready` hook):
-  // whichever subsystem's ingredients you've loaded, most-specific-first.
+  // whichever subsystem's ingredients you've loaded, most-specific-first — but
+  // never one you already hold, so each part is built at most once (see
+  // chosenSubsystem). `ready` and `resolve` both go through it so they agree.
   assembler: {
     duration: () => ASSEMBLE,
-    ready: (ctx, holes) =>
-      hasPower(holes) &&
-      SUBSYSTEMS.some((r) => subsystemSatisfied(ctx, holes, r)),
-    resolve: (ctx, holes) => {
+    ready: (ctx, holes, verb) =>
+      hasPower(holes) && chosenSubsystem(ctx, holes, verb.boardId) !== null,
+    resolve: (ctx, holes, verb) => {
       const power = take(ctx, holes, "power", 1);
       if (power.length === 0) return NOOP;
-      const recipe = SUBSYSTEMS.find((r) => subsystemSatisfied(ctx, holes, r));
+      const recipe = chosenSubsystem(ctx, holes, verb.boardId);
       if (!recipe) return NOOP;
       const consume = [...power, ...workerCost(ctx, holes)];
       for (const [cat, n] of Object.entries(recipe.need))
