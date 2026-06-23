@@ -8,6 +8,7 @@ import { type Infer as __Infer } from "spacetimedb";
 // Import all reducer arg schemas
 import BootstrapFirstAdminReducer from "../bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "../collect_and_slot_reducer";
+import DeleteMyAccountReducer from "../delete_my_account_reducer";
 import DevGrantReducer from "../dev_grant_reducer";
 import HouseCardReducer from "../house_card_reducer";
 import MarkAchievementSeenReducer from "../mark_achievement_seen_reducer";
@@ -22,6 +23,7 @@ export type BootstrapFirstAdminParams = __Infer<
   typeof BootstrapFirstAdminReducer
 >;
 export type CollectAndSlotParams = __Infer<typeof CollectAndSlotReducer>;
+export type DeleteMyAccountParams = __Infer<typeof DeleteMyAccountReducer>;
 export type DevGrantParams = __Infer<typeof DevGrantReducer>;
 export type HouseCardParams = __Infer<typeof HouseCardReducer>;
 export type MarkAchievementSeenParams = __Infer<

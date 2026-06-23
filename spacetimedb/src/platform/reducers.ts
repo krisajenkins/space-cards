@@ -396,6 +396,65 @@ export const unhouseCard = spacetimedb.reducer(
   },
 );
 
+// ──────────────────────────────────────────────────────────────────────────
+// Account deletion (GDPR Art. 17 — right to erasure). A player erases themselves
+// and everything we hold about them: every board they OWN (with all its cards,
+// history, achievements, running situations and timers), their seat on any board,
+// every linked sign-in identity, and finally the `user` row carrying their
+// email / name / picture. A board owned by SOMEONE ELSE that the caller merely
+// spectates is left intact — we only drop the caller's own membership of it.
+//
+// Irreversible, with no soft-delete: erasure means the rows are gone. After it
+// runs the caller's principal is unlinked, so their next reducer fails
+// requireCaller — the client signs out and reloads.
+// ──────────────────────────────────────────────────────────────────────────
+
+// Hard-delete a board and everything that references it. No DB-enforced FKs, so
+// order is only about hygiene: clear the scheduled timers first so none can fire
+// completeSituation against a half-deleted board. Each iteration spreads to an
+// array first — deleting while iterating the live table is unsafe.
+function deleteBoardCascade(ctx: Ctx, boardId: bigint): void {
+  const cardIds = new Set(
+    [...ctx.db.card.boardId.filter(boardId)].map((c) => c.id),
+  );
+  // situation_timer carries no boardId — match it by the verb card it targets.
+  for (const tm of [...ctx.db.situationTimer.iter()])
+    if (cardIds.has(tm.verbCardId))
+      ctx.db.situationTimer.scheduledId.delete(tm.scheduledId);
+  for (const s of [...ctx.db.situation.boardId.filter(boardId)])
+    ctx.db.situation.cardId.delete(s.cardId);
+  for (const c of [...ctx.db.card.boardId.filter(boardId)])
+    ctx.db.card.id.delete(c.id);
+  // card_history / achievement are iterate-and-filter (the by_board_* prefix
+  // scans are unsafe under SDK 2.5.0 — see the my_* views for the same reason).
+  for (const h of [...ctx.db.cardHistory.iter()])
+    if (h.boardId === boardId) ctx.db.cardHistory.id.delete(h.id);
+  for (const a of [...ctx.db.achievement.iter()])
+    if (a.boardId === boardId) ctx.db.achievement.id.delete(a.id);
+  for (const m of [...ctx.db.boardMember.boardId.filter(boardId)])
+    ctx.db.boardMember.id.delete(m.id);
+  ctx.db.board.id.delete(boardId);
+}
+
+export const deleteMyAccount = spacetimedb.reducer((ctx) => {
+  const { user: me } = requireCaller(ctx);
+
+  // Every board this user owns goes entirely (its membership rows go with it).
+  // board has no index on `owner`, but a board count this small iterates cheaply.
+  for (const b of [...ctx.db.board.iter()])
+    if (b.owner === me.id) deleteBoardCascade(ctx, b.id);
+
+  // Any membership that survived (a board owned by someone else) — drop just the
+  // caller's seat, leaving that board and its other members untouched.
+  for (const m of [...ctx.db.boardMember.userId.filter(me.id)])
+    ctx.db.boardMember.id.delete(m.id);
+
+  // Unlink every sign-in principal, then erase the profile itself.
+  for (const id of [...ctx.db.identity.by_user.filter(me.id)])
+    ctx.db.identity.id.delete(id.id);
+  ctx.db.user.id.delete(me.id);
+});
+
 // Dismiss an achievement toaster: flip its `seen` flag so it stops popping. The
 // award itself is one-shot (awardAchievements never re-inserts), so this just
 // silences the notification — the earned row stays for stats/UI.

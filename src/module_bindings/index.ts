@@ -36,6 +36,7 @@ import {
 // Import all reducer arg schemas
 import BootstrapFirstAdminReducer from "./bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "./collect_and_slot_reducer";
+import DeleteMyAccountReducer from "./delete_my_account_reducer";
 import DevGrantReducer from "./dev_grant_reducer";
 import HouseCardReducer from "./house_card_reducer";
 import MarkAchievementSeenReducer from "./mark_achievement_seen_reducer";
@@ -196,6 +197,7 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("bootstrap_first_admin", BootstrapFirstAdminReducer),
   __reducerSchema("collect_and_slot", CollectAndSlotReducer),
+  __reducerSchema("delete_my_account", DeleteMyAccountReducer),
   __reducerSchema("dev_grant", DevGrantReducer),
   __reducerSchema("house_card", HouseCardReducer),
   __reducerSchema("mark_achievement_seen", MarkAchievementSeenReducer),
