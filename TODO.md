@@ -8,6 +8,10 @@
 
 One for you, Kris.
 
+# [ ] We should remove "tidy board" and all the code connected to it
+
+(change lpmxvzom) Now that we have warehouses it's not actually needed. And it never worked perfectly.
+
 # [ ] It bugs me that we can pull a workshop from the wreck
 
 > ⚠ Blocked (2026-06-21): Mechanism is clear (rename Workshop→Workbench, add a
@@ -66,10 +70,11 @@ blueprints neatly stored.
 > or (3) split downstream demand so subsystems need Fabricator-grade Components the
 > Printer can't make? Which differentiation do you want?
 
-# [ ] New Game
+# [ ] There should be a "start new game" button in the toolbar, with a confirmation.
 
-Once you've completed the game, there should be a new game button in the top
-right. Logically this means that we should stop looking at game[0] in the
+For now, there's no way to go back to the old game, but we'll keep the data around.
+
+Logically this means that we should stop looking at game[0] in the
 lookup, and load the latest game instead.
 
 # [ ] Sharing needs revisiting
