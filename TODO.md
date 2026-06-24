@@ -1,13 +1,3 @@
-# [ ] Achievements text needs human attention
-
-One for you, Kris.
-
-> ⚠ Blocked (2026-06-21): All 21 entries in `ACHIEVEMENT_DEFS`
-> (`content/achievements.ts`) are already written in a consistent voice — there's
-> no objective spec to execute against. This is a creative review only you can do:
-> happy as-is, or which achievements want rewriting and in what direction (tone,
-> length, references)?
-
 # [ ] Layout still needs work
 
 This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.

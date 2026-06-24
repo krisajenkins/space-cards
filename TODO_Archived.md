@@ -9,6 +9,18 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [X] Achievements text needs human attention
+
+*Archived: 2026-06-24 (change qlpzkkkk)*
+
+One for you, Kris.
+
+> ⚠ Blocked (2026-06-21): All 21 entries in `ACHIEVEMENT_DEFS`
+> (`content/achievements.ts`) are already written in a consistent voice — there's
+> no objective spec to execute against. This is a creative review only you can do:
+> happy as-is, or which achievements want rewriting and in what direction (tone,
+> length, references)?
+
 # [ ] Google Login - Production version
 
 *Archived: 2026-06-24 (change qrkpokly)*
