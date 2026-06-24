@@ -12,10 +12,11 @@ import {
   type RunState,
 } from "./catalogue";
 import CardToken from "./CardToken.svelte";
+import { SvelteSet } from "svelte/reactivity";
 
 let {
   def,
-  state,
+  state: runState,
   progress,
   remainingMs,
   slots,
@@ -26,6 +27,7 @@ let {
   dragCategory,
   rejectingId,
   flashingIds,
+  playerSlotted,
   onSlottedPointerDown,
   onOutputPointerDown,
   onHoleEnter,
@@ -45,6 +47,9 @@ let {
   // Ids of cards that should flash because they could fill a hovered empty hole —
   // here, used to glow this verb's own output-tray cards (an "outbox" source).
   flashingIds: Set<bigint>;
+  // Ids of cards the player slotted by hand — these don't flip; only the
+  // drone's own pulls do. Consumed (one-shot) as each arrives.
+  playerSlotted: Set<bigint>;
   onSlottedPointerDown: (e: PointerEvent, card: Card) => void;
   onOutputPointerDown: (e: PointerEvent, card: Card) => void;
   // Hovering an empty hole / drone bay bubbles its accept-criteria to the Board,
@@ -67,12 +72,56 @@ const bayDrone = $derived(droneBay ? slotted.get(droneBay.slotIndex) : undefined
 const bayLabels = $derived(droneBay ? holeLabels(droneBay, defsById) : []);
 const bayTitle = $derived(bayLabels.join(" / "));
 
+// A mechanical drone (a verb worker) flips over each time it pulls a fresh
+// component into one of the host's input holes; the inert Effort worker doesn't.
+const bayDroneIsMechanical = $derived(
+  !!bayDrone && (defsById.get(bayDrone.defId)?.isVerb ?? false),
+);
+
+// Detect a "pull": a card id showing up in an input hole that wasn't there on the
+// previous render. We seed `seenInputIds` on the first pass so the initial deal
+// (and any cards already loaded) don't trigger a flip.
+let flipping = $state(false);
+// The freshly-pulled resources flipping in their holes; ids drop out on
+// animationend. A SvelteSet so `.has()` is reactive in the template while the
+// effect only ever *writes* to it (no read → no dependency loop).
+const flippingIds = new SvelteSet<bigint>();
+let seenInputIds = new Set<bigint>();
+let primed = false;
+$effect(() => {
+  const current = new Set<bigint>();
+  const fresh: bigint[] = [];
+  for (const s of inputSlots) {
+    const c = slotted.get(s.slotIndex);
+    if (c) {
+      current.add(c.id);
+      if (primed && !seenInputIds.has(c.id)) {
+        // A card the player dropped in by hand shouldn't flip — only the ones
+        // the drone pulls. Consume the marker so it's a one-shot.
+        if (playerSlotted.has(c.id)) playerSlotted.delete(c.id);
+        else fresh.push(c.id);
+      }
+    }
+  }
+  seenInputIds = current;
+  if (fresh.length && bayDroneIsMechanical) {
+    // Flip the drone (restart even if mid-flight, for rapid feeds)…
+    flipping = false;
+    requestAnimationFrame(() => {
+      flipping = true;
+    });
+    // …and the resource(s) it just pulled in.
+    for (const id of fresh) flippingIds.add(id);
+  }
+  primed = true;
+});
+
 // Countdown ring geometry.
 const R = 30;
 const CIRC = 2 * Math.PI * R;
 
-const isOngoing = $derived(state === "ongoing");
-const isStalled = $derived(state === "stalled");
+const isOngoing = $derived(runState === "ongoing");
+const isStalled = $derived(runState === "stalled");
 
 // Does an empty hole accept the card currently being dragged? Open holes light
 // up whatever the verb's run state — you can drop into the Market's inbox while
@@ -169,9 +218,11 @@ const stateLabel = $derived(
           <div
             class="slotted-card"
             class:reject={rejectingId === bayDrone.id}
+            class:flipping
             role="button"
             tabindex="0"
             onpointerdown={(e) => onSlottedPointerDown(e, bayDrone)}
+            onanimationend={() => (flipping = false)}
           >
             <CardToken
               defId={bayDrone.defId}
@@ -209,9 +260,11 @@ const stateLabel = $derived(
             <div
               class="slotted-card"
               class:reject={rejectingId === card.id}
+              class:flipping={flippingIds.has(card.id)}
               role="button"
               tabindex="0"
               onpointerdown={(e) => onSlottedPointerDown(e, card)}
+              onanimationend={() => flippingIds.delete(card.id)}
             >
               <CardToken
                 defId={card.defId}
@@ -529,6 +582,18 @@ header {
 .slotted-card.reject,
 .out-card.reject {
   animation: reject 0.46s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+/* The bay drone — and the resource it just pulled in — flip over on each feed. */
+.slotted-card.flipping {
+  animation: drone-flip 0.5s ease-in-out;
+}
+@keyframes drone-flip {
+  0% {
+    transform: perspective(240px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(240px) rotateY(360deg);
+  }
 }
 
 /* the drone bay — a single socket sitting at the card's top-right, in the header

@@ -413,7 +413,16 @@ function dropCoords(d: Drag, ghostW: number, ghostH: number): { x: number; y: nu
 // Slot a card into a verb. A loose card uses slot_card; an output or slotted
 // card uses collect_and_slot, which collects + slots in one transaction so the
 // target verb can't change state between the two steps.
+// Cards the player slotted by hand, so VerbStation can tell its drone-pulled
+// arrivals (which flip) from player drops (which don't). Recorded synchronously
+// here, before the reducer round-trip, so the marker is in place by the time the
+// new slotted card streams back in. Plain Set (not $state): it's a one-shot
+// lookup consumed in VerbStation's effect, driven by the `slotted` change — no
+// reactivity needed, and a reactive read there would risk an effect loop.
+const playerSlotted = new Set<bigint>();
+
 function assignToSlot(card: Card, verbId: bigint, slotIndex: number, place: string) {
+  playerSlotted.add(card.id);
   if (place === "tabletop") {
     slotCard({ cardId: card.id, verbCardId: verbId, slotIndex });
   } else {
@@ -554,6 +563,7 @@ function onUp(e: PointerEvent) {
           {dragCategory}
           rejectingId={rejecting}
           flashingIds={flashing}
+          {playerSlotted}
           onSlottedPointerDown={startDragChild}
           onOutputPointerDown={startDragChild}
           onHoleEnter={(hole) => (hoveredHole = hole)}
