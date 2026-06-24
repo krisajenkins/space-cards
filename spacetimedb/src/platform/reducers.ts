@@ -54,12 +54,12 @@ export const relayoutBoard = spacetimedb.reducer(
 
 // Start a fresh board: the crash site. The board + the player's membership are
 // platform concerns and live here; the tableau dealt onto it — which tier-0
-// stations, the deliberately withheld Printer/Workshop, the starting Effort — is
+// stations, the deliberately withheld Printer/Workbench, the starting Effort — is
 // content and lives in content/opening.ts. You crawl from the wreck with your
-// hands and a Research bench; the Printer and then the Workshop are dug out of
+// hands and a Research bench; the Printer and then the Workbench are dug out of
 // the Wreck itself (see wreckDrop in resolvers.ts). Everything else is earned:
 // gather by hand, RESEARCH a blueprint (researchTarget in resolvers.ts), BUILD
-// it at the Workshop, and climb the tree to a Rocket. See docs/ESCAPE_THE_MOON.md.
+// it at the Workbench, and climb the tree to a Rocket. See docs/ESCAPE_THE_MOON.md.
 export const newGame = spacetimedb.reducer((ctx) => {
   const { user: me } = requireCaller(ctx);
   const b = ctx.db.board.insert({

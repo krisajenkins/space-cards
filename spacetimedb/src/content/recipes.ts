@@ -2,7 +2,7 @@ import type { Ctx, SlottedCard } from "../platform/types";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Recipe data — "what the game IS", not "how it runs". The authored tables that
-// say what the Workshop builds, what the Assembler makes, what Research unlocks,
+// say what the Workbench builds, what the Assembler makes, what Research unlocks,
 // and what the Wreck buried. The engine code that READS them lives in
 // ../engine/resolvers.ts; this module is the data home, kept apart so you can
 // find (and re-tune) the game's content without reading behaviour code.
@@ -12,14 +12,14 @@ import type { Ctx, SlottedCard } from "../platform/types";
 // genuinely ARE data and benefit from sitting together.)
 // ──────────────────────────────────────────────────────────────────────────
 
-// ── Construction (the Workshop) ────────────────────────────────────────────
-// A Blueprint card's defId is the unambiguous selector for what the Workshop
+// ── Construction (the Workbench) ────────────────────────────────────────────
+// A Blueprint card's defId is the unambiguous selector for what the Workbench
 // builds — no fragile count-matching. Blueprints are EARNED at the Research
 // bench (see RESEARCH_TREE), then built here; the tech-tree ORDER is enforced by
 // the resource graph (you can't build a Subsystem without an Assembler +
 // components + power), not by gating the manuals.
 //
-// `keep` marks a blueprint the Workshop hands back on completion (produced into
+// `keep` marks a blueprint the Workbench hands back on completion (produced into
 // the tray alongside the build) instead of consuming. Drones are deliberately
 // reusable — you'll want a whole fleet — so a drone blueprint is a permanent
 // manual, not a one-shot. The Solar Array is kept for the same reason: Power is
@@ -81,7 +81,7 @@ export const recipeSatisfied = (
 //   • a MACHINE blueprint (`need`) unlocks once you've created ≥1 of EACH input
 //     category its machine consumes (so you must have discovered the inputs
 //     first; the tech-tree order falls straight out of the dependency graph).
-//     One-of-each, not the full recipe — you still build it at the Workshop.
+//     One-of-each, not the full recipe — you still build it at the Workbench.
 //   • a DRONE blueprint (`chore`) unlocks once you've done that tier's manual
 //     work enough times — the §2 "automate the work you've outgrown" rhythm. The
 //     trigger is "you've done N tasks a drone of this Mk could have done", so the
@@ -168,7 +168,7 @@ export const RESEARCH_TREE: Research[] = [
 
 // ── The Wreck's manifest ───────────────────────────────────────────────────
 // A fixed list of what the crash buried, handed out one item per scavenge in
-// this order. The Printer and Workshop are no longer dealt, so the wreck is the
+// this order. The Printer and Workbench are no longer dealt, so the wreck is the
 // only place they come from; they sit early, wrapped in a finite run of Scrap
 // and Salvage. Drawn front-to-back, so the opening ramps the same every game —
 // retune by editing this list. When it's spent the Wreck is picked clean and the
@@ -178,7 +178,7 @@ export const WRECK_CONTENTS = [
   "salvage",
   "printer", // make Components by hand
   "scrap",
-  "workshop", // build from blueprints
+  "workbench", // build from blueprints
   "salvage",
   "scrap",
   "salvage",

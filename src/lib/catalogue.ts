@@ -91,8 +91,8 @@ const G = {
   exhausted_wreck: `<path d="M3 19h18"/><path d="M6 19l1.5-7M18 19l-1.5-6"/><path d="M7.5 12l4-1 5 1"/><path d="M10 19v-4.5M13.5 19v-4" stroke-linecap="round"/>`,
   // Printer: a 3D-printer / fabricator nozzle laying a bead.
   printer: `<rect x="5" y="4" width="14" height="3" rx="1"/><path d="M12 7v4"/><path d="M10 11h4l-1 3h-2z"/><path d="M8 19h8M8 19l1-2M16 19l-1-2"/>`,
-  // Workshop: a workbench with a wrench crossing a gear.
-  workshop: `<path d="M3 16h18v3H3z"/><circle cx="9" cy="9.5" r="2.6"/><path d="M9 6.9V9.5l1.8 1"/><path d="M13.5 6l4.5 4.5-1.5 1.5L12 7.5z" fill="currentColor" stroke="none"/>`,
+  // Workbench: a workbench with a wrench crossing a gear.
+  workbench: `<path d="M3 16h18v3H3z"/><circle cx="9" cy="9.5" r="2.6"/><path d="M9 6.9V9.5l1.8 1"/><path d="M13.5 6l4.5 4.5-1.5 1.5L12 7.5z" fill="currentColor" stroke="none"/>`,
   // Research: a magnifier examining a schematic — discovering the next blueprint.
   research: `<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.2 15.2l4.6 4.6" stroke-linecap="round"/><path d="M8 9.5h5M8 12h5M10.5 7.5v6" stroke-linecap="round"/>`,
   // Solar array: a tilted panel of cells on a post.
@@ -191,7 +191,7 @@ const BY_DEF: Record<string, Visual> = {
   wreck: { color: "var(--cat-station)", glyph: G.wreck },
   exhausted_wreck: { color: "var(--ink-faint)", glyph: G.exhausted_wreck },
   printer: { color: "var(--cat-station)", glyph: G.printer },
-  workshop: { color: "var(--cat-station)", glyph: G.workshop },
+  workbench: { color: "var(--cat-station)", glyph: G.workbench },
   research: { color: "var(--cat-research)", glyph: G.research },
   solar_array: { color: "var(--cat-power)", glyph: G.solar_array },
   refinery: { color: "var(--cat-fuel)", glyph: G.refinery },
@@ -230,7 +230,7 @@ const BY_CATEGORY: Record<string, Visual> = {
   // Structural / endgame categories
   subsystem: { color: "var(--cat-subsystem)", glyph: G.hull },
   drone: { color: "var(--cat-drone)", glyph: G.drone },
-  station: { color: "var(--cat-station)", glyph: G.workshop },
+  station: { color: "var(--cat-station)", glyph: G.workbench },
   avatar: { color: "var(--cat-avatar)", glyph: G.survivor },
   launchpad: { color: "var(--cat-launchpad)", glyph: G.rocket },
   warehouse: { color: "var(--cat-warehouse)", glyph: G.warehouse },
@@ -301,7 +301,7 @@ function acceptLabel(token: string, defsById: Map<string, CardDef>): string {
 }
 
 // Mechanical drones top out at Mk IV; a higher requirement is a worker-only bay
-// (the Workshop & Research benches), which only Effort can fill.
+// (the Workbench & Research benches), which only Effort can fill.
 const MAX_MK = 4;
 
 // Every display label a hole should advertise. For a drone bay this is its Mk

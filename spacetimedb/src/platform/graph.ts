@@ -48,7 +48,7 @@ export const GraphNode = t.object("GraphNode", {
 // kind:
 //   "produce"  verb → resource it emits each cycle (refinery → metal)
 //   "consume"  resource/category → verb that accepts it in a hole (raw → refinery)
-//   "build"    blueprint → verb/drone the Workshop builds from it
+//   "build"    blueprint → verb/drone the Workbench builds from it
 //   "research" prerequisite category → blueprint Research unlocks once met
 //   "subsystem" component category → rocket subsystem the Assembler needs
 //   "wreck"    wreck → item in its manifest
@@ -132,12 +132,12 @@ export function buildProgressionGraph(ctx: GraphCtx): {
     }
   }
 
-  // ── build: blueprint → the verb/drone the Workshop makes from it ──────────
+  // ── build: blueprint → the verb/drone the Workbench makes from it ──────────
   for (const [bp, b] of Object.entries(BUILDS)) {
     add(bp, b.output, "build", `${b.cost} component${b.cost === 1 ? "" : "s"}`);
-    // The Workshop is the machine that does the building — show the blueprint
+    // The Workbench is the machine that does the building — show the blueprint
     // flowing through it.
-    add(bp, "workshop", "consume");
+    add(bp, "workbench", "consume");
   }
 
   // ── research: prerequisite category → the blueprint Research unlocks ───────

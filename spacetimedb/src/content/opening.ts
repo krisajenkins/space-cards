@@ -13,11 +13,11 @@
 export const OPENING_BOARD_NAME = "Crash Site";
 
 // Tier-0 stations along the top: the Survivor (your hands), the two gatherers,
-// and the Research bench (earns blueprints). The Printer and Workshop are NOT
+// and the Research bench (earns blueprints). The Printer and Workbench are NOT
 // dealt — you salvage them from the Wreck (see WRECK_CONTENTS / wreckDrop in
 // resolvers.ts), which softens the opening and tells the story of saving a few
 // things from the crash. Everything else is earned: gather by hand, RESEARCH a
-// blueprint, BUILD it at the Workshop, and climb the tree to a Rocket.
+// blueprint, BUILD it at the Workbench, and climb the tree to a Rocket.
 export const OPENING_STATIONS = [
   "survivor",
   "research",

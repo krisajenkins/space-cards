@@ -9,6 +9,20 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [X] It bugs me that we can pull a workshop from the wreck
+
+*Archived: 2026-06-24 (change uoymqrsxskxt)*
+
+That a fully-formed *Workshop* could be dragged intact from a crash-wreck was
+unbelievable. The original idea was a two-tier split (a salvageable Workbench for
+level-1 blueprints, a buildable Workshop for level-2), but that needed content
+decisions that never settled. Resolved instead by simply **renaming Workshop →
+Workbench** everywhere — a humble bench you pull from the wreck reads fine — and
+dropping the two-tier plan. Pure rename: the `workshop` defId/verb,
+`salvage_workshop` achievement, the `WRECK_CONTENTS` entry, resolvers, graph
+projection, client glyph, and the docs/allium spec all became `workbench`. No
+schema or mechanism change; `svelte-check` clean.
+
 # [X] Achievements text needs human attention
 
 *Archived: 2026-06-24 (change qlpzkkkk)*

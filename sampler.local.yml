@@ -1,0 +1,56 @@
+variables:
+    url: http://localhost:3000/v1/metrics
+runcharts:
+  - title: Connected clients (total)
+    position: [[0, 16], [40, 12]]
+    rate-ms: 1000
+    scale: 0
+    items:
+      - label: clients
+        color: 2
+        sample: curl -s $url | awk '/^spacetime_worker_connected_clients/ {s+=$NF}
+            END {print s+0}'
+  - title: Memory (MB)
+    position: [[0, 0], [80, 16]]
+    rate-ms: 2000
+    scale: 1
+    items:
+      - label: jemalloc-resident
+        color: 3
+        sample: curl -s $url | awk '/^jemalloc_resident_bytes/ {s+=$NF} END {print
+            s/1048576}'
+      - label: wasm-linear
+        color: 4
+        sample: curl -s $url | awk '/^spacetime_worker_wasm_memory_bytes/ {s+=$NF}
+            END {print s/1048576}'
+      - label: page-pool
+        color: 5
+        sample: curl -s $url | awk '/^page_pool_resident_bytes/ {s+=$NF} END {print
+            s/1048576}'
+  - title: Table rows (total)
+    position: [[41, 16], [39, 12]]
+    rate-ms: 2000
+    scale: 0
+    items:
+      - label: rows
+        color: 6
+        sample: curl -s $url | awk '/^spacetime_num_table_rows/ {s+=$NF} END {print
+            s+0}'
+  - title: Transactions / sec (committed)
+    position: [[0, 27], [40, 12]]
+    rate-ms: 2000
+    scale: 0
+    items:
+      - label: tps
+        color: 4
+        sample: |
+            A=$(curl -s $url | awk '/^spacetime_num_txns_total\{/ && /committed="true"/ {s+=$NF} END {print s+0}'); sleep 1; B=$(curl -s $url | awk '/^spacetime_num_txns_total\{/ && /committed="true"/ {s+=$NF} END {print s+0}'); awk -v a="$A" -v b="$B" 'BEGIN {d=b-a; print (d<0?0:d)}'
+  - title: Compute / sec (CPU-seconds per second)
+    position: [[41, 27], [39, 12]]
+    rate-ms: 2000
+    scale: 2
+    items:
+      - label: compute
+        color: 5
+        sample: |
+            A=$(curl -s $url | awk '/^spacetime_txn_cpu_time_sec_sum/ {s+=$NF} END {print s+0}'); sleep 1; B=$(curl -s $url | awk '/^spacetime_txn_cpu_time_sec_sum/ {s+=$NF} END {print s+0}'); awk -v a="$A" -v b="$B" 'BEGIN {d=b-a; print (d<0?0:d)}'

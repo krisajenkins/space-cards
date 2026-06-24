@@ -14,7 +14,7 @@ import type { Ctx } from "../platform/types";
 // is NEVER in the opening deal (newGame deals only the four tier-0 stations — no
 // resources, no blueprints — so do not base an achievement on those) — otherwise
 // it would fire the instant a new game is dealt instead of when the player earns it.
-// The Printer and Workshop are NO LONGER dealt (they're salvaged from the Wreck —
+// The Printer and Workbench are NO LONGER dealt (they're salvaged from the Wreck —
 // see wreckDrop), so they're now legitimate bases: their first tally is the moment
 // the player digs one out of the wreckage.
 //
@@ -59,10 +59,10 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     sort: 2,
   },
   {
-    achId: "salvage_workshop",
+    achId: "salvage_workbench",
     title: "A Fighting Chance",
     description:
-      "A workshop, dragged intact from the wreck. With this, could you build your way off the moon?",
+      "A workbench, dragged intact from the wreck. With this, could you build your way off the moon?",
     sort: 3,
   },
   {
@@ -213,7 +213,7 @@ const ACHIEVEMENTS: AchievementRule[] = [
   // The two things you dig out of the Wreck — no longer dealt at the start, so
   // their first tally is the salvage moment.
   { id: "salvage_printer", earned: (c) => has(c, "printer") },
-  { id: "salvage_workshop", earned: (c) => has(c, "workshop") },
+  { id: "salvage_workbench", earned: (c) => has(c, "workbench") },
   // The Wreck picked clean — its husk (exhausted_wreck) is only ever created by
   // the Wreck running dry, so its first tally closes the scavenging story.
   { id: "wreck_exhausted", earned: (c) => has(c, "exhausted_wreck") },
@@ -223,7 +223,7 @@ const ACHIEVEMENTS: AchievementRule[] = [
     id: "researcher",
     earned: (c) => [...c.keys()].some((k) => k.startsWith("blueprint_")),
   },
-  // One beat per thing you BUILD: every Workshop output — each machine, each
+  // One beat per thing you BUILD: every Workbench output — each machine, each
   // drone tier — earns its own milestone, keyed on that built card's first
   // tally. solar_array and chem_reactor are recognised by their PRODUCT instead
   // (power_up / chemist), so they aren't repeated; the assembler's subsystems

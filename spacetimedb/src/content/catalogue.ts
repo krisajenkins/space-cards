@@ -74,7 +74,7 @@ export function seedCatalogue(ctx: Ctx) {
   // It is optional and is NOT an input the verb consumes — the slotted drone's job
   // is to feed the verb's OTHER (input) holes. The Research bench gets a WORKER-only
   // bay (no mechanical Mk qualifies), so a drone can never force a research choice.
-  // The Workshop takes a Mk I drone (it cranks the bench and loads Components) but
+  // The Workbench takes a Mk I drone (it cranks the bench and loads Components) but
   // the drone feeder refuses to touch its blueprint hole, so choosing what to build
   // stays a player decision (see droneResolve). The Assembler is a Mk IV choice
   // machine that feeds with intent — see assemblerDroneResolve.
@@ -89,7 +89,7 @@ export function seedCatalogue(ctx: Ctx) {
   ) => {
     for (let i = 0; i < n; i++) slot(defId, start + i, accepts, false);
   };
-  // A blueprint card (a "salvaged manual") — the selector the Workshop reads.
+  // A blueprint card (a "salvaged manual") — the selector the Workbench reads.
   const blueprint = (target: string, name: string) =>
     inert(`blueprint_${target}`, `Blueprint: ${name}`, "blueprint");
 
@@ -127,7 +127,7 @@ export function seedCatalogue(ctx: Ctx) {
   // Warehouse: an INERT buildable container (not a verb — no resolver, no holes,
   // outputCap 0). The player houses factory cards inside it to shrink the endgame
   // tabletop; a housed factory keeps fully running (see the `housed` Location and
-  // houseCard / unhouseCard). Built at the Workshop for 3 Components from
+  // houseCard / unhouseCard). Built at the Workbench for 3 Components from
   // blueprint_warehouse, earned at Research after the Refinery.
   inert("warehouse", "Warehouse", "warehouse");
 
@@ -159,7 +159,7 @@ export function seedCatalogue(ctx: Ctx) {
   verb("regolith_field", "Regolith Field", "station", 5);
   verb("wreck", "Wreck", "station", 5);
   verb("printer", "Printer", "station", 5); // crude raw → Component
-  verb("workshop", "Workshop", "station", 6); // blueprint → machine/drone
+  verb("workbench", "Workbench", "station", 6); // blueprint → machine/drone
   verb("research", "Research", "station", 5); // Effort → the next earned blueprint
 
   // Power, then the power-gated production line:
@@ -196,7 +196,7 @@ export function seedCatalogue(ctx: Ctx) {
   // fetches the machine's material inputs). Emitters (Survivor, Solar) need no
   // worker; they self-run. The Research bench uses a WORKER-level bay: Effort
   // (level 99) fits, but no buildable Mk does, so a drone can never auto-pick a
-  // research target. The Workshop now takes a Mk I drone — but the drone feeder
+  // research target. The Workbench now takes a Mk I drone — but the drone feeder
   // skips its blueprint hole (resolvers.ts), so the player still picks what to
   // build. (The Assembler is also a choice machine but its Mk IV drone targets
   // missing subsystems on purpose, so it gets a real Mk IV bay.)
@@ -211,14 +211,14 @@ export function seedCatalogue(ctx: Ctx) {
   inbox("printer", 0, 3, ["raw"]);
   droneSlot("printer", DRONE, 1);
 
-  // Workshop: a Blueprint (required) + a Component inbox deep enough for the
+  // Workbench: a Blueprint (required) + a Component inbox deep enough for the
   // costliest build (the Rocket needs 6) + a Mk I bay. A Mk I+ drone cranks the
   // bench and feeds Components, but the feeder refuses the blueprint hole, so the
   // player must still choose what to build (resolvers.ts, droneResolve). Effort
   // (level 99 ≥ 1) still fits and works it by hand.
-  slot("workshop", 0, ["blueprint"], true);
-  inbox("workshop", 2, 6, ["component"]);
-  droneSlot("workshop", DRONE, 1);
+  slot("workbench", 0, ["blueprint"], true);
+  inbox("workbench", 2, 6, ["component"]);
+  droneSlot("workbench", DRONE, 1);
 
   // Research: no material input — Effort in the WORKER-only bay is the whole cost.
   // What it produces is decided from card history (resolvers.ts), not from holes,

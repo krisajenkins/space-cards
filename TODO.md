@@ -2,22 +2,6 @@
 
 This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.
 
-# [ ] It bugs me that we can pull a workshop from the wreck
-
-That's unbelievable. Let's do this:
-
-- Two levels of blueprints
-- You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
-- Eventually you can make a _workshop_, which can make level 2 blueprints.
-
-> ⚠ Blocked (2026-06-21): Mechanism is clear (rename Workshop→Workbench, add a
-> `workshop` verb, add `level: 1|2` to `BUILDS`, gate each bench on the
-> blueprint's level), but the content decisions are open: (1) which of the 14
-> blueprints are level 1 vs level 2? (2) how is the Workshop obtained — its
-> research gate + build cost, and can it also build level-1 blueprints? (3) does
-> the Wreck now yield a Workbench instead of a Workshop (and rename the
-> `salvage_workshop` achievement)?
-
 # [ ] Scroll to thing (Caz)
 
 Caz wants a way to scroll/jump the viewport to a particular thing on the board.
@@ -29,18 +13,16 @@ Caz wants a way to scroll/jump the viewport to a particular thing on the board.
 > click)? (2) what triggers it — manual control or automatic? (3) a new free
 > pan/zoom camera, or just a momentary highlight/centre within the fitted view?
 
-# [ ] Blueprint library attached to the workshop (Caz)
+# [ ] Blueprint library attached to the workbench (Caz)
 
-Caz wants: maybe some library, attached to the workshop, that keeps your
+Caz wants: maybe some library, attached to the workbench, that keeps your
 blueprints neatly stored.
 
 > ⚠ Blocked (2026-06-21): Tentative idea ("maybe some library") with no settled
-> meaning of "stored", and entangled with the two-tier Workbench/Workshop rework
-> above. Decide: (1) a new server-side holding concept, or a pure client panel
-> that visually collects loose `blueprint_*` cards? (2) does the bench feed from
-> the library automatically (contradicts the deliberate hand-pick bay) or do you
-> still drag blueprints into the hole? (3) wait until the Workbench/Workshop split
-> is settled?
+> meaning of "stored". Decide: (1) a new server-side holding concept, or a pure
+> client panel that visually collects loose `blueprint_*` cards? (2) does the
+> bench feed from the library automatically (contradicts the deliberate hand-pick
+> bay) or do you still drag blueprints into the hole?
 
 # Tips we might want to make visible
 

@@ -65,7 +65,7 @@ retires itself. Because a drone is bound to one host, two drones never fight ove
 work. Pure gatherers (Regolith Field, Wreck) have no material input at all — the
 worker *is* the input.
 
-The **choice machines** (Workshop, Research) have a **worker-only bay**: Effort
+The **choice machines** (Workbench, Research) have a **worker-only bay**: Effort
 fits, but no buildable Mk does, so a drone can never auto-crank them — you always
 pick the blueprint / research target yourself. The **Assembler** is the deliberate
 exception: it *is* a choice machine, but its Mk IV drone doesn't blind-feed — it
@@ -131,10 +131,10 @@ tier of machine and each more precious than the last:
   Held as an explicit design option (the user is keen if it plays fun) — not yet
   wired into the recipe table.
 
-### Gate 2 — Blueprints, Research + the Workshop (construction, no dynamic schema)
+### Gate 2 — Blueprints, Research + the Workbench (construction, no dynamic schema)
 
 All `card_def`s live in `init`; you acquire new *machines* by **building** them,
-not by unlocking schema. The **Workshop** (hand-cranked with Effort, so it works
+not by unlocking schema. The **Workbench** (hand-cranked with Effort, so it works
 from turn one) consumes a **Blueprint card** + Components → produces the
 machine/drone the blueprint names, dormant in its tray; you plant it to bring it
 to life (the same "grows once placed" gate a Seed used). The blueprint's `defId`
@@ -205,7 +205,7 @@ late tiers.
 | Hands | **Effort**, **Regolith**, **Scrap**, **Salvage** | Effort = the universal *worker* (a drone you spend, placed in any bay); Salvage = a ready-made part from the Wreck (counts as a Component) |
 | Power | **Power**, **Metal** | Power = the gate token |
 | Electronics | **Silicon**, **Glass**, **Circuit**, **Component** | Component = the universal part |
-| Construction | **Blueprint: X** | one per buildable machine/drone; earned at the Research bench, then built at the Workshop |
+| Construction | **Blueprint: X** | one per buildable machine/drone; earned at the Research bench, then built at the Workbench |
 | Chemistry | **Water**, **Hydrogen**, **Oxygen**, **Fuel** | Ice Mine yields Water directly (no Ice card) |
 | Assembly | **Engine**, **Hull**, **Avionics**, **Life Support**, **Heat Shield** | rocket subsystems |
 | Win | **Escape** | produced by the Rocket via `become` |
@@ -213,7 +213,7 @@ late tiers.
 ### 5.2 Verb cards — machines
 
 As built. Seeded stations (Tier 0) are hand-cranked; everything below the Solar
-Array is built at the Workshop and needs Power. **Every machine except the two
+Array is built at the Workbench and needs Power. **Every machine except the two
 pure emitters (Survivor, Solar Array) needs a worker in its bay to run** — Effort
 (spent per cycle) or a mechanical drone of the listed Mk (continuous + fetches the
 material holes). The **Bay** column gives the required Mk; *worker* = a worker-only
@@ -224,9 +224,9 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 | **Survivor** | — | none | — | self-runs; emits 1 Effort / cycle, cap 5 |
 | **Solar Array** | — | none | — | self-runs; emits 1 Power / cycle, cap 5; build more to scale (its blueprint is *kept*, so one manual builds a whole solar farm) |
 | **Regolith Field** | — | none | Mk I | worker → Regolith (worker is the input) |
-| **Wreck** | — | none | Mk I | worker → the next item in its **fixed manifest** (`WRECK_CONTENTS`): the only **Printer** and **Workshop** you get (no longer dealt), early, wrapped in a finite run of **Scrap** + **Salvage**. One item per scavenge, in order; when the list is spent it `become`s an inert **Exhausted Wreck** husk |
+| **Wreck** | — | none | Mk I | worker → the next item in its **fixed manifest** (`WRECK_CONTENTS`): the only **Printer** and **Workbench** you get (no longer dealt), early, wrapped in a finite run of **Scrap** + **Salvage**. One item per scavenge, in order; when the list is spent it `become`s an inert **Exhausted Wreck** husk |
 | **Printer** | — | `raw` inbox | Mk I | crude bootstrap: raw → Component, no power, slow |
-| **Workshop** | — | `blueprint` + `component` inbox | worker | Blueprint selects the output: + Components + an Effort worker → that machine/drone, dormant in tray |
+| **Workbench** | — | `blueprint` + `component` inbox | worker | Blueprint selects the output: + Components + an Effort worker → that machine/drone, dormant in tray |
 | **Research** | — | none | worker | an Effort worker → the next blueprint you've *earned* (machine: 1-of-each input discovered; drone: tier chore done ≥3×). Idles when there's nothing left to learn, so Effort is never spent for nothing |
 | **Refinery** | **yes** | `power` + `raw` inbox | Mk II | 1 raw + 1 Power → Metal |
 | **Fabricator** | **yes** | `power` + `metal` inbox | Mk II | Metal + Power → Component |
@@ -241,7 +241,7 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 ### 5.3 Verb cards — drones (the automation layer, as built)
 
 **Effort + four marks of mechanical drone.** A mechanical drone is a hole-less
-verb built at the Workshop (blueprint + components; the blueprint is *kept*, so
+verb built at the Workbench (blueprint + components; the blueprint is *kept*, so
 one manual builds a whole fleet). Dropped into a machine's **bay** it binds to
 that machine and is its worker: it runs continuously *and*, every two seconds,
 pulls a material the machine accepts (from the table or any output tray) into one
@@ -270,7 +270,7 @@ Assembler's most-specific-first matcher builds precisely the part you need. It
 idles once all five subsystems exist. (You can still crank it by hand with Effort,
 loading whatever recipe you like.)
 
-The remaining **choice** machines keep a **worker-only bay** — the Workshop (a
+The remaining **choice** machines keep a **worker-only bay** — the Workbench (a
 blueprint selects its output) and the Research bench (it earns the next blueprint
 you've qualified for) accept only Effort, never a mechanical drone, so automation
 can never blindly pick a blueprint or research target: you spend Effort to crank
@@ -287,18 +287,18 @@ Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then t
    Landing") — the inciting incident, awarded the instant the board is dealt, so
    the story has an opening line before the milestone toasters take over. You start
    with Survivor + Regolith Field + Wreck + Research — and *nothing
-   else*: no resources, no blueprints, and **not yet a Printer or Workshop**. Drop
+   else*: no resources, no blueprints, and **not yet a Printer or Workbench**. Drop
    your Effort into a machine's bay to work it, one cycle at a time. Work the
    **Wreck** first: it holds a fixed manifest of salvage — Scrap, Salvage, and the
-   only **Printer** and **Workshop** you'll get (they're no longer dealt), early in
+   only **Printer** and **Workbench** you'll get (they're no longer dealt), early in
    the list — which you plant to bring to life. With the Printer you make Components
    by hand (or use a Salvage, which counts as one); then **Research** your first
-   blueprint (Solar Array) and **build** it at the Workshop. The Wreck is finite —
+   blueprint (Solar Array) and **build** it at the Workbench. The Wreck is finite —
    keep scavenging and it eventually runs dry (an Exhausted Wreck husk), so its
    Salvage is a one-time windfall, not a tap. *Novelty: the basic
-   scavenge→print→research→build loop. Goal: salvage the Printer + Workshop, get
+   scavenge→print→research→build loop. Goal: salvage the Printer + Workbench, get
    your first blueprint, and stand up a Solar Array.*
-2. **Power up.** Build a Solar Array at the Workshop and plant it; electrify the
+2. **Power up.** Build a Solar Array at the Workbench and plant it; electrify the
    Refinery & Fabricator (faster, but Power-gated — first logistics puzzle).
    *Automation: **Mk I** drones in the gatherers retire hand-gathering; **Mk II**
    drones in the Refinery & Fabricator pull both Power and raw, retiring
@@ -332,7 +332,7 @@ is never in the opening deal**, so it fires when the player *earns* it — the s
 exception is `crash`, keyed on the always-dealt Survivor, which opens the story at
 the deal.
 
-**Design rule: every Workshop build output gets its own beat.** Standing up a new
+**Design rule: every Workbench build output gets its own beat.** Standing up a new
 machine or drone tier is a story moment, so each earns a milestone rather than
 collapsing into a generic "first machine / first drone" toaster. The arc, in
 `sort` order:
@@ -342,7 +342,7 @@ collapsing into a generic "first machine / first drone" toaster. The arc, in
 | 0 | `crash` | Crash Landing | board dealt (Survivor) |
 | 1 | `prospector` | Prospector | first Regolith |
 | 2 | `salvage_printer` | Spare Parts | Printer dug from the Wreck |
-| 3 | `salvage_workshop` | A Fighting Chance | Workshop dug from the Wreck |
+| 3 | `salvage_workbench` | A Fighting Chance | Workbench dug from the Wreck |
 | 4 | `wreck_exhausted` | Picked Clean | Wreck runs dry (Exhausted Wreck husk) |
 | 5 | `researcher` | Eureka | first blueprint researched |
 | 6 | `automation` | Hands Off | first **Mk I drone** built |
@@ -364,7 +364,7 @@ collapsing into a generic "first machine / first drone" toaster. The arc, in
 Two outputs are recognised by their **product** rather than the build, because
 their payoff reads better that way: the **Solar Array** via `power` (`power_up`)
 and the **Chem Reactor** via `fuel` (`chemist`). The five rocket subsystems
-(Assembler recipes, not Workshop blueprints) share the single `launch_ready`
+(Assembler recipes, not Workbench blueprints) share the single `launch_ready`
 payoff rather than five separate beats.
 
 ---
@@ -389,13 +389,13 @@ without touching the engine.
 
 1. **~~Wreck finiteness.~~ RESOLVED — the Wreck holds a fixed manifest.** It carries
    an authored list of contents (`WRECK_CONTENTS` in `content/recipes.ts`) — the Printer
-   and Workshop (the only copies you'll get, since they're no longer dealt) wrapped
+   and Workbench (the only copies you'll get, since they're no longer dealt) wrapped
    in a finite run of Scrap and Salvage — handed out one item per scavenge, in order.
    When the list runs dry the Wreck `become`s an inert **Exhausted Wreck** husk. The
    manifest is derived state, not a new counter: only the Wreck creates those cards,
    so the count already created (card-history) *is* the cursor into the list — the
    same "history is the state" trick the Research bench uses. The Printer and
-   Workshop sit early in the list, so the opening always ramps the same way; the
+   Workbench sit early in the list, so the opening always ramps the same way; the
    Wreck can't soft-lock it (the Regolith Field's infinite raw makes it non-essential
    once those two are out), and Salvage is now genuinely scarce — the mid-game pacing
    lever anticipated here. Picking it clean earns the **"Picked Clean"** achievement
@@ -415,7 +415,7 @@ without touching the engine.
    `platform/constants.ts`; the recipe DATA (builds, subsystems, research tree,
    wreck manifest) in `content/recipes.ts`; card/hole authoring in
    `content/catalogue.ts`; and the `ready`-hook predicates in
-   `engine/resolvers.ts`. Construction is the Workshop reading a
+   `engine/resolvers.ts`. Construction is the Workbench reading a
    Blueprint's `defId` (a clean selector), not the count-matched Lab originally
    sketched — see §3 Gate 2.
 6. **~~Build order / unlock gating.~~ RESOLVED — the resource graph gates it.**

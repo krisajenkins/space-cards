@@ -60,7 +60,7 @@ external entity Board {
 -- Value Types
 ------------------------------------------------------------
 
--- A Workshop build recipe: a Blueprint card's def_id selects exactly one output
+-- A Workbench build recipe: a Blueprint card's def_id selects exactly one output
 -- (no fragile count-matching). `cost` Components are consumed. `keep` blueprints
 -- are handed back (drones + the Solar Array — you want a whole fleet/farm from one
 -- manual); others are one-and-done.
@@ -118,7 +118,7 @@ config {
     solar_cycle: Duration = 5.seconds       -- the Solar Array emitting one Power
     gather: Duration = 4.seconds            -- one raw (Field / Wreck) per Effort
     print: Duration = 6.seconds             -- the crude Printer: raw -> Component
-    build: Duration = 6.seconds             -- the Workshop assembling from a blueprint
+    build: Duration = 6.seconds             -- the Workbench assembling from a blueprint
     research: Duration = 8.seconds          -- the bench earning the next blueprint
     refine: Duration = 5.seconds            -- raw -> Metal
     fabricate: Duration = 6.seconds         -- Metal -> Component
@@ -165,7 +165,7 @@ default CardDef escape            = { def_id: "escape",          category: "endg
 default CardDef warehouse         = { def_id: "warehouse",       category: "warehouse", is_verb: false, drone_level: 0 }  -- buildable container
 default CardDef exhausted_wreck    = { def_id: "exhausted_wreck", category: "debris",    is_verb: false, drone_level: 0 }  -- picked-clean husk
 
--- Blueprints (inert; the Workshop's selectors). One per buildable machine/drone.
+-- Blueprints (inert; the Workbench's selectors). One per buildable machine/drone.
 default CardDef bp_solar          = { def_id: "blueprint_solar",          category: "blueprint", is_verb: false, drone_level: 0 }
 default CardDef bp_refinery        = { def_id: "blueprint_refinery",        category: "blueprint", is_verb: false, drone_level: 0 }
 default CardDef bp_fabricator       = { def_id: "blueprint_fabricator",       category: "blueprint", is_verb: false, drone_level: 0 }
@@ -189,7 +189,7 @@ default CardDef survivor       = { def_id: "survivor",       category: "avatar",
 default CardDef regolith_field  = { def_id: "regolith_field", category: "station",  is_verb: true, drone_level: 0 }  -- Mk I bay; worker -> Regolith
 default CardDef wreck            = { def_id: "wreck",          category: "station",  is_verb: true, drone_level: 0 }  -- Mk I bay; worker -> next manifest item
 default CardDef printer           = { def_id: "printer",        category: "station",  is_verb: true, drone_level: 0 }  -- Mk I bay; raw -> Component
-default CardDef workshop           = { def_id: "workshop",       category: "station",  is_verb: true, drone_level: 0 }  -- worker bay; blueprint+components -> machine
+default CardDef workbench           = { def_id: "workbench",       category: "station",  is_verb: true, drone_level: 0 }  -- worker bay; blueprint+components -> machine
 default CardDef research            = { def_id: "research",       category: "station",  is_verb: true, drone_level: 0 }  -- worker-only bay; Effort -> earned blueprint
 
 -- Power, then the power-gated line:
@@ -214,7 +214,7 @@ default CardDef drone_4 = { def_id: "drone_4", category: "drone", is_verb: true,
 -- Defaults — recipe data (content/recipes.ts)
 ------------------------------------------------------------
 
--- Workshop builds. Drones + the Solar Array are `keep` (build a whole fleet/farm
+-- Workbench builds. Drones + the Solar Array are `keep` (build a whole fleet/farm
 -- from one manual); cost rises with Mk so automating a higher tier is a bigger
 -- investment. The Warehouse is one-and-done.
 default Build build_solar         = { blueprint: bp_solar,          output: solar_array,           cost: 2, keep: true }
@@ -321,8 +321,8 @@ rule ResolveWreck {
             Becomes(verb, exhausted_wreck)      -- manifest spent → husk
 
     @guidance
-        -- WRECK_CONTENTS = [scrap, salvage, printer, scrap, workshop, salvage,
-        -- scrap, salvage, scrap, scrap]. The Printer and Workshop sit early and are
+        -- WRECK_CONTENTS = [scrap, salvage, printer, scrap, workbench, salvage,
+        -- scrap, salvage, scrap, scrap]. The Printer and Workbench sit early and are
         -- the ONLY copies in the game (no longer dealt), so the opening always
         -- ramps the same way; Salvage is a genuinely scarce one-time windfall.
 }
@@ -341,14 +341,14 @@ rule ResolvePrinter {
         RerunsIfDroned(verb)
 }
 
--- Workshop: reads the Blueprint in its hole, consumes that build's Component cost,
+-- Workbench: reads the Blueprint in its hole, consumes that build's Component cost,
 -- and produces the named machine/drone DORMANT in the tray (you plant it to bring
 -- it to life — the engine's grows-once-placed gate). A `keep` blueprint is handed
 -- back; others are consumed. The drone feeder refuses the blueprint hole, so even
--- a droned Workshop leaves the CHOICE of what to build to the player.
-rule ResolveWorkshop {
+-- a droned Workbench leaves the CHOICE of what to build to the player.
+rule ResolveWorkbench {
     when: ResolveRun(verb)
-    requires: verb.def = workshop
+    requires: verb.def = workbench
     let bp = blueprint_in(verb)                 -- the slotted blueprint card
     requires: exists bp
     let recipe = Build{blueprint: bp.def}
@@ -509,7 +509,7 @@ invariant AlwaysWinnable {
         r.needs.all(req => producible_before(req.category, r.target))
 }
 
--- The Printer and Workshop exist ONLY in the Wreck manifest (never dealt, never a
+-- The Printer and Workbench exist ONLY in the Wreck manifest (never dealt, never a
 -- build output), so a board that never works the Wreck can still gather raw
 -- forever (the Regolith Field is infinite) — the Wreck can't soft-lock the game.
 invariant WreckNonEssential {
@@ -546,7 +546,7 @@ surface EscapeTheMoonContent {
     @guarantee TwoGates
         -- Progression is gated by exactly two card-only mechanisms, needing no
         -- engine change: POWER (big machines stall without a Power card) and
-        -- BLUEPRINTS (new machines are earned at Research, built at the Workshop).
+        -- BLUEPRINTS (new machines are earned at Research, built at the Workbench).
 }
 
 ------------------------------------------------------------

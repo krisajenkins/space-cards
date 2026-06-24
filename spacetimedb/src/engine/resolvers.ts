@@ -277,20 +277,20 @@ function nextDroneMove(ctx: Ctx, verb: Card): Effects | null {
   if (host.defId === "assembler") return assemblerDroneMove(ctx, host);
 
   const holes = hostHoles(ctx, host.id, host.boardId);
-  // The Workshop keeps its hands off until you've chosen a blueprint: no pulling
+  // The Workbench keeps its hands off until you've chosen a blueprint: no pulling
   // Components in for a build you haven't committed to. (You always pick the
   // blueprint — the feeder skips the blueprint hole itself; this just makes the
   // drone wait for one to appear before it bothers loading anything.)
   if (
-    host.defId === "workshop" &&
+    host.defId === "workbench" &&
     !holes.some((c) => catOf(ctx, c) === "blueprint")
   )
     return null;
   const filled = new Set(holes.map((c) => c.location.value.slotIndex));
   // Input holes only (droneLevel 0); never the bay itself. Also never a blueprint
-  // hole: a Mk I+ drone may crank the Workshop and load its Components, but choosing
+  // hole: a Mk I+ drone may crank the Workbench and load its Components, but choosing
   // WHAT to build stays a player decision — the drone never grabs a blueprint. (The
-  // Workshop is the only machine with a blueprint hole; the Assembler choice is
+  // Workbench is the only machine with a blueprint hole; the Assembler choice is
   // handled separately by assemblerDroneMove above.)
   const slots = [...ctx.db.slotDef.defId.filter(host.defId)]
     .filter((s) => s.droneLevel === 0 && !s.accepts.includes("blueprint"))
@@ -308,7 +308,7 @@ function nextDroneMove(ctx: Ctx, verb: Card): Effects | null {
 // Does the board already hold a card of `defId` (anywhere — table, tray, or
 // slotted)? Used both to decide which rocket subsystems the Assembler drone still
 // owes us (the Rocket wants one of each) and to gate the Wreck's salvaged machines
-// (you only pull a Printer/Workshop while you don't already have one).
+// (you only pull a Printer/Workbench while you don't already have one).
 function boardHas(ctx: Ctx, boardId: bigint, defId: string): boolean {
   for (const c of ctx.db.card.boardId.filter(boardId))
     if (c.defId === defId) return true;
@@ -442,7 +442,7 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Wreck: the discovery node, holding a fixed manifest (WRECK_CONTENTS) — Scrap,
-  // Salvage, and the only Printer + Workshop you'll get — handed out one item per
+  // Salvage, and the only Printer + Workbench you'll get — handed out one item per
   // scavenge in order. When the manifest is spent wreckDrop returns null and the
   // Wreck collapses into an inert Exhausted Wreck husk (become). Effort scavenges
   // once; a drone keeps it worked — and burns through the contents faster.
@@ -505,12 +505,12 @@ export const RESOLVERS: Record<string, Resolver> = {
     },
   },
 
-  // Workshop: hand-cranked constructor. Blueprint (selects the output) + enough
+  // Workbench: hand-cranked constructor. Blueprint (selects the output) + enough
   // Components + a worker in its bay → the machine/drone, dormant in the tray to
   // be planted. The worker is Effort OR a Mk I+ drone (theWorker), but the drone
   // can never PICK the blueprint — the feeder skips blueprint holes, so you always
   // choose what to build. Cranked, not powered: works from turn one.
-  workshop: {
+  workbench: {
     duration: () => BUILD,
     ready: (ctx, holes) => {
       const bp = holes.find((h) => catOf(ctx, h) === "blueprint");
@@ -528,7 +528,7 @@ export const RESOLVERS: Record<string, Resolver> = {
       const comps = take(ctx, holes, "component", recipe.cost);
       if (comps.length < recipe.cost) return NOOP;
       // A kept blueprint is consumed-and-reproduced: it lands in the tray for the
-      // player to re-slot, so the Workshop frees up for the next build. Effort is
+      // player to re-slot, so the Workbench frees up for the next build. Effort is
       // spent (workerCost); a drone persists and re-fires — but with the blueprint
       // now gone from its hole it idles until you slot the next one.
       return {
@@ -540,21 +540,21 @@ export const RESOLVERS: Record<string, Resolver> = {
   },
 
   // Research: hand-cranked discovery bench. A WORKER-only bay (Effort, like the
-  // Workshop) — one Effort yields the next blueprint you've earned (researchTarget
+  // Workbench) — one Effort yields the next blueprint you've earned (researchTarget
   // reads your card history). `ready` keeps it idle when nothing's left to learn,
   // so Effort is never spent for nothing. One blueprint per crank (Effort is no
   // drone → no re-fire), which paces discovery against your scarce early labour.
-  // It also stays idle until the board has a Workshop: a blueprint is useless with
+  // It also stays idle until the board has a Workbench: a blueprint is useless with
   // nothing to BUILD it at, so we don't spend the worker earning one you can't use
-  // (the Workshop is salvaged from the Wreck — see wreckDrop). Same idle/ready
+  // (the Workbench is salvaged from the Wreck — see wreckDrop). Same idle/ready
   // pattern as "nothing left to learn", so the Effort is never consumed when blocked.
   research: {
     duration: () => RESEARCH,
     ready: (ctx, _holes, verb) =>
-      boardHas(ctx, verb.boardId, "workshop") &&
+      boardHas(ctx, verb.boardId, "workbench") &&
       researchTarget(ctx, verb.boardId) !== null,
     resolve: (ctx, holes, verb) => {
-      if (!boardHas(ctx, verb.boardId, "workshop")) return NOOP;
+      if (!boardHas(ctx, verb.boardId, "workbench")) return NOOP;
       const target = researchTarget(ctx, verb.boardId);
       if (!target) return NOOP;
       return {
