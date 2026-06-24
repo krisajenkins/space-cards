@@ -97,7 +97,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "industrialist",
     title: "Industrialist",
     description:
-      "Your first refinery fires up - raw regolith in, pure metal out. And metal opens up possibilities...",
+      "Your first refinery is ready to fire up - raw regolith in, pure metal out. And metal will open up possibilities...",
     sort: 8,
   },
   {
@@ -167,7 +167,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "drone_4",
     title: "Full Automation",
     description:
-      "Your final drone design - the peak of everything you've learned while trying to survive. The whole base runs lights-out while you turn your eyes to the launch pad.",
+      "Your final drone design - the peak of everything you've learned while trying to survive. The whole base can run lights-out while you turn your eyes to the launch pad.",
     sort: 18,
   },
   {
