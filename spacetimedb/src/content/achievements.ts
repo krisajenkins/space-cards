@@ -118,7 +118,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "drone_2",
     title: "Second Shift",
     description:
-      "One drone was never going to be enough. A second takes the next chore off your hands, and the base hums a little louder without you.",
+      "A basic drone was never going to be enough. Your latest model takes the harder chores off your hands, and the base hums a little louder.",
     sort: 11,
   },
   {
@@ -146,7 +146,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "drone_3",
     title: "Night Crew",
     description:
-      "Three drones working while you don't. The grind has all but vanished - now you mostly watch a machine that runs itself.",
+      "Level three drones working while you don't. The grind has all but vanished - now you mostly watch a machine that runs itself.",
     sort: 15,
   },
   {
@@ -167,7 +167,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "drone_4",
     title: "Full Automation",
     description:
-      "A fourth drone, and the last of the busywork is gone. The whole base runs lights-out while you turn your eyes to the launch pad.",
+      "Your final drone design - the peak of everything you've learned while trying to survive. The whole base runs lights-out while you turn your eyes to the launch pad.",
     sort: 18,
   },
   {
@@ -181,7 +181,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "escape",
     title: "Escape the Moon",
     description:
-      "Ignition. The wreck and the grey dust fall away beneath you. You're going home.",
+      "Ignition. The wreck and the grey dust fall away beneath you. At last you're going home.",
     sort: 20,
   },
 ];
@@ -232,11 +232,11 @@ const ACHIEVEMENTS: AchievementRule[] = [
   { id: "power_up", earned: (c) => has(c, "power") },
   { id: "industrialist", earned: (c) => has(c, "refinery") },
   { id: "fabricator", earned: (c) => has(c, "fabricator") },
-  { id: "kiln", earned: (c) => has(c, "kiln") },
+  { id: "kiln", earned: (c) => has(c, "glass") || has(c, "silicon") },
   { id: "drone_2", earned: (c) => has(c, "drone_2") },
   { id: "water", earned: (c) => has(c, "water") },
-  { id: "electronics_fab", earned: (c) => has(c, "electronics_fab") },
-  { id: "electrolysis", earned: (c) => has(c, "electrolysis") },
+  { id: "electronics_fab", earned: (c) => has(c, "circuit") },
+  { id: "electrolysis", earned: (c) => has(c, "hydrogen") },
   { id: "drone_3", earned: (c) => has(c, "drone_3") },
   { id: "chemist", earned: (c) => has(c, "fuel") },
   { id: "assembler", earned: (c) => has(c, "assembler") },
