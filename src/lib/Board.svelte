@@ -27,13 +27,17 @@ let { boardId }: { boardId: bigint } = $props();
 // Inset so a card seeded at board-space (0,0) doesn't hug the corner.
 const PAD = 56;
 
-// ── Zoom-to-fit (local, client-only view transform) ──────────────────────────
-// The server settles where every card SITS; this only fits the *camera* to them.
-// We never relayout here — we scale + translate the content layer so the whole
-// tableau is visible, re-fitting whenever cards appear / move / grow / vanish or
-// the viewport resizes. Pure CSS transform: no reducer, no layout, no overlap math.
-const FIT_MARGIN = 28; // breathing room kept around the fitted tableau (screen px)
-const MAX_SCALE = 1; // fit means shrink-to-fit; never blow a tiny board up past 1×
+// ── Free pan/zoom camera (local, client-only view transform) ─────────────────
+// The server settles where every card SITS; this is just the *camera* over them.
+// We never relayout here — we translate + scale the content layer in response to
+// the player dragging the felt (pan) and the wheel / zoom buttons (zoom toward a
+// point). Pure CSS transform: no reducer, no layout, no overlap math. The board
+// is framed once on first sighting (computeFit, below) so you start looking at
+// your tableau; after that the camera is yours, and the edge bars (see `edges`)
+// tell you which way the off-screen cards are.
+const FIT_MARGIN = 28; // breathing room when framing/fitting the tableau (screen px)
+const MIN_SCALE = 0.25; // how far out you can zoom
+const MAX_SCALE = 1.6; // how far in you can zoom (slightly past 1× for readability)
 
 const [cardDefs] = useTable(tables.cardDef);
 const [slotDefs] = useTable(tables.slotDef);
@@ -194,24 +198,57 @@ const bbox = $derived.by(() => {
 let viewW = $state(0);
 let viewH = $state(0);
 
-// The fit transform: shrink (never enlarge past MAX_SCALE) the content layer so
-// the whole bbox fits the viewport with FIT_MARGIN of slack, and centre it.
-const fit = $derived.by(() => {
+// The camera: a translate + scale applied to the content layer. The player owns
+// it (pan/zoom below); it is NOT continuously re-fitted — only seeded once.
+let cam = $state({ x: 0, y: 0, scale: 1 });
+
+// Frame the whole tableau in the viewport (shrink-to-fit with FIT_MARGIN slack,
+// centred, never enlarged past 1×). Returns the camera that does it, or null if
+// there's nothing to frame yet. Reused for the one-shot initial framing and the
+// "Fit" button.
+function computeFit(): { x: number; y: number; scale: number } | null {
   const b = bbox;
-  if (!b || viewW === 0 || viewH === 0) return { scale: 1, ox: 0, oy: 0 };
+  if (!b || viewW === 0 || viewH === 0) return null;
   const bw = b.maxX - b.minX;
   const bh = b.maxY - b.minY;
   const avW = Math.max(1, viewW - FIT_MARGIN * 2);
   const avH = Math.max(1, viewH - FIT_MARGIN * 2);
-  const scale = Math.min(MAX_SCALE, avW / bw, avH / bh);
-  // Centre the (scaled) bbox in the viewport: translate so b.minX*scale lands at
-  // the left gap, then nudge by the leftover space / 2.
-  const ox = (viewW - bw * scale) / 2 - b.minX * scale;
-  const oy = (viewH - bh * scale) / 2 - b.minY * scale;
-  return { scale, ox, oy };
+  const scale = Math.min(1, avW / bw, avH / bh);
+  const x = (viewW - bw * scale) / 2 - b.minX * scale;
+  const y = (viewH - bh * scale) / 2 - b.minY * scale;
+  return { x, y, scale };
+}
+
+// Frame the board ONCE, the first time there's something to look at (and a
+// measured viewport). After that the camera is the player's — we never auto-fit
+// again, so the view never yanks out from under them as cards appear or grow.
+let framed = false;
+$effect(() => {
+  if (framed) return;
+  const f = computeFit();
+  if (!f) return;
+  cam = f;
+  framed = true;
 });
 
-// Track the viewport size so the fit re-runs on resize (window, panel toggles).
+// Which sides have content spilling off-screen, so the edge bars can point the
+// player toward what they've panned away from. Maps the content bbox into
+// viewport pixels through the live camera and tests it against the four edges.
+const edges = $derived.by(() => {
+  const b = bbox;
+  const none = { left: false, right: false, top: false, bottom: false };
+  if (!b || viewW === 0 || viewH === 0) return none;
+  const M = 1; // a px of slack so a perfectly-framed board shows no bars
+  return {
+    left: cam.x + b.minX * cam.scale < -M,
+    right: cam.x + b.maxX * cam.scale > viewW + M,
+    top: cam.y + b.minY * cam.scale < -M,
+    bottom: cam.y + b.maxY * cam.scale > viewH + M,
+  };
+});
+
+// Track the viewport size (window resize, panel toggles) so framing + the edge
+// bars use live dimensions.
 $effect(() => {
   if (!boardEl) return;
   const ro = new ResizeObserver(([entry]) => {
@@ -222,6 +259,80 @@ $effect(() => {
   ro.observe(boardEl);
   return () => ro.disconnect();
 });
+
+// ── Camera controls: pan (drag the felt), zoom (wheel / buttons) ─────────────
+const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+
+// Pan: a left-drag that started on empty felt (not a card) slides the camera 1:1
+// with the pointer. Card drags and control clicks are filtered out in
+// onBoardPointerDown before we get here.
+let panning = $state(false);
+let panStart = { px: 0, py: 0, camX: 0, camY: 0 };
+function startPan(e: PointerEvent) {
+  panning = true;
+  panStart = { px: e.clientX, py: e.clientY, camX: cam.x, camY: cam.y };
+  window.addEventListener("pointermove", onPan);
+  window.addEventListener("pointerup", endPan);
+}
+function onPan(e: PointerEvent) {
+  cam = {
+    ...cam,
+    x: panStart.camX + (e.clientX - panStart.px),
+    y: panStart.camY + (e.clientY - panStart.py),
+  };
+}
+function endPan() {
+  panning = false;
+  window.removeEventListener("pointermove", onPan);
+  window.removeEventListener("pointerup", endPan);
+}
+
+function onBoardPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return;
+  // A press on a card runs that card's startDrag first (it bubbles up to here),
+  // setting `drag` — leave panning to the felt only. Control buttons opt out via
+  // their own class. Everything else is bare felt: pan.
+  if (drag) return;
+  const t = e.target as HTMLElement;
+  if (t.closest(".placed") || t.closest(".cam-controls")) return;
+  startPan(e);
+}
+
+// Zoom keeping a fixed point under the cursor: convert the cursor to a content
+// point, rescale, then re-translate so that content point lands back under the
+// cursor. `at` is in board-viewport pixels (cursor minus the board's screen origin).
+function zoomAt(at: { x: number; y: number }, factor: number) {
+  const newScale = clampScale(cam.scale * factor);
+  const k = newScale / cam.scale;
+  cam = {
+    scale: newScale,
+    x: at.x - (at.x - cam.x) * k,
+    y: at.y - (at.y - cam.y) * k,
+  };
+}
+
+// Wheel zoom is attached imperatively so we can mark it non-passive and
+// preventDefault the page scroll.
+$effect(() => {
+  if (!boardEl) return;
+  const onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    const r = boardEl.getBoundingClientRect();
+    zoomAt(
+      { x: e.clientX - r.left, y: e.clientY - r.top },
+      Math.exp(-e.deltaY * 0.0015),
+    );
+  };
+  boardEl.addEventListener("wheel", onWheel, { passive: false });
+  return () => boardEl.removeEventListener("wheel", onWheel);
+});
+
+// Button zoom steps toward the viewport centre; "Fit" reframes the whole board.
+const zoomStep = (factor: number) => zoomAt({ x: viewW / 2, y: viewH / 2 }, factor);
+function fitNow() {
+  const f = computeFit();
+  if (f) cam = f;
+}
 
 // ── Countdown clock ──────────────────────────────────────────────────────────
 let now = $state(Date.now());
@@ -517,7 +628,17 @@ function onUp(e: PointerEvent) {
 }
 </script>
 
-<div class="board" class:dragging={!!drag} bind:this={boardEl}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- The felt is a pan surface: pointerdown on bare felt drags the camera. The
+     interactive content (cards) carries its own roles/labels; the board itself is
+     a passive backdrop with a pointer enhancement, not a control. -->
+<div
+  class="board"
+  class:dragging={!!drag}
+  class:panning
+  bind:this={boardEl}
+  onpointerdown={onBoardPointerDown}
+>
   {#if onBoard.length === 0}
     <div class="empty">
       <div class="empty-orb"></div>
@@ -525,13 +646,13 @@ function onUp(e: PointerEvent) {
     </div>
   {/if}
 
-  <!-- The card layer. Scaled + translated by the local zoom-to-fit transform so
-       the whole tableau stays on-screen. transform-origin is the top-left so the
-       offset maths in `fit` are in plain pre-scale board coordinates. -->
+  <!-- The card layer. Translated + scaled by the local pan/zoom camera.
+       transform-origin is the top-left so the camera maths are in plain pre-scale
+       board coordinates. -->
   <div
     class="content"
     bind:this={contentEl}
-    style="transform: translate({fit.ox}px, {fit.oy}px) scale({fit.scale})"
+    style="transform: translate({cam.x}px, {cam.y}px) scale({cam.scale})"
   >
   <!-- Verb machines -->
   {#each verbCards as vc (vc.id)}
@@ -629,6 +750,21 @@ function onUp(e: PointerEvent) {
   </div>
   <!-- /.content -->
 
+  <!-- Off-screen indicators: a glowing white bar on any edge that has content
+       spilling past it, so the player knows which way they've panned away from
+       cards. Pure viewport overlay — outside .content, never intercepts pointers. -->
+  <div class="edge edge-left" class:on={edges.left}></div>
+  <div class="edge edge-right" class:on={edges.right}></div>
+  <div class="edge edge-top" class:on={edges.top}></div>
+  <div class="edge edge-bottom" class:on={edges.bottom}></div>
+
+  <!-- Camera controls -->
+  <div class="cam-controls">
+    <button type="button" title="Zoom in" onclick={() => zoomStep(1.2)}>+</button>
+    <button type="button" title="Zoom out" onclick={() => zoomStep(1 / 1.2)}>−</button>
+    <button type="button" title="Fit the whole board" onclick={fitNow}>Fit</button>
+  </div>
+
   <!-- Drag ghost -->
   {#if drag && drag.def}
     <div
@@ -660,9 +796,12 @@ function onUp(e: PointerEvent) {
   position: relative;
   width: 100%;
   height: 100%;
-  /* The tableau is fitted to the viewport (zoom-to-fit), so it never overflows;
-     clip rather than scroll. */
+  /* The camera is free pan/zoom, so the tableau routinely extends past the
+     viewport; we clip it (the edge bars flag what's off-screen) rather than
+     scroll. */
   overflow: hidden;
+  /* grab cursor signals the felt is pannable. */
+  cursor: grab;
   /* faint engraved grid — the workbench surface. Stays fixed on the viewport
      (not inside the scaled .content), so the felt reads at a constant density. */
   background-image:
@@ -670,13 +809,14 @@ function onUp(e: PointerEvent) {
   background-size: 26px 26px;
   background-position: 14px 14px;
 }
-.board.dragging {
+.board.dragging,
+.board.panning {
   cursor: grabbing;
 }
 
-/* The scaled + translated card layer. transform-origin top-left keeps the
-   offset maths in `fit` in plain board coordinates. The eased transform makes a
-   re-fit (a card appearing / growing / moving) glide rather than jump. */
+/* The translated + scaled card layer. transform-origin top-left keeps the camera
+   maths in plain board coordinates. No transition on the transform: panning must
+   track the pointer 1:1, and an eased camera would lag behind the drag. */
 .content {
   position: absolute;
   top: 0;
@@ -686,7 +826,6 @@ function onUp(e: PointerEvent) {
      transform anchor. */
   width: 0;
   height: 0;
-  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .placed {
@@ -821,5 +960,81 @@ function onUp(e: PointerEvent) {
 }
 .hint.hidden {
   opacity: 0;
+}
+
+/* Off-screen edge indicators. Four bars hugging the viewport edges; each fades in
+   (.on) when content spills past that edge. White core with an inward glow that
+   falls off, so it reads as "more this way" without walling the felt off. */
+.edge {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 40;
+}
+.edge.on {
+  opacity: 0.5;
+}
+.edge-left,
+.edge-right {
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #fff;
+}
+.edge-top,
+.edge-bottom {
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #fff;
+}
+.edge-left {
+  left: 0;
+}
+.edge-right {
+  right: 0;
+}
+.edge-top {
+  top: 0;
+}
+.edge-bottom {
+  bottom: 0;
+}
+
+/* Camera controls — zoom and reframe. Fixed to the viewport's bottom-right. */
+.cam-controls {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 50;
+}
+.cam-controls button {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(10, 13, 24, 0.7);
+  border: 1px solid var(--panel-edge);
+  backdrop-filter: blur(8px);
+  color: var(--ink-soft);
+  font-family: var(--display);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.cam-controls button:hover {
+  color: var(--ink);
+  border-color: var(--astral);
+  background: rgba(10, 13, 24, 0.85);
+}
+.cam-controls button:active {
+  transform: translateY(1px);
 }
 </style>

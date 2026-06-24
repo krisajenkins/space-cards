@@ -9,6 +9,22 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-24 (change xozmtowovxru)*
+
+# [X] Layout still needs work
+
+This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.
+
+> Spiked (2026-06-24): replaced the client zoom-to-fit camera with a free
+> **pan/zoom** camera in `Board.svelte` — drag the felt to pan, wheel/`+`/`−` to
+> zoom toward the cursor, `Fit` to reframe. The board is framed once on first
+> sighting, then the camera is the player's (never yanks out from under them).
+> Off-screen content is flagged by thin white edge bars on whichever side(s) have
+> cards spilling past the viewport. This also clears the path for "scroll to thing
+> (Caz)", which was blocked on the missing pan/zoom model. Closing the item on the
+> spike; whether a density/affordance follow-up is still wanted (tighter
+> footprints, collapse idle stations, off-table shelves) is left to play-testing.
+
 *Archived: 2026-06-24 (change uznuypuorpsl)*
 
 # [X] I think we need to update the docs for bootstrap_first_admin->register_admin.

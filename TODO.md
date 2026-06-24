@@ -1,7 +1,3 @@
-# [ ] Layout still needs work
-
-This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.
-
 # [ ] Should we add Google Analytics tracking?
 
 Probably yes, I want to see it. For that we need to make a plan of which events/pages to track. And we need to update the privacy terms and consider any effect on GDPR.
