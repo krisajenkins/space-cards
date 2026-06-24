@@ -6,7 +6,6 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
-import BootstrapFirstAdminReducer from "../bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "../collect_and_slot_reducer";
 import DeleteMyAccountReducer from "../delete_my_account_reducer";
 import DevGrantReducer from "../dev_grant_reducer";
@@ -14,14 +13,12 @@ import HouseCardReducer from "../house_card_reducer";
 import MarkAchievementSeenReducer from "../mark_achievement_seen_reducer";
 import MoveCardReducer from "../move_card_reducer";
 import NewGameReducer from "../new_game_reducer";
+import RegisterAdminReducer from "../register_admin_reducer";
 import RelayoutBoardReducer from "../relayout_board_reducer";
 import ReseedCatalogueReducer from "../reseed_catalogue_reducer";
 import SlotCardReducer from "../slot_card_reducer";
 import UnhouseCardReducer from "../unhouse_card_reducer";
 
-export type BootstrapFirstAdminParams = __Infer<
-  typeof BootstrapFirstAdminReducer
->;
 export type CollectAndSlotParams = __Infer<typeof CollectAndSlotReducer>;
 export type DeleteMyAccountParams = __Infer<typeof DeleteMyAccountReducer>;
 export type DevGrantParams = __Infer<typeof DevGrantReducer>;
@@ -31,6 +28,7 @@ export type MarkAchievementSeenParams = __Infer<
 >;
 export type MoveCardParams = __Infer<typeof MoveCardReducer>;
 export type NewGameParams = __Infer<typeof NewGameReducer>;
+export type RegisterAdminParams = __Infer<typeof RegisterAdminReducer>;
 export type RelayoutBoardParams = __Infer<typeof RelayoutBoardReducer>;
 export type ReseedCatalogueParams = __Infer<typeof ReseedCatalogueReducer>;
 export type SlotCardParams = __Infer<typeof SlotCardReducer>;

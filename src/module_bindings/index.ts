@@ -34,7 +34,6 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
-import BootstrapFirstAdminReducer from "./bootstrap_first_admin_reducer";
 import CollectAndSlotReducer from "./collect_and_slot_reducer";
 import DeleteMyAccountReducer from "./delete_my_account_reducer";
 import DevGrantReducer from "./dev_grant_reducer";
@@ -42,6 +41,7 @@ import HouseCardReducer from "./house_card_reducer";
 import MarkAchievementSeenReducer from "./mark_achievement_seen_reducer";
 import MoveCardReducer from "./move_card_reducer";
 import NewGameReducer from "./new_game_reducer";
+import RegisterAdminReducer from "./register_admin_reducer";
 import RelayoutBoardReducer from "./relayout_board_reducer";
 import ReseedCatalogueReducer from "./reseed_catalogue_reducer";
 import SlotCardReducer from "./slot_card_reducer";
@@ -195,7 +195,6 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
-  __reducerSchema("bootstrap_first_admin", BootstrapFirstAdminReducer),
   __reducerSchema("collect_and_slot", CollectAndSlotReducer),
   __reducerSchema("delete_my_account", DeleteMyAccountReducer),
   __reducerSchema("dev_grant", DevGrantReducer),
@@ -203,6 +202,7 @@ const reducersSchema = __reducers(
   __reducerSchema("mark_achievement_seen", MarkAchievementSeenReducer),
   __reducerSchema("move_card", MoveCardReducer),
   __reducerSchema("new_game", NewGameReducer),
+  __reducerSchema("register_admin", RegisterAdminReducer),
   __reducerSchema("relayout_board", RelayoutBoardReducer),
   __reducerSchema("reseed_catalogue", ReseedCatalogueReducer),
   __reducerSchema("slot_card", SlotCardReducer),

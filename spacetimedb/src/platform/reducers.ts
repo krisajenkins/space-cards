@@ -81,7 +81,10 @@ export const newGame = spacetimedb.reducer((ctx) => {
   // the starting outputs can land in the right station's tray.
   const dealt = new Map<string, Card>();
   OPENING_STATIONS.forEach((defId, i) => {
-    dealt.set(defId, spawnCard(ctx, b.id, defId, 40 + i * 260, 40));
+    dealt.set(
+      defId,
+      spawnCard(ctx, b.id, defId, 40 + (i % 2) * 260, (i / 2) * 40),
+    );
   });
 
   // Starting outputs: seed each into its host station's tray (produced-but-

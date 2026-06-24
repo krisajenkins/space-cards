@@ -20,9 +20,9 @@ export const OPENING_BOARD_NAME = "Crash Site";
 // blueprint, BUILD it at the Workshop, and climb the tree to a Rocket.
 export const OPENING_STATIONS = [
   "survivor",
-  "regolith_field",
-  "wreck",
   "research",
+  "wreck",
+  "regolith_field",
 ];
 
 // Starting cards seeded into a station's output tray (produced-but-uncollected,

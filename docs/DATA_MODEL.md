@@ -585,12 +585,15 @@ access gate**: a principal with no row resolves to nothing.
   attach to it. On reconnect only provider-owned fields (email, picture) are
   refreshed — never `displayName`, which the human owns once edited.
 - **SpacetimeAuth** (the CLI's anonymous-ish token) is **not** auto-linked.
-  `bootstrapFirstAdmin` is the explicit link path (and admin bootstrap): it
-  find-or-creates the user by email, attaches `ctx.sender` as a `Spacetime`
-  identity, and flips `isAdmin`. It refuses once any admin exists, so it
-  self-closes. This same shape — find-or-create user by email, attach the
-  current principal — is the generic account-linking primitive for a future
-  "link account" button.
+  `registerAdmin` is the explicit link path (and admin designation): it is gated
+  against two server-side constants in `lifecycle.ts` — `ADMIN_IDENTITY` (the
+  operator's `spacetime login` principal) and `ADMIN_EMAIL` — so only that one
+  hardcoded identity may call it. It find-or-creates the user by `ADMIN_EMAIL`,
+  attaches `ctx.sender` as a `Spacetime` identity, and flips `isAdmin`. Because
+  the constant identity is the gate (not first-come), it's idempotent and
+  re-runnable after a data wipe — there's nothing to "close". This same shape —
+  find-or-create user by email, attach the current principal — is the generic
+  account-linking primitive for a future "link account" button.
 
 > Trust rule for any new provider: **only auto-link a provider you trust to
 > prove the join key (email).** Auto-linking an untrusted issuer is an

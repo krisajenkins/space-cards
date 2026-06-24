@@ -1,5 +1,10 @@
-import { t, SenderError } from "spacetimedb/server";
-import { GOOGLE_ISSUERS, GOOGLE_CLIENT_ID } from "./constants";
+import { SenderError } from "spacetimedb/server";
+import {
+  GOOGLE_ISSUERS,
+  GOOGLE_CLIENT_ID,
+  ADMIN_IDENTITY,
+  ADMIN_EMAIL,
+} from "./constants";
 import { normaliseEmail, requireCaller } from "./auth";
 import spacetimedb from "./schema";
 import { seedCatalogue } from "../content/catalogue";
@@ -27,7 +32,7 @@ export const reseedCatalogue = spacetimedb.reducer((ctx) => {
 // principal may open a socket — but the `identity` table is the gate: only a
 // linked principal can do anything (see reducers below). Untrusted providers
 // (e.g. SpacetimeAuth CLI tokens) are NOT auto-linked; they link explicitly via
-// `bootstrap_first_admin` / a future "link account" reducer. See doc §11.
+// `register_admin` / a future "link account" reducer. See doc §11.
 export const onConnect = spacetimedb.clientConnected((ctx) => {
   const jwt = ctx.senderAuth.jwt;
 
@@ -99,45 +104,40 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
 export const onDisconnect = spacetimedb.clientDisconnected((_ctx) => {});
 
 // Explicit linking for non-auto providers (the CLI / SpacetimeAuth path), which
-// also bootstraps the first admin. Find-or-create the same user the web login
-// resolves to (by email), link THIS principal, and flip isAdmin. One-shot: it
-// refuses once any admin exists, so it closes itself. See doc §5.
-export const bootstrapFirstAdmin = spacetimedb.reducer(
-  { email: t.string() },
-  (ctx, { email }) => {
-    for (const u of ctx.db.user.iter()) {
-      if (u.isAdmin)
-        throw new SenderError("An admin already exists; bootstrap is closed.");
-    }
-    const trimmed = normaliseEmail(email);
-    if (trimmed === null)
-      throw new SenderError("requires the human's primary email.");
+// also designates the admin. Gated against the two server-side constants above:
+// only the hardcoded ADMIN_IDENTITY may call it, and it links to ADMIN_EMAIL's
+// user (no email arg — the human is fixed in code). Find-or-create that user,
+// link THIS principal, and flip isAdmin. Idempotent and re-runnable (e.g. after
+// a data wipe): unlike the old first-come bootstrap, the constant identity is
+// the gate, so there's nothing to "close". See doc §5.
+export const registerAdmin = spacetimedb.reducer((ctx) => {
+  if (ctx.sender.toHexString() !== ADMIN_IDENTITY)
+    throw new SenderError("not the registered admin identity");
 
-    const target =
-      ctx.db.user.primaryEmail.find(trimmed) ??
-      ctx.db.user.insert({
-        id: 0n,
-        primaryEmail: trimmed,
-        displayName: trimmed.split("@")[0] ?? trimmed,
-        pictureUrl: undefined,
-        isAdmin: false,
-        createdAt: ctx.timestamp,
-      });
+  const target =
+    ctx.db.user.primaryEmail.find(ADMIN_EMAIL) ??
+    ctx.db.user.insert({
+      id: 0n,
+      primaryEmail: ADMIN_EMAIL,
+      displayName: ADMIN_EMAIL.split("@")[0] ?? ADMIN_EMAIL,
+      pictureUrl: undefined,
+      isAdmin: false,
+      createdAt: ctx.timestamp,
+    });
 
-    const existing = ctx.db.identity.id.find(ctx.sender);
-    if (existing === null) {
-      ctx.db.identity.insert({
-        id: ctx.sender,
-        userId: target.id,
-        provider: { tag: "Spacetime" },
-        linkedAt: ctx.timestamp,
-      });
-    } else if (existing.userId !== target.id) {
-      throw new SenderError(
-        "This identity is already linked to a different user.",
-      );
-    }
+  const existing = ctx.db.identity.id.find(ctx.sender);
+  if (existing === null) {
+    ctx.db.identity.insert({
+      id: ctx.sender,
+      userId: target.id,
+      provider: { tag: "Spacetime" },
+      linkedAt: ctx.timestamp,
+    });
+  } else if (existing.userId !== target.id) {
+    throw new SenderError(
+      "This identity is already linked to a different user.",
+    );
+  }
 
-    ctx.db.user.id.update({ ...target, isAdmin: true });
-  },
-);
+  ctx.db.user.id.update({ ...target, isAdmin: true });
+});

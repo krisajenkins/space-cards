@@ -8,6 +8,14 @@
 
 One for you, Kris.
 
+# [ ] Layout still needs work
+
+This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.
+
+# [ ] Google Login - Production version
+
+I know there are steps needed to go from a test Google OAuth login to a prod one. Need to find out what they are and do them!
+
 # [ ] It bugs me that we can pull a workshop from the wreck
 
 > ⚠ Blocked (2026-06-21): Mechanism is clear (rename Workshop→Workbench, add a
@@ -65,4 +73,3 @@ blueprints neatly stored.
 > faster, higher output cap)? (2) throttle the Printer (slower, or Salvage-only)?
 > or (3) split downstream demand so subsystems need Fabricator-grade Components the
 > Printer can't make? Which differentiation do you want?
-
