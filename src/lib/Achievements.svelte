@@ -12,6 +12,25 @@ import { track } from "./analytics";
 const [earned] = useTable(tables.myAchievements);
 const markSeen = useReducer(reducers.markAchievementSeen);
 
+// Count each milestone the moment it's earned — a single `achievement` event
+// keyed by achId, which gives a full progression funnel in Umami (crash →
+// prospector → … → escape). We emit only achievements earned *after* this page
+// loaded (earnedAt > loadedAt) so a mid-game reload never re-reports ones from
+// earlier in the run, and a per-session Set guards against the effect re-running.
+// Fires regardless of whether the player dismisses the toast — unlike game_won,
+// which separately marks watching the finale. Sends only the achId, nothing that
+// identifies the player.
+const loadedAt = Date.now();
+const reported = new Set<string>();
+$effect(() => {
+  for (const a of $earned) {
+    if (reported.has(a.achId)) continue;
+    if (Number(a.earnedAt.microsSinceUnixEpoch) / 1000 <= loadedAt) continue;
+    reported.add(a.achId);
+    track("achievement", { id: a.achId });
+  }
+});
+
 // Newest first, so a freshly-earned milestone stacks on top.
 const toasts = $derived(
   $earned
