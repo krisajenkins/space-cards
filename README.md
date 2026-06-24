@@ -105,18 +105,24 @@ spacetime logs
 
 Admin-only tools — chiefly the **Tree** pill in the top bar, which opens the
 progression-graph visualiser — are gated on your user's `is_admin` flag. There
-is no auto-admin on connect: the first admin is granted by a one-shot
-`bootstrap_first_admin` reducer that refuses once any admin exists.
+is no auto-admin on connect: admin is the one hardcoded principal in
+`spacetimedb/src/platform/constants.ts` (`ADMIN_IDENTITY` + `ADMIN_EMAIL`). The
+`register_admin` reducer links your logged-in identity to that user and flips
+`is_admin`. It takes no arguments (the email is fixed in code) and is idempotent
+and re-runnable — e.g. after a data wipe.
 
-After signing in once (so your user row exists), grant yourself admin with the
-email you signed in as:
+After signing in once (so your user row exists), call `register_admin` from the
+operator identity (`spacetime login`) that matches `ADMIN_IDENTITY`:
 
 ```bash
-spacetime call spacecards --server local bootstrap_first_admin '"you@example.com"'
+spacetime call spacecards --server local register_admin
 
 # Verify (note the quoted "user" — it's a reserved word):
 spacetime sql spacecards --server local 'SELECT id, primary_email, is_admin FROM "user"'
 ```
+
+To hand admin to someone else, edit `ADMIN_IDENTITY` / `ADMIN_EMAIL` in
+`constants.ts` and republish.
 
 `is_admin` lives on the **user** row, so the change pushes live through
 `me_view` and the Tree pill appears without a reload.

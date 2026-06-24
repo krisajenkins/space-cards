@@ -9,6 +9,19 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-24 (change uznuypuorpsl)*
+
+# [X] I think we need to update the docs for bootstrap_first_admin->register_admin.
+
+Updated `README.md` and `CLAUDE.md` to match the renamed reducer. The change was
+semantic, not just a rename: the old `bootstrap_first_admin` was first-come (took
+an email arg, refused once any admin existed); the new `register_admin` takes no
+args, is gated on the hardcoded `ADMIN_IDENTITY` / `ADMIN_EMAIL` constants, and is
+idempotent/re-runnable. Rewrote the README "Grant yourself admin" section and the
+CLAUDE.md admin-scenario setup line accordingly.
+
+---
+
 *Archived: 2026-06-24 (change oqysmqyt)*
 
 # [X] Fabricator seems to do the same job as printer, even though it's a much later stage unlock

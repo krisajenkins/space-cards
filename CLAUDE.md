@@ -137,8 +137,9 @@ cost real time, so:
   fields — `WHERE location.slotted.verbCardId = 10` errors. To inspect a card's
   place, `SELECT id, location FROM card WHERE defId = '…'` and read the rendered
   `(slotted = (verb_card_id = …))` value yourself.
-- **Setup for an admin-gated scenario:** `bootstrap_first_admin '"you@x.com"'`
-  (one-shot; links the CLI identity + flips `isAdmin`) → `new_game` → then
+- **Setup for an admin-gated scenario:** `register_admin` (no args; links the
+  CLI identity — which must match `ADMIN_IDENTITY` — to the `ADMIN_EMAIL` user and
+  flips `isAdmin`; idempotent/re-runnable) → `new_game` → then
   `dev_grant <boardId> '"defId"' <x> <y>` to drop cards, `slot_card`,
   `collect_and_slot`, `move_card` to drive them. Reducers return nothing — read
   state back via `sql` (e.g. `situation` / `situation_timer` for run state).
