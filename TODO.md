@@ -12,26 +12,6 @@ One for you, Kris.
 
 This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.
 
-# [ ] Google Login - Production version
-
-I know there are steps needed to go from a test Google OAuth login to a prod one. Need to find out what they are and do them!
-
-> ⚠ Blocked (2026-06-24): This is entirely Google Cloud Console work, not a repo
-> change. The client id lives once in `platform/constants.ts` (`GOOGLE_CLIENT_ID`)
-> and is re-exported via `src/lib/google.ts`; the client uses Google Identity
-> Services (One-Tap/button), governed by **authorized JavaScript origins** + the
-> **consent-screen publishing status** in the Console — there's no env var,
-> redirect-URI list, or separate test/prod client id in the repo, so "test vs
-> prod" is purely a Console property of this one client. To ship prod, in the
-> Console: (1) move the OAuth consent screen from **Testing** → **In production**;
-> (2) confirm User type = External and that the basic scopes (email/profile/openid)
-> don't trigger Google verification — if no sensitive/restricted scopes, only the
-> publish is needed; (3) add every prod-serving domain to **Authorized JavaScript
-> origins** (verify domain ownership if prompted). Decisions for you: which
-> production domain(s) will host the client, and keep the same client id or mint a
-> dedicated prod one? (A new id = change that one constant in `constants.ts` and
-> republish.)
-
 # [ ] It bugs me that we can pull a workshop from the wreck
 
 That's unbelievable. Let's do this:
