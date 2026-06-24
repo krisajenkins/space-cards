@@ -92,8 +92,8 @@ function onWindowPointerdown() {
   border: 1px solid var(--panel-edge);
   border-radius: 12px;
   box-shadow:
-    0 1px 0 rgba(255, 240, 200, 0.08) inset,
-    0 24px 50px -18px rgba(0, 0, 0, 0.85);
+    0 1px 0 rgba(var(--highlight-rgb), 0.08) inset,
+    0 24px 50px -18px rgba(var(--shadow-rgb), 0.85);
   animation: share-rise 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 .share-menu.above {
@@ -135,7 +135,7 @@ function onWindowPointerdown() {
 }
 .share-item:hover {
   color: var(--brass-bright);
-  background: rgba(20, 26, 46, 0.7);
+  background: rgba(var(--chrome-rgb), 0.7);
 }
 .share-copy {
   margin-top: 0.2rem;

@@ -506,8 +506,8 @@ function edgePath(
   border: 1px solid var(--panel-edge);
   border-radius: 16px;
   box-shadow:
-    0 1px 0 rgba(255, 240, 200, 0.08) inset,
-    0 30px 70px -20px rgba(0, 0, 0, 0.9);
+    0 1px 0 rgba(var(--highlight-rgb), 0.08) inset,
+    0 30px 70px -20px rgba(var(--shadow-rgb), 0.9);
   overflow: hidden;
 }
 .pt-head {
@@ -551,7 +551,7 @@ function edgePath(
   padding: 0.3rem 0.8rem;
   border-radius: 999px;
   border: 1px solid var(--panel-edge);
-  background: rgba(20, 26, 46, 0.7);
+  background: rgba(var(--chrome-rgb), 0.7);
   color: var(--ink-soft);
   font-family: var(--body);
   font-weight: 600;
@@ -559,7 +559,7 @@ function edgePath(
 }
 .pt-btn:hover {
   color: var(--brass-bright);
-  border-color: rgba(201, 214, 255, 0.25);
+  border-color: rgba(var(--edge-rgb), 0.25);
 }
 .pt-close {
   appearance: none;
@@ -589,7 +589,7 @@ function edgePath(
   padding: 0.22rem 0.6rem;
   border-radius: 999px;
   border: 1px solid var(--panel-edge);
-  background: rgba(20, 26, 46, 0.6);
+  background: rgba(var(--chrome-rgb), 0.6);
   color: var(--ink-soft);
   font-family: var(--mono);
   font-size: 0.68rem;
@@ -609,7 +609,7 @@ function edgePath(
   min-height: 0;
   cursor: grab;
   background:
-    radial-gradient(circle at 50% 40%, rgba(116, 199, 214, 0.05), transparent 70%),
+    radial-gradient(circle at 50% 40%, rgba(var(--astral-rgb), 0.05), transparent 70%),
     var(--void);
   touch-action: none;
 }

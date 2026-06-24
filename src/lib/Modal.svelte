@@ -123,8 +123,8 @@ function onKeydown(e: KeyboardEvent) {
   border-radius: 16px;
   padding: 2rem 2.2rem 2.2rem;
   box-shadow:
-    0 1px 0 rgba(255, 240, 200, 0.08) inset,
-    0 30px 70px -20px rgba(0, 0, 0, 0.9);
+    0 1px 0 rgba(var(--highlight-rgb), 0.08) inset,
+    0 30px 70px -20px rgba(var(--shadow-rgb), 0.9);
   animation: modal-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 .modal-panel.scroll {

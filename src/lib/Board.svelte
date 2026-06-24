@@ -689,7 +689,7 @@ function onUp(e: PointerEvent) {
 }
 .token-wrap:hover {
   transform: translateY(-3px) rotate(-1deg);
-  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 12px 18px rgba(var(--shadow-rgb), 0.5));
   z-index: 5;
 }
 .placed.lifted {
@@ -727,7 +727,7 @@ function onUp(e: PointerEvent) {
   pointer-events: none;
   z-index: -1;
   opacity: 0;
-  box-shadow: 0 0 18px 3px rgba(116, 199, 214, 0.95);
+  box-shadow: 0 0 18px 3px rgba(var(--astral-rgb), 0.95);
   transition: opacity 0.32s ease;
 }
 .token-wrap.flashing::after {
@@ -750,7 +750,7 @@ function onUp(e: PointerEvent) {
   pointer-events: none;
   /* centre the (possibly collapsed) token on the cursor */
   transform: translate(-50%, -50%) rotate(-3deg) scale(1.04);
-  filter: drop-shadow(0 24px 30px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 24px 30px rgba(var(--shadow-rgb), 0.6));
 }
 
 .empty {

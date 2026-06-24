@@ -223,7 +223,7 @@ function startNewGame() {
   top: -28vmax;
   background: radial-gradient(
     circle,
-    rgba(116, 199, 214, 0.16),
+    rgba(var(--astral-rgb), 0.16),
     transparent 62%
   );
   filter: blur(8px);
@@ -265,7 +265,7 @@ function startNewGame() {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 60px rgba(203, 166, 90, 0.25);
+  text-shadow: 0 0 60px rgba(var(--brass-rgb), 0.25);
 }
 .tagline {
   font-family: var(--display);
@@ -397,7 +397,7 @@ function startNewGame() {
   padding: 0;
   border-radius: 999px;
   border: 1px solid var(--panel-edge);
-  background: rgba(20, 26, 46, 0.7);
+  background: rgba(var(--chrome-rgb), 0.7);
   color: var(--ink-soft);
   font-size: 0.95rem;
   line-height: 1;
@@ -408,7 +408,7 @@ function startNewGame() {
     opacity 0.12s ease;
 }
 .mute-trigger:hover {
-  border-color: rgba(201, 214, 255, 0.25);
+  border-color: rgba(var(--edge-rgb), 0.25);
 }
 .mute-trigger.muted {
   opacity: 0.55;
@@ -444,7 +444,7 @@ function startNewGame() {
     var(--brass-deep) 60%,
     transparent 72%
   );
-  box-shadow: 0 0 50px -6px rgba(203, 166, 90, 0.5);
+  box-shadow: 0 0 50px -6px rgba(var(--brass-rgb), 0.5);
   animation: pulse 2.6s ease-in-out infinite;
 }
 @keyframes pulse {

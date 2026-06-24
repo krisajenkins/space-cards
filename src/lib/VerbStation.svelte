@@ -279,11 +279,11 @@ const stateLabel = $derived(
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 245, 220, 0.06), transparent 24%),
-    linear-gradient(180deg, #20263f, #161b30);
-  border: 1px solid rgba(203, 166, 90, 0.4);
+    linear-gradient(180deg, var(--machine-top), var(--machine-bottom));
+  border: 1px solid rgba(var(--brass-rgb), 0.4);
   box-shadow:
-    0 1px 0 rgba(234, 210, 154, 0.18) inset,
-    0 26px 44px -22px rgba(0, 0, 0, 0.9);
+    0 1px 0 rgba(var(--brass-bright-rgb), 0.18) inset,
+    0 26px 44px -22px rgba(var(--shadow-rgb), 0.9);
   color: var(--ink);
   touch-action: none;
 }
@@ -293,27 +293,27 @@ const stateLabel = $derived(
   position: absolute;
   inset: 5px;
   border-radius: 14px;
-  border: 1px solid rgba(203, 166, 90, 0.14);
+  border: 1px solid rgba(var(--brass-rgb), 0.14);
   pointer-events: none;
 }
 
 .station.ongoing {
-  border-color: rgba(116, 199, 214, 0.55);
+  border-color: rgba(var(--astral-rgb), 0.55);
   box-shadow:
-    0 0 0 1px rgba(116, 199, 214, 0.18),
-    0 0 38px -10px rgba(116, 199, 214, 0.45),
-    0 26px 44px -22px rgba(0, 0, 0, 0.9);
+    0 0 0 1px rgba(var(--astral-rgb), 0.18),
+    0 0 38px -10px rgba(var(--astral-rgb), 0.45),
+    0 26px 44px -22px rgba(var(--shadow-rgb), 0.9);
 }
 .station.stalled {
-  border-color: rgba(239, 122, 82, 0.5);
+  border-color: rgba(var(--ember-rgb), 0.5);
 }
 /* the whole card is the drop target — light it up as one when armed */
 .station.armed {
   border-color: var(--astral-bright);
   box-shadow:
-    0 0 0 2px rgba(116, 199, 214, 0.35),
-    0 0 46px -6px rgba(116, 199, 214, 0.65),
-    0 26px 44px -22px rgba(0, 0, 0, 0.9);
+    0 0 0 2px rgba(var(--astral-rgb), 0.35),
+    0 0 46px -6px rgba(var(--astral-rgb), 0.65),
+    0 26px 44px -22px rgba(var(--shadow-rgb), 0.9);
   transform: translateY(-3px);
 }
 .station {
@@ -361,7 +361,7 @@ header {
   stroke-width: 3;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.12s linear;
-  filter: drop-shadow(0 0 5px rgba(116, 199, 214, 0.8));
+  filter: drop-shadow(0 0 5px rgba(var(--astral-rgb), 0.8));
 }
 .glyph {
   width: 48px;
@@ -370,8 +370,8 @@ header {
   display: grid;
   place-items: center;
   color: var(--tint);
-  background: radial-gradient(circle at 50% 35%, #2a3150, #161b2e);
-  border: 1px solid rgba(203, 166, 90, 0.3);
+  background: radial-gradient(circle at 50% 35%, var(--socket-rim), var(--socket-pit));
+  border: 1px solid rgba(var(--brass-rgb), 0.3);
 }
 .glyph svg {
   width: 30px;
@@ -382,7 +382,7 @@ header {
 }
 @keyframes breathe {
   50% {
-    filter: drop-shadow(0 0 8px rgba(116, 199, 214, 0.6));
+    filter: drop-shadow(0 0 8px rgba(var(--astral-rgb), 0.6));
   }
 }
 
@@ -446,9 +446,9 @@ header {
   display: grid;
   place-items: center;
   padding: 4px;
-  border: 1.5px dashed rgba(201, 214, 255, 0.22);
-  background: rgba(7, 10, 20, 0.5);
-  box-shadow: 0 8px 14px -10px rgba(0, 0, 0, 0.9) inset;
+  border: 1.5px dashed rgba(var(--edge-rgb), 0.22);
+  background: rgba(var(--abyss-rgb), 0.5);
+  box-shadow: 0 8px 14px -10px rgba(var(--shadow-rgb), 0.9) inset;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease,
@@ -456,14 +456,14 @@ header {
 }
 .hole.filled {
   border-style: solid;
-  border-color: rgba(203, 166, 90, 0.3);
-  background: rgba(7, 10, 20, 0.2);
+  border-color: rgba(var(--brass-rgb), 0.3);
+  background: rgba(var(--abyss-rgb), 0.2);
 }
 .hole.open {
   border-color: var(--astral-bright);
   box-shadow:
-    0 0 0 1px rgba(116, 199, 214, 0.3),
-    0 0 20px -3px rgba(116, 199, 214, 0.6);
+    0 0 0 1px rgba(var(--astral-rgb), 0.3),
+    0 0 20px -3px rgba(var(--astral-rgb), 0.6);
   transform: translateY(-2px);
 }
 .hole-empty {
@@ -485,7 +485,7 @@ header {
 }
 .hole-mark {
   font-size: 1.1rem;
-  color: rgba(201, 214, 255, 0.4);
+  color: rgba(var(--edge-rgb), 0.4);
 }
 .open .hole-mark {
   color: var(--astral-bright);
@@ -504,8 +504,8 @@ header {
   padding: 1px 5px;
   border-radius: 5px;
   color: var(--ink-soft);
-  background: rgba(201, 214, 255, 0.08);
-  border: 1px solid rgba(201, 214, 255, 0.12);
+  background: rgba(var(--edge-rgb), 0.08);
+  border: 1px solid rgba(var(--edge-rgb), 0.12);
 }
 .slotted-card {
   cursor: grab;
@@ -529,32 +529,32 @@ header {
   justify-content: center;
   gap: 0.25rem;
   padding: 4px;
-  border: 1.5px dashed rgba(116, 199, 214, 0.3);
-  background: rgba(7, 10, 20, 0.5);
+  border: 1.5px dashed rgba(var(--astral-rgb), 0.3);
+  background: rgba(var(--abyss-rgb), 0.5);
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 .drone-bay.filled {
   border-style: solid;
-  border-color: rgba(203, 166, 90, 0.3);
-  background: rgba(7, 10, 20, 0.2);
+  border-color: rgba(var(--brass-rgb), 0.3);
+  background: rgba(var(--abyss-rgb), 0.2);
 }
 .drone-bay.open {
   border-color: var(--astral-bright);
   box-shadow:
-    0 0 0 1px rgba(116, 199, 214, 0.3),
-    0 0 20px -3px rgba(116, 199, 214, 0.6);
+    0 0 0 1px rgba(var(--astral-rgb), 0.3),
+    0 0 20px -3px rgba(var(--astral-rgb), 0.6);
 }
 .bay-mark {
   font-size: 1.2rem;
   line-height: 1;
-  color: rgba(116, 199, 214, 0.5);
+  color: rgba(var(--astral-rgb), 0.5);
 }
 .tray {
   margin-top: 0.8rem;
   padding-top: 0.7rem;
-  border-top: 1px solid rgba(203, 166, 90, 0.16);
+  border-top: 1px solid rgba(var(--brass-rgb), 0.16);
 }
 .tray-rail {
   display: flex;
@@ -564,8 +564,8 @@ header {
   width: 30px;
   height: 38px;
   border-radius: 7px;
-  border: 1px solid rgba(201, 214, 255, 0.1);
-  background: rgba(7, 10, 20, 0.45);
+  border: 1px solid rgba(var(--edge-rgb), 0.1);
+  background: rgba(var(--abyss-rgb), 0.45);
   position: relative;
 }
 .cell.full {
@@ -596,7 +596,7 @@ header {
   pointer-events: none;
   z-index: -1;
   opacity: 0;
-  box-shadow: 0 0 16px 3px rgba(116, 199, 214, 0.95);
+  box-shadow: 0 0 16px 3px rgba(var(--astral-rgb), 0.95);
   transition: opacity 0.32s ease;
 }
 .out-card.flashing {

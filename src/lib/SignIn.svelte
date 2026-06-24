@@ -163,7 +163,7 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
 }
 .avatar-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 0 0 2px rgba(201, 214, 255, 0.35);
+  box-shadow: 0 0 0 2px rgba(var(--edge-rgb), 0.35);
 }
 .avatar {
   width: 28px;
@@ -174,7 +174,7 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
 .avatar-fallback {
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, var(--brass), var(--brass-deep, #8a6a2f));
+  background: linear-gradient(180deg, var(--brass), var(--brass-deep));
   color: #0c0e18;
   font-family: var(--display);
   font-weight: 700;
@@ -210,7 +210,7 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
 .pf-avatar-fallback {
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, var(--brass), var(--brass-deep, #8a6a2f));
+  background: linear-gradient(180deg, var(--brass), var(--brass-deep));
   color: #0c0e18;
   font-family: var(--display);
   font-weight: 700;

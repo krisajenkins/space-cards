@@ -86,8 +86,8 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
   border-radius: 12px;
   background: linear-gradient(160deg, rgba(20, 24, 38, 0.96), rgba(10, 12, 22, 0.96));
   box-shadow:
-    0 10px 30px -8px rgba(0, 0, 0, 0.6),
-    0 0 22px -6px rgba(203, 166, 90, 0.35);
+    0 10px 30px -8px rgba(var(--shadow-rgb), 0.6),
+    0 0 22px -6px rgba(var(--brass-rgb), 0.35);
   cursor: pointer;
   color: var(--ink);
   font-family: var(--body);
@@ -101,15 +101,15 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
 .toast.win {
   border-color: var(--astral);
   box-shadow:
-    0 10px 30px -8px rgba(0, 0, 0, 0.7),
-    0 0 30px -4px rgba(116, 199, 214, 0.55);
+    0 10px 30px -8px rgba(var(--shadow-rgb), 0.7),
+    0 0 30px -4px rgba(var(--astral-rgb), 0.55);
 }
 /* The crash distress log: a warm ember alert, set apart from the brass trophies. */
 .toast.intro {
   border-color: var(--ember);
   box-shadow:
-    0 10px 30px -8px rgba(0, 0, 0, 0.7),
-    0 0 30px -4px rgba(239, 122, 82, 0.5);
+    0 10px 30px -8px rgba(var(--shadow-rgb), 0.7),
+    0 0 30px -4px rgba(var(--ember-rgb), 0.5);
 }
 .toast.intro .eyebrow,
 .toast.intro .title {
@@ -118,7 +118,7 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
 .trophy {
   font-size: 1.5rem;
   line-height: 1;
-  filter: drop-shadow(0 0 8px rgba(203, 166, 90, 0.5));
+  filter: drop-shadow(0 0 8px rgba(var(--brass-rgb), 0.5));
 }
 .body {
   display: flex;

@@ -197,7 +197,7 @@ onDestroy(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 80% at 50% 110%, rgba(116, 199, 214, 0.12), transparent 55%),
+    radial-gradient(120% 80% at 50% 110%, rgba(var(--astral-rgb), 0.12), transparent 55%),
     radial-gradient(100% 100% at 50% 0%, #0a1330 0%, var(--void) 70%);
   opacity: 0;
   animation: space-in 1.6s ease forwards;
@@ -243,11 +243,11 @@ onDestroy(() => {
   height: 90%;
   border-radius: 50% 50% 0 0;
   background:
-    radial-gradient(40px 24px at 30% 14%, rgba(0, 0, 0, 0.22), transparent 60%),
-    radial-gradient(60px 30px at 68% 22%, rgba(0, 0, 0, 0.18), transparent 60%),
-    radial-gradient(30px 18px at 50% 30%, rgba(0, 0, 0, 0.2), transparent 60%),
+    radial-gradient(40px 24px at 30% 14%, rgba(var(--shadow-rgb), 0.22), transparent 60%),
+    radial-gradient(60px 30px at 68% 22%, rgba(var(--shadow-rgb), 0.18), transparent 60%),
+    radial-gradient(30px 18px at 50% 30%, rgba(var(--shadow-rgb), 0.2), transparent 60%),
     linear-gradient(180deg, #4a4f5e 0%, #2c303c 60%);
-  box-shadow: inset 0 6px 30px rgba(174, 240, 251, 0.08);
+  box-shadow: inset 0 6px 30px rgba(var(--astral-bright-rgb), 0.08);
   opacity: 0;
   transform: translateY(8%);
   animation: moon-in 1.6s ease 0.3s forwards;
@@ -280,7 +280,7 @@ onDestroy(() => {
   transform: translateY(18vh);
   opacity: 0;
   transform-origin: 50% 70%;
-  filter: drop-shadow(0 0 26px rgba(116, 199, 214, 0.28));
+  filter: drop-shadow(0 0 26px rgba(var(--astral-rgb), 0.28));
   /* rise: grow + climb to centre */
   transition:
     height 2.2s cubic-bezier(0.2, 0.7, 0.25, 1),
@@ -340,11 +340,11 @@ onDestroy(() => {
   fill: none;
   stroke: var(--brass);
   stroke-width: 3;
-  filter: drop-shadow(0 0 4px rgba(116, 199, 214, 0.6));
+  filter: drop-shadow(0 0 4px rgba(var(--astral-rgb), 0.6));
 }
 
 .glint {
-  fill: rgba(174, 240, 251, 0.18);
+  fill: rgba(var(--astral-bright-rgb), 0.18);
   transform: skewX(-18deg);
   animation: glint 3.6s ease-in-out infinite;
 }
@@ -383,7 +383,7 @@ onDestroy(() => {
   width: clamp(120px, 26vw, 200px);
   height: auto;
   margin-bottom: 0.4rem;
-  filter: drop-shadow(0 0 26px rgba(116, 199, 214, 0.3));
+  filter: drop-shadow(0 0 26px rgba(var(--astral-rgb), 0.3));
   transform-box: view-box;
   transform-origin: 50% 50%;
   animation: hero-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both, hero-float 4.5s ease-in-out 1s infinite;
@@ -431,7 +431,7 @@ onDestroy(() => {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 60px rgba(116, 199, 214, 0.3);
+  text-shadow: 0 0 60px rgba(var(--astral-rgb), 0.3);
 }
 .sub {
   font-family: var(--display);

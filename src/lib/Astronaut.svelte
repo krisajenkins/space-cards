@@ -63,7 +63,7 @@ let { transform = "" }: { transform?: string } = $props();
 
 .shades rect { fill: #07101d; stroke: var(--brass); stroke-width: 1.2; }
 .shades line { stroke: var(--brass); stroke-width: 2; stroke-linecap: round; }
-.glint { stroke: rgba(174, 240, 251, 0.85) !important; stroke-width: 1.6 !important; }
+.glint { stroke: rgba(var(--astral-bright-rgb), 0.85) !important; stroke-width: 1.6 !important; }
 
 /* The wave — a cheerful arc around the shoulder. */
 .wave {

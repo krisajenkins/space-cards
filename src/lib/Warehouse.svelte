@@ -122,11 +122,11 @@ function visualOf(defId: string) {
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 245, 220, 0.06), transparent 24%),
-    linear-gradient(180deg, #20263f, #161b30);
-  border: 1px solid rgba(203, 166, 90, 0.4);
+    linear-gradient(180deg, var(--machine-top), var(--machine-bottom));
+  border: 1px solid rgba(var(--brass-rgb), 0.4);
   box-shadow:
-    0 1px 0 rgba(234, 210, 154, 0.18) inset,
-    0 26px 44px -22px rgba(0, 0, 0, 0.9);
+    0 1px 0 rgba(var(--brass-bright-rgb), 0.18) inset,
+    0 26px 44px -22px rgba(var(--shadow-rgb), 0.9);
   color: var(--ink);
   touch-action: none;
 }
@@ -135,7 +135,7 @@ function visualOf(defId: string) {
   position: absolute;
   inset: 5px;
   border-radius: 14px;
-  border: 1px solid rgba(203, 166, 90, 0.14);
+  border: 1px solid rgba(var(--brass-rgb), 0.14);
   pointer-events: none;
 }
 
@@ -152,8 +152,8 @@ header {
   display: grid;
   place-items: center;
   color: var(--tint);
-  background: radial-gradient(circle at 50% 35%, #2a3150, #161b2e);
-  border: 1px solid rgba(203, 166, 90, 0.3);
+  background: radial-gradient(circle at 50% 35%, var(--socket-rim), var(--socket-pit));
+  border: 1px solid rgba(var(--brass-rgb), 0.3);
 }
 .badge svg {
   width: 28px;
@@ -180,7 +180,7 @@ header {
   gap: 10px;
   margin-top: 0.8rem;
   padding-top: 0.7rem;
-  border-top: 1px solid rgba(203, 166, 90, 0.16);
+  border-top: 1px solid rgba(var(--brass-rgb), 0.16);
 }
 .bay {
   position: relative;
@@ -192,15 +192,15 @@ header {
   align-items: center;
   gap: 0.3rem;
   padding: 0.6rem 0.4rem;
-  border: 1px solid rgba(201, 214, 255, 0.12);
-  background: rgba(7, 10, 20, 0.45);
+  border: 1px solid rgba(var(--edge-rgb), 0.12);
+  background: rgba(var(--abyss-rgb), 0.45);
 }
 .bay.ongoing {
-  border-color: rgba(116, 199, 214, 0.45);
-  box-shadow: 0 0 22px -10px rgba(116, 199, 214, 0.5);
+  border-color: rgba(var(--astral-rgb), 0.45);
+  box-shadow: 0 0 22px -10px rgba(var(--astral-rgb), 0.5);
 }
 .bay.stalled {
-  border-color: rgba(239, 122, 82, 0.45);
+  border-color: rgba(var(--ember-rgb), 0.45);
 }
 .eject {
   position: absolute;
@@ -222,8 +222,8 @@ header {
     transform 0.1s ease;
 }
 .eject:hover {
-  color: var(--astral, #74c7d6);
-  border-color: var(--astral, #74c7d6);
+  color: var(--astral);
+  border-color: var(--astral);
 }
 .eject:active {
   transform: scale(0.92);
@@ -255,7 +255,7 @@ header {
   stroke-width: 2.5;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.12s linear;
-  filter: drop-shadow(0 0 4px rgba(116, 199, 214, 0.8));
+  filter: drop-shadow(0 0 4px rgba(var(--astral-rgb), 0.8));
 }
 .mini-glyph {
   width: 30px;
@@ -264,8 +264,8 @@ header {
   display: grid;
   place-items: center;
   color: var(--mtint);
-  background: radial-gradient(circle at 50% 35%, #2a3150, #161b2e);
-  border: 1px solid rgba(203, 166, 90, 0.3);
+  background: radial-gradient(circle at 50% 35%, var(--socket-rim), var(--socket-pit));
+  border: 1px solid rgba(var(--brass-rgb), 0.3);
 }
 .mini-glyph svg {
   width: 20px;

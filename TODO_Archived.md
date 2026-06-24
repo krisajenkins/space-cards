@@ -9,6 +9,12 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Extract a palette.
+
+*Archived: 2026-06-24 (change qrqqowytqlzt)*
+
+We've got a lot of CSS colour definitions floating around loose. Let's make sure we put them all as constants before they start drifting into 50 shades of grey.
+
 # [x] Sharing needs revisiting
 
 *Archived: 2026-06-23 (change kyzyxrmz)*

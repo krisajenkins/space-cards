@@ -56,7 +56,7 @@ const v = $derived(visualFor(defId, category));
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.7) inset,
     0 -10px 18px -14px rgba(70, 50, 10, 0.6) inset,
-    0 14px 22px -14px rgba(0, 0, 0, 0.85);
+    0 14px 22px -14px rgba(var(--shadow-rgb), 0.85);
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
