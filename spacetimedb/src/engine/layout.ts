@@ -153,6 +153,9 @@ function footprint(ctx: Ctx, c: Card): { w: number; h: number } {
     // + horizontal padding (32) and a header band (~64) + vertical padding (28).
     return { w: gridW + 32, h: gridH + 64 + 28 };
   }
+  // The Escape win token renders at 2× (CardToken's "xl" size) to stay
+  // prominent — its footprint must double to match (see CardToken.svelte).
+  if (def && def.defId === "escape") return { w: TOKEN_W * 2, h: TOKEN_H * 2 };
   if (!def || !def.isVerb) return { w: TOKEN_W, h: TOKEN_H };
   // Input holes only count toward the holes grid; a drone bay (droneLevel > 0)
   // renders separately, top-right of the header, so it adds to the header band,

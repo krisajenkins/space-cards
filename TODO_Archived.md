@@ -9,6 +9,15 @@ stamp rather than their individual closing changes.
 
 ---
 
+# [x] Rocket Design Work
+
+*Archived: 2026-06-24 (change xlszryrqqxns)*
+
+I want the rocket to be more prominent. It's the endgame and the reward. I think that means two changes:
+
+- The rocket factory needs to be a different coloured card. At the moment all factories are dark blue. Let's make the Rocket a light blue, matching the "Escape the Moon" finale text.
+- Let's render the Escape card at twice the height, twice the width, so that even after the cutscene it's prominent.
+
 # [x] Extract a palette.
 
 *Archived: 2026-06-24 (change qrqqowytqlzt)*

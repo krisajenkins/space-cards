@@ -202,7 +202,9 @@ const BY_DEF: Record<string, Visual> = {
   electrolysis: { color: "var(--cat-water)", glyph: G.electrolysis },
   chem_reactor: { color: "var(--cat-fuel)", glyph: G.chem_reactor },
   assembler: { color: "var(--cat-station)", glyph: G.assembler },
-  rocket: { color: "var(--cat-launchpad)", glyph: G.rocket },
+  // The Rocket is the finale — tinted astral light-blue (the Escape colour it
+  // becomes, matching the "Escape the Moon" finale text), not brass machinery.
+  rocket: { color: "var(--cat-escape)", glyph: G.rocket },
   warehouse: { color: "var(--cat-warehouse)", glyph: G.warehouse },
 
   // Blueprints (colour-coded by the family they build)

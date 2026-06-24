@@ -12,13 +12,6 @@ One for you, Kris.
 
 This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.
 
-# [ ] Rocket Design Work
-
-I want the rocket to be more prominent. It's the endgame and the reward. I think that means two changes:
-
-- The rocket factory needs to be a different coloured card. At the moment all factories are dark blue. Let's make the Rocket a light blue, matching the "Escape the Moon" finale text.
-- Let's render the Escape card at twice the height, twice the width, so that even after the cutscene it's prominent.
-
 # [ ] Google Login - Production version
 
 I know there are steps needed to go from a test Google OAuth login to a prod one. Need to find out what they are and do them!

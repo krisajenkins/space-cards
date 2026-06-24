@@ -607,7 +607,12 @@ function onUp(e: PointerEvent) {
         style="left: {txOf(c) + PAD}px; top: {tyOf(c) + PAD}px"
         onpointerdown={(e) => startDrag(e, c)}
       >
-        <CardToken defId={c.defId} name={def.name} category={def.category} />
+        <CardToken
+          defId={c.defId}
+          name={def.name}
+          category={def.category}
+          size={c.defId === "escape" ? "xl" : "md"}
+        />
       </div>
     {/if}
   {/each}
@@ -625,7 +630,11 @@ function onUp(e: PointerEvent) {
         defId={drag.card.defId}
         name={drag.def.name}
         category={drag.def.category}
-        size={drag.place === "tabletop" && !drag.def.isVerb ? "md" : "sm"}
+        size={drag.place === "tabletop" && !drag.def.isVerb
+          ? drag.card.defId === "escape"
+            ? "xl"
+            : "md"
+          : "sm"}
         grabbing
       />
     </div>

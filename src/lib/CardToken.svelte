@@ -14,7 +14,7 @@ let {
   defId: string;
   name: string;
   category: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "xl";
   grabbing?: boolean;
 } = $props();
 
@@ -24,6 +24,7 @@ const v = $derived(visualFor(defId, category));
 <div
   class="token"
   class:sm={size === "sm"}
+  class:xl={size === "xl"}
   class:grabbing
   style="--tint: {v.color}"
 >
@@ -113,5 +114,26 @@ const v = $derived(visualFor(defId, category));
 }
 .token.sm::before {
   height: 4px;
+}
+
+/* extra-large variant — the Escape win token, kept prominent on the tabletop
+   (2× the standard token). Footprint mirrored in engine/layout.ts. */
+.token.xl {
+  width: 184px;
+  height: 232px;
+  border-radius: 22px;
+  gap: 0.6rem;
+  padding: 1rem;
+}
+.token.xl .glyph svg {
+  width: 92px;
+  height: 92px;
+}
+.token.xl .name {
+  font-size: 1.4rem;
+}
+.token.xl::before {
+  inset: 10px 10px auto 10px;
+  height: 8px;
 }
 </style>

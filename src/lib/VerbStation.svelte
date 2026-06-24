@@ -120,6 +120,7 @@ const stateLabel = $derived(
   class:stalled={isStalled}
   class:armed
   class:has-bay={!!droneBay}
+  class:rocket={def.defId === "rocket"}
   style="--tint: {v.color}"
 >
   <header>
@@ -295,6 +296,21 @@ const stateLabel = $derived(
   border-radius: 14px;
   border: 1px solid rgba(var(--brass-rgb), 0.14);
   pointer-events: none;
+}
+
+/* The Rocket is the endgame reward: a luminous astral-blue card that stands
+   out from the navy machinery, echoing the "Escape the Moon" finale. */
+.station.rocket {
+  --machine-top: #36617f;
+  --machine-bottom: #25455f;
+  border-color: rgba(var(--astral-rgb), 0.6);
+  box-shadow:
+    0 0 0 1px rgba(var(--astral-bright-rgb), 0.28),
+    0 0 44px -12px rgba(var(--astral-rgb), 0.55),
+    0 26px 44px -22px rgba(var(--shadow-rgb), 0.9);
+}
+.station.rocket::after {
+  border-color: rgba(var(--astral-rgb), 0.22);
 }
 
 .station.ongoing {
