@@ -1,6 +1,6 @@
 # Privacy Policy — Space Cards
 
-_Last updated: 23 June 2026_
+_Last updated: 24 June 2026_
 
 This is the privacy notice for **Space Cards** (the game "Escape the Moon"). It
 explains what personal data the game collects, why, where it goes, and the
@@ -27,9 +27,15 @@ which we store:
 As you play, we also store your **game data**: the boards (games) you start, the
 cards on them, your achievements, and the timestamps of when these were created.
 
+To understand how the game is used, we count visits and a few anonymous
+gameplay milestones (such as starting or winning a game) using **Umami**, a
+privacy-friendly, **cookieless** analytics tool. Umami sets no cookies, stores
+nothing in your browser, and is sent no data that identifies you — never your
+email, name, profile picture, or the contents of your games.
+
 We do **not** collect: your IP address, device identifiers, location, payment
-details, or any advertising/analytics profile. There are no third-party
-analytics or tracking scripts in the game.
+details, or any advertising profile, and we use no advertising or
+behaviour-tracking scripts.
 
 ## Why we use it, and our lawful basis
 
@@ -49,7 +55,10 @@ database service which acts as our data **processor**. Its servers are in the
 data outside the UK/EU.
 
 We share your sign-in with **Google** (Google Identity Services), which is what
-authenticates you. We do not sell your data or share it with anyone else.
+authenticates you. Anonymous usage counts (see "What we collect") are processed
+by **Umami Cloud**, our analytics **processor**, on servers in the **EU**; it
+receives no data that identifies you. We do not sell your data or share it with
+anyone else.
 
 ## Browser storage
 

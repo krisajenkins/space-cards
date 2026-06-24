@@ -1,7 +1,3 @@
-# [ ] Should we add Google Analytics tracking?
-
-Probably yes, I want to see it. For that we need to make a plan of which events/pages to track. And we need to update the privacy terms and consider any effect on GDPR.
-
 # [ ] Scroll to thing (Caz)
 
 Caz wants a way to scroll/jump the viewport to a particular thing on the board.

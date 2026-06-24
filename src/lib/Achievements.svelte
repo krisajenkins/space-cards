@@ -2,6 +2,7 @@
 import { useTable, useReducer } from "spacetimedb/svelte";
 import { tables, reducers } from "../module_bindings";
 import { playFinale } from "./finale";
+import { track } from "./analytics";
 
 // Earned milestones (id + achId + seen + title/description). The catalogue text
 // is folded into the view because achievement_def is private — you can't read
@@ -25,8 +26,13 @@ const toasts = $derived(
 function dismiss(id: bigint, achId: string) {
   markSeen({ achievementId: id });
   // The win toast doesn't just go quiet — dismissing it rolls the credits:
-  // launch the endgame cinematic over the (now-faded) board.
-  if (achId === "escape") playFinale();
+  // launch the endgame cinematic over the (now-faded) board. This is the real
+  // win (the admin "Finale" preview calls playFinale() directly), so it's the
+  // one place to count game_won.
+  if (achId === "escape") {
+    track("game_won");
+    playFinale();
+  }
 }
 
 // Most milestones are trophies. Two bookend the story and get their own voice:

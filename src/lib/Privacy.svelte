@@ -28,7 +28,7 @@ let open = $state(false);
     width="38rem"
     zIndex={110}
     scroll
-    eyebrow="Last updated 23 June 2026"
+    eyebrow="Last updated 24 June 2026"
     title="Privacy"
     onClose={() => (open = false)}
   >
@@ -54,8 +54,12 @@ let open = $state(false);
         achievements, and when they were created.
       </p>
       <p>
-        We do not collect your IP address, device identifiers, location, or any
-        advertising/analytics profile. There are no tracking scripts in the game.
+        To see how the game is used, we count visits and a few anonymous
+        milestones (like starting or winning a game) with <strong>Umami</strong>,
+        a privacy-friendly, cookieless analytics tool. It sets no cookies, stores
+        nothing in your browser, and is sent nothing that identifies you. We do
+        not collect your IP address, device identifiers, location, or any
+        advertising profile, and we use no behaviour-tracking scripts.
       </p>
 
       <h3>Why, and our lawful basis</h3>
@@ -72,7 +76,10 @@ let open = $state(false);
         a hosted database that acts as our processor. Its servers are in the
         <strong>United States</strong>, so playing involves an international
         transfer of your data outside the UK/EU. We share your sign-in with
-        <strong>Google</strong>, which authenticates you. We never sell your data.
+        <strong>Google</strong>, which authenticates you. Anonymous usage counts
+        are processed by <strong>Umami Cloud</strong> (our analytics processor) on
+        EU servers, which receives nothing that identifies you. We never sell your
+        data.
       </p>
 
       <h3>Browser storage</h3>

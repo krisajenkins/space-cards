@@ -13,6 +13,7 @@ import Finale from "./lib/Finale.svelte";
 import SharePopover from "./lib/SharePopover.svelte";
 import { muted, toggleMute } from "./lib/audio";
 import { finalePlaying, playFinale, endFinale } from "./lib/finale";
+import { track } from "./lib/analytics";
 
 const conn = useSpacetimeDB();
 
@@ -45,9 +46,14 @@ const board = $derived(
 
 // Start a fresh game. Because `board` derives onto the *latest* board, the new
 // game (with a newer createdAt) becomes the one we render the moment its row
-// lands — the old game stays in the DB, just no longer reachable.
-function startNewGame() {
+// lands — the old game stays in the DB, just no longer reachable. Shared by the
+// first-game "Begin" button and the "Start New Game" confirm modal so both count.
+function beginNewGame() {
+  track("new_game");
   newGame();
+}
+function startNewGame() {
+  beginNewGame();
   confirmNew = false;
 }
 </script>
@@ -158,7 +164,7 @@ function startNewGame() {
           <p>Lay out a fresh set — You, a Forest, a Market, and a little Health.</p>
           <button
             class="cw-btn"
-            onclick={() => newGame()}
+            onclick={beginNewGame}
             disabled={!$conn.isActive}
           >
             Begin a New Game

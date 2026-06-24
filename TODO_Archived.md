@@ -9,6 +9,24 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-24 (change pnnnxovtqqrp)*
+
+# [X] Should we add Google Analytics tracking?
+
+Probably yes, I want to see it. For that we need to make a plan of which events/pages to track. And we need to update the privacy terms and consider any effect on GDPR.
+
+> Done (2026-06-24): added **Umami** (cookieless analytics) rather than GA4 —
+> cookieless means no PECR consent banner and the legitimate-interest basis is
+> unchanged. New `src/lib/analytics.ts` injects the tracker only when
+> `VITE_UMAMI_WEBSITE_ID` is set (dormant in local dev) and exposes a no-op-safe
+> `track()`. Umami auto-counts visits; we add three milestones — `sign_in`
+> (google.ts), `new_game` (App.svelte), `game_won` (Achievements.svelte, real
+> win only). The privacy notice (docs/PRIVACY.md + the in-game Privacy.svelte
+> mirror) was updated to disclose Umami as a cookieless EU processor that
+> receives no identifying data.
+
+---
+
 *Archived: 2026-06-24 (change xozmtowovxru)*
 
 # [X] Layout still needs work

@@ -18,6 +18,7 @@
 // stored token; sign-in and sign-out here persist the token and reload.
 
 import { writable, get, type Writable } from "svelte/store";
+import { track } from "./analytics";
 // The Google OAuth client id and trusted issuers are public, shared config. The
 // server module is their single source of truth — it validates ID tokens
 // against this same audience and issuer set — so import them rather than
@@ -155,7 +156,15 @@ async function ensureInitialised(): Promise<boolean> {
         // A fresh sign-in must swap the connection's token, and this SDK only
         // applies a token on a freshly-built connection — so reload. (A refresh
         // while already signed in is silent: the live session is unaffected.)
-        if (!wasSignedIn) window.location.reload();
+        if (!wasSignedIn) {
+          // Record the sign-in before the reload tears the page down. Cap the
+          // wait so a slow/blocked analytics call can't stall the reload; in dev
+          // (no Umami) track() resolves immediately and we reload at once.
+          void Promise.race([
+            track("sign_in"),
+            new Promise((resolve) => setTimeout(resolve, 500)),
+          ]).finally(() => window.location.reload());
+        }
       },
       auto_select: true,
     });
