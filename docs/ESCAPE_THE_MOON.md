@@ -176,19 +176,22 @@ is the unambiguous output selector — no fragile count-matching.
 ## 4. The spine
 
 ```
- Effort ─┬─gather──► Regolith ─┬─refine─► Metal ───┬─fabricate─► Component ──┐
-         ├─scavenge► Scrap/Salvage         │       └─────────────────────┐  │
-         └─mine ice► Ice ──► Water          ├─kiln──► Silicon/Glass ──► Circuit
-                              │             │                    (electronics)│
-                     electrolysis►H2 + O2   │                                 │
-                              │             │     Salvage ──scan──► Data ─────┤
-                       chem reactor►Fuel    │                          │      │
-                                            │              Data+parts ─lab─► Blueprint
-                                            │                                 │
-                            Component + Circuit + Blueprint ──assemble──► Subsystem
-                                                                              │
-              Engine + Hull + Avionics + Life-Support + Heat-Shield + Fuel ──► ROCKET ──► Escape
+ Effort  ── the universal worker: cranks every machine (or a drone takes over)
+
+ raw ── print ─────────────────────────────────► Component ──────────┐
+ raw ── refine ─► Metal ─ fabricate ─► Fuel Tank ──┐                  │
+ raw ── kiln ───► Silicon ─ electronics ─► Circuit │                  │
+          └────► Glass                             │                  │
+ ice ── mine ──► Water ─ electrolysis ─► H₂ + O₂ ─ chem reactor ─► Fuel
+                                          (also burns a Fuel Tank ◄───┘ to can the Fuel)
+                                                                     │
+ Component + Circuit + Glass + Water ── assemble ─► Subsystem ×5     │
+                                                                     ▼
+   Engine + Hull + Avionics + Life-Support + Heat-Shield + Fuel ──► ROCKET ──► Escape
 ```
+
+(Blueprints aren't pictured: each is *earned* at the Research bench from your card
+history, then built at the Workbench — see §3.)
 
 ---
 
@@ -206,7 +209,7 @@ late tiers.
 | Power | **Power**, **Metal** | Power = the gate token |
 | Electronics | **Silicon**, **Glass**, **Circuit**, **Component** | Component = the universal part |
 | Construction | **Blueprint: X** | one per buildable machine/drone; earned at the Research bench, then built at the Workbench |
-| Chemistry | **Water**, **Hydrogen**, **Oxygen**, **Fuel** | Ice Mine yields Water directly (no Ice card) |
+| Chemistry | **Water**, **Hydrogen**, **Oxygen**, **Fuel Tank**, **Fuel** | Ice Mine yields Water directly (no Ice card); Fuel Tank is forged from Metal (Fabricator) and consumed one-per-Fuel by the Chem Reactor |
 | Assembly | **Engine**, **Hull**, **Avionics**, **Life Support**, **Heat Shield** | rocket subsystems |
 | Win | **Escape** | produced by the Rocket via `become` |
 
@@ -229,12 +232,12 @@ bay (Effort cranks it, no drone qualifies). "Holes" lists the *material* inputs.
 | **Workbench** | — | `blueprint` + `component` inbox | worker | Blueprint selects the output: + Components + an Effort worker → that machine/drone, dormant in tray |
 | **Research** | — | none | worker | an Effort worker → the next blueprint you've *earned* (machine: 1-of-each input discovered; drone: tier chore done ≥3×). Idles when there's nothing left to learn, so Effort is never spent for nothing |
 | **Refinery** | **yes** | `power` + `raw` inbox | Mk II | 1 raw + 1 Power → Metal |
-| **Fabricator** | **yes** | `power` + `metal` inbox | Mk II | Metal + Power → Component |
+| **Fabricator** | **yes** | `power` + `metal` inbox | Mk II | Metal + Power → Fuel Tank (the vessel the Chem Reactor cans Fuel into) |
 | **Kiln** | **yes** | `power` + `raw` inbox | Mk II | raw + Power → Silicon (50%) or Glass |
 | **Ice Mine** | **yes** | `power` | Mk II | Power → Water |
 | **Electronics Fab** | **yes** | `power` + `silicon` inbox | Mk III | Silicon + Power → Circuit |
 | **Electrolysis** | **yes** | `power` + `water` inbox | Mk III | Water + Power → Hydrogen + Oxygen |
-| **Chem Reactor** | **yes** | `power` + `hydrogen` + `oxygen` inboxes | Mk III | H₂ + O₂ + Power → Fuel (slow; the bottleneck) |
+| **Chem Reactor** | **yes** | `power` + `hydrogen` + `oxygen` + `fuel_tank` inboxes | Mk III | H₂ + O₂ + a Fuel Tank + Power → Fuel (slow; the bottleneck — a dry smelting line starves it of tanks) |
 | **Assembler** | **yes** | `power` + `component`/`circuit`/`glass`/`water` inboxes | Mk IV | recipe choice → the Subsystem whose ingredients you loaded. By hand (Effort) you load the recipe; a **Mk IV** drone instead targets the subsystems you're still missing and loads each recipe itself |
 | **Rocket** | — | `engine`+`hull`+`avionics`+`life_support`+`heat_shield`+`fuel`×3 (all required, consumed) | Mk IV | all filled + a worker → countdown → **`become` Escape**. Win |
 
@@ -305,14 +308,16 @@ Each act follows the two-beat rhythm (§2): a **novelty** you do by hand, then t
    hand-power.*
 3. **The line.** Drone the rest of the smelting line so refine→fabricate runs
    unattended. *Novelty + automation together: you now watch a self-running line
-   for the first time. Goal: a fully hands-off metal→component line.*
+   for the first time. Goal: a fully hands-off raw→Metal→Fuel-Tank line, stockpiling
+   the tanks the Chem Reactor will need.*
 4. **Electronics.** Kiln → Silicon/Glass, Electronics Fab → Circuit; the
    subsystems need Circuits and Glass. *Novelty: the electronics sub-tree.
    Automation: **Mk III** drones run the Electronics Fab and the wider parts
    line.*
 5. **Chemistry.** Ice Mine → Water → **Electrolysis** → H₂ + O₂ → **Chem
-   Reactor** → Fuel (the deliberate bottleneck). *Automation: **Mk III** drones
-   in Electrolysis & the Chem Reactor tame the liquid/fuel logistics.*
+   Reactor** → Fuel (the deliberate bottleneck — each unit of Fuel also burns a
+   **Fuel Tank** off the smelting line). *Automation: **Mk III** drones in
+   Electrolysis & the Chem Reactor tame the liquid/fuel logistics.*
 6. **Liftoff.** The **Assembler** builds Engine, Hull, Avionics, Life-Support and
    Heat-Shield from Components, Circuits, Glass and Water (recipe choice — load
    for the part you want by hand, or park a **Mk IV** drone in its bay and it
@@ -348,7 +353,7 @@ collapsing into a generic "first machine / first drone" toaster. The arc, in
 | 6 | `automation` | Hands Off | first **Mk I drone** built |
 | 7 | `power_up` | Let There Be Light | first **Power** (Solar Array running) |
 | 8 | `industrialist` | Industrialist | first **Refinery** built |
-| 9 | `fabricator` | The Production Line | first **Fabricator** built |
+| 9 | `fabricator` | The Production Line | first **Fuel Tank** pressed |
 | 10 | `kiln` | Trial by Fire | first **Kiln** built |
 | 11 | `drone_2` | Second Shift | first **Mk II drone** built |
 | 12 | `water` | Water from Stone | first **Water** produced |

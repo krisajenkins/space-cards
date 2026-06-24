@@ -9,6 +9,24 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-24 (change oqysmqyt)*
+
+# [X] Fabricator seems to do the same job as printer, even though it's a much later stage unlock
+
+Confirmed real: both the Printer (`raw → Component`) and the old Fabricator
+(`Metal + Power → Component`) yielded one Component per 6s cycle, so the
+power-hungry smelting line gave no payoff over the turn-one Printer. The
+Fabricator was also Metal's only consumer, so deleting it would have orphaned the
+Refinery + Metal.
+
+**Resolution: repurpose, don't delete.** The Fabricator now presses **Metal +
+Power → Fuel Tank**, and the **Chem Reactor** consumes one Fuel Tank per unit of
+Fuel ("you need something to store the fuel in"). This kills the Printer
+redundancy, keeps the whole smelting line meaningful right up to liftoff (the Chem
+Reactor is the endgame bottleneck), and slots a Metal sink into the existing
+tier-3 chemistry line. The `fabricator` achievement ("The Production Line") now
+fires on the first Fuel Tank pressed.
+
 # [X] It bugs me that we can pull a workshop from the wreck
 
 *Archived: 2026-06-24 (change uoymqrsxskxt)*

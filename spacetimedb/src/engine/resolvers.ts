@@ -488,7 +488,8 @@ export const RESOLVERS: Record<string, Resolver> = {
     },
   },
 
-  // Printer: the crude bootstrap fabricator — raw → Component, no power, slow. An
+  // Printer: the crude bootstrap Component press — raw → Component, no power, slow.
+  // The sole Component source now (the Fabricator presses Fuel Tanks instead). An
   // inbox queue that drains one per cycle. `ready` guards against firing with a
   // worker but no raw (the raw holes are optional, so the generic check can't).
   printer: {
@@ -573,7 +574,10 @@ export const RESOLVERS: Record<string, Resolver> = {
 
   // ── Tier 1–3: power-gated production line ────────────────────────────────
   refinery: poweredOne(REFINE, "raw", "metal"),
-  fabricator: poweredOne(FABRICATE, "metal", "component"),
+  // Fabricator: Metal + Power → Fuel Tank. NOT a second Component source (that was
+  // redundant with the crude Printer) — it presses Metal into the tanks the Chem
+  // Reactor cans Fuel into, keeping the smelting line meaningful up to liftoff.
+  fabricator: poweredOne(FABRICATE, "metal", "fuel_tank"),
   electronics_fab: poweredOne(ELECTRONICS, "silicon", "circuit"),
 
   // Kiln: raw → Silicon or Glass, Powered. It bakes whichever of the two its
@@ -648,21 +652,32 @@ export const RESOLVERS: Record<string, Resolver> = {
     },
   },
 
-  // Chem Reactor: Hydrogen + Oxygen + Power → Fuel. The late bottleneck (slow,
-  // and the only path to the Fuel the Rocket burns).
+  // Chem Reactor: Hydrogen + Oxygen + Power + a Fuel Tank → Fuel. The late
+  // bottleneck (slow, and the only path to the Fuel the Rocket burns). The Fuel
+  // Tank (Metal → Fabricator) is consumed one-per-Fuel — the fuel needs something
+  // to go in — so a dry smelting line now stalls fuel production (a deliberate
+  // dependency, not a bug).
   chem_reactor: {
     duration: () => CHEM,
     ready: (ctx, holes) =>
       hasPower(holes) &&
       count(ctx, holes, "hydrogen") > 0 &&
-      count(ctx, holes, "oxygen") > 0,
+      count(ctx, holes, "oxygen") > 0 &&
+      count(ctx, holes, "fuel_tank") > 0,
     resolve: (ctx, holes) => {
       const power = take(ctx, holes, "power", 1);
       const h2 = take(ctx, holes, "hydrogen", 1);
       const o2 = take(ctx, holes, "oxygen", 1);
-      if (power.length === 0 || h2.length === 0 || o2.length === 0) return NOOP;
+      const tank = take(ctx, holes, "fuel_tank", 1);
+      if (
+        power.length === 0 ||
+        h2.length === 0 ||
+        o2.length === 0 ||
+        tank.length === 0
+      )
+        return NOOP;
       return {
-        consume: [...power, ...h2, ...o2, ...workerCost(ctx, holes)],
+        consume: [...power, ...h2, ...o2, ...tank, ...workerCost(ctx, holes)],
         produce: ["fuel"],
         again: workerIsDrone(ctx, holes),
       };

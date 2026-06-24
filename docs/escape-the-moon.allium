@@ -152,6 +152,7 @@ default CardDef component     = { def_id: "component", category: "component", is
 default CardDef water         = { def_id: "water",     category: "water",     is_verb: false, drone_level: 0 }
 default CardDef hydrogen      = { def_id: "hydrogen",  category: "hydrogen",  is_verb: false, drone_level: 0 }
 default CardDef oxygen        = { def_id: "oxygen",    category: "oxygen",    is_verb: false, drone_level: 0 }
+default CardDef fuel_tank     = { def_id: "fuel_tank", category: "fuel_tank", is_verb: false, drone_level: 0 }  -- forged from Metal; the Chem Reactor cans Fuel into it
 default CardDef fuel          = { def_id: "fuel",      category: "fuel",      is_verb: false, drone_level: 0 }
 
 -- Rocket subsystems (inert; Assembler outputs, Rocket inputs).
@@ -195,12 +196,12 @@ default CardDef research            = { def_id: "research",       category: "sta
 -- Power, then the power-gated line:
 default CardDef solar_array         = { def_id: "solar_array",    category: "station",  is_verb: true, drone_level: 0 }  -- emits Power; no bay
 default CardDef refinery             = { def_id: "refinery",       category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; raw+Power -> Metal
-default CardDef fabricator            = { def_id: "fabricator",     category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; Metal+Power -> Component
+default CardDef fabricator            = { def_id: "fabricator",     category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; Metal+Power -> Fuel Tank
 default CardDef kiln_machine           = { def_id: "kiln",           category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; raw+Power -> Silicon/Glass
 default CardDef electronics_fab          = { def_id: "electronics_fab", category: "station", is_verb: true, drone_level: 0 }  -- Mk III; Silicon+Power -> Circuit
 default CardDef ice_mine                  = { def_id: "ice_mine",       category: "station",  is_verb: true, drone_level: 0 }  -- Mk II; Power -> Water
 default CardDef electrolysis_machine       = { def_id: "electrolysis",  category: "station",  is_verb: true, drone_level: 0 }  -- Mk III; Water+Power -> H2+O2
-default CardDef chem_reactor                = { def_id: "chem_reactor",  category: "station",  is_verb: true, drone_level: 0 }  -- Mk III; H2+O2+Power -> Fuel
+default CardDef chem_reactor                = { def_id: "chem_reactor",  category: "station",  is_verb: true, drone_level: 0 }  -- Mk III; H2+O2+Fuel Tank+Power -> Fuel
 default CardDef assembler                    = { def_id: "assembler",     category: "station",  is_verb: true, drone_level: 0 }  -- Mk IV; recipe -> Subsystem
 default CardDef rocket                        = { def_id: "rocket",        category: "launchpad", is_verb: true, drone_level: 0 }  -- Mk IV; subsystems+fuel -> become Escape
 
@@ -399,13 +400,15 @@ rule ResolveRefinery {
         RerunsIfDroned(verb)
 }
 
+-- Fabricator: Metal + Power -> Fuel Tank. NOT a second Component source (that was
+-- redundant with the Printer) — it presses the tanks the Chem Reactor cans Fuel into.
 rule ResolveFabricator {
     when: ResolveRun(verb)
     requires: verb.def = fabricator
     ensures:
         ConsumeOneInput(verb, "power")
         ConsumeOneInput(verb, "metal")
-        Card.created(def: component, board: verb.board)
+        Card.created(def: fuel_tank, board: verb.board)
         RerunsIfDroned(verb)
 }
 
@@ -455,8 +458,9 @@ rule ResolveElectrolysis {
         RerunsIfDroned(verb)
 }
 
--- Chem Reactor: H2 + O2 -> Fuel. The deliberate late-game bottleneck (Tier-5
--- currency). A candidate to one day demand Fuel-as-power for the top tier.
+-- Chem Reactor: H2 + O2 + a Fuel Tank -> Fuel. The deliberate late-game bottleneck
+-- (Tier-5 currency). The Fuel Tank (Metal -> Fabricator) is consumed one-per-Fuel —
+-- the fuel needs a vessel — so a dry smelting line now also starves fuel production.
 rule ResolveChemReactor {
     when: ResolveRun(verb)
     requires: verb.def = chem_reactor
@@ -464,6 +468,7 @@ rule ResolveChemReactor {
         ConsumeOneInput(verb, "power")
         ConsumeOneInput(verb, "hydrogen")
         ConsumeOneInput(verb, "oxygen")
+        ConsumeOneInput(verb, "fuel_tank")
         Card.created(def: fuel, board: verb.board)
         RerunsIfDroned(verb)
 }

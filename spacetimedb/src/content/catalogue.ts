@@ -113,6 +113,7 @@ export function seedCatalogue(ctx: Ctx) {
   inert("water", "Water", "water");
   inert("hydrogen", "Hydrogen", "hydrogen");
   inert("oxygen", "Oxygen", "oxygen");
+  inert("fuel_tank", "Fuel Tank", "fuel_tank"); // forged from Metal; the Chem Reactor cans Fuel into it
   inert("fuel", "Fuel", "fuel");
 
   // Rocket subsystems (inert; the Assembler's outputs, the Rocket's inputs).
@@ -239,10 +240,14 @@ export function seedCatalogue(ctx: Ctx) {
   powered("electrolysis", ["water"]);
   slot("ice_mine", 0, ["power"], true); // emitter: Power in, Water out
 
-  // Chem Reactor: Power + a Hydrogen inbox + an Oxygen inbox.
+  // Chem Reactor: Power + a Hydrogen inbox + an Oxygen inbox + a Fuel Tank inbox.
+  // The Fuel Tank (forged from Metal at the Fabricator) is consumed one-per-Fuel —
+  // you need something to store the fuel in — keeping the smelting line relevant
+  // right up to liftoff.
   slot("chem_reactor", 0, ["power"], true);
   inbox("chem_reactor", 1, 2, ["hydrogen"]);
   inbox("chem_reactor", 3, 2, ["oxygen"]);
+  inbox("chem_reactor", 5, 2, ["fuel_tank"]);
 
   // Drone bays on the power line. Mk II for the first powered tier, Mk III for the
   // electronics + chemistry tier. The Assembler gets a Mk IV bay (below) — it's a

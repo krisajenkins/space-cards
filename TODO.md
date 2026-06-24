@@ -2,6 +2,8 @@
 
 This is the last big blocker. Even with the warehouse, managing screen real estate is the last big blocker to launching this game.
 
+# [ ] I think we need to update the docs for bootstrap_first_admin->register_admin.
+
 # [ ] Scroll to thing (Caz)
 
 Caz wants a way to scroll/jump the viewport to a particular thing on the board.
@@ -27,17 +29,3 @@ blueprints neatly stored.
 # Tips we might want to make visible
 
 "Always be ready to research - keep an Effort card in Research at all times."
-
-# [ ] Fabricator seems to do the same job as printer, even though it's a much later stage unlock
-
-> ⚠ Blocked (2026-06-22): Confirmed real. Both Printer (`printer` resolver) and
-> Fabricator (`poweredOne(FABRICATE, "metal", "component")`) yield one **Component**
-> per cycle at the same 6s duration (`PRINT` == `FABRICATE` == `6_000_000n`). They
-> differ only in inputs/gating: Printer eats one free `raw` (Mk I bay, salvaged
-> from the Wreck turn one); Fabricator eats `Metal` + `Power` (Mk II bay, research-
-> gated). So the late, power-hungry chain (raw → Refinery[+power] → Metal →
-> Fabricator[+power] → Component) gives no payoff over the early crude Printer.
-> Needs a balance decision: (1) make the Fabricator better (2+ Components/cycle,
-> faster, higher output cap)? (2) throttle the Printer (slower, or Salvage-only)?
-> or (3) split downstream demand so subsystems need Fabricator-grade Components the
-> Printer can't make? Which differentiation do you want?

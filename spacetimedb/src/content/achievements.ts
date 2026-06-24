@@ -104,7 +104,7 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
     achId: "fabricator",
     title: "The Production Line",
     description:
-      "Metal feeds in and finished components roll out, untouched by your hands. The factory has started to build itself.",
+      "Metal feeds in and empty fuel tanks roll out, pressed and sealed. Now you have somewhere to put the fuel that flies you home.",
     sort: 9,
   },
   {
@@ -231,7 +231,7 @@ const ACHIEVEMENTS: AchievementRule[] = [
   { id: "automation", earned: (c) => has(c, "drone_1") },
   { id: "power_up", earned: (c) => has(c, "power") },
   { id: "industrialist", earned: (c) => has(c, "refinery") },
-  { id: "fabricator", earned: (c) => has(c, "fabricator") },
+  { id: "fabricator", earned: (c) => has(c, "fuel_tank") },
   { id: "kiln", earned: (c) => has(c, "glass") || has(c, "silicon") },
   { id: "drone_2", earned: (c) => has(c, "drone_2") },
   { id: "water", earned: (c) => has(c, "water") },

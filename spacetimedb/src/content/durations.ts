@@ -24,7 +24,7 @@ export const BUILD = 6_000_000n; // the Workbench assembling one machine from a 
 export const RESEARCH = 8_000_000n; // the Research bench turning Effort into the next blueprint
 
 export const REFINE = 5_000_000n; // raw → Metal
-export const FABRICATE = 6_000_000n; // Metal → Component
+export const FABRICATE = 6_000_000n; // Metal → Fuel Tank
 export const KILN = 6_000_000n; // raw → Silicon / Glass
 export const ELECTRONICS = 7_000_000n; // Silicon → Circuit
 export const MINE_ICE = 6_000_000n; // subsurface ice → Water

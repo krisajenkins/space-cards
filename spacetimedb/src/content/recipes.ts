@@ -121,7 +121,8 @@ export const RESEARCH_TREE: Research[] = [
   { target: "drone_1", chore: { of: ["raw"], count: 3 } },
   // Then Power — the spine that opens every big machine.
   { target: "solar", need: { component: 1 } },
-  // The smelting line: refine raw → Metal, fabricate Metal → Component.
+  // The smelting line: refine raw → Metal, fabricate Metal → Fuel Tanks (the
+  // vessels the Chem Reactor cans Fuel into).
   { target: "refinery", need: { raw: 1, power: 1 } },
   // Warehouse: a mid-game layout-relief container, unlocked right after the
   // Refinery (you have metal flowing by now). One-and-done blueprint.
@@ -198,7 +199,7 @@ export const VERB_OUTPUTS: Record<string, string[]> = {
   printer: ["component"],
   solar_array: ["power"],
   refinery: ["metal"],
-  fabricator: ["component"],
+  fabricator: ["fuel_tank"],
   electronics_fab: ["circuit"],
   kiln: ["silicon", "glass"],
   ice_mine: ["water"],

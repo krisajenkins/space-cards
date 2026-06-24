@@ -50,6 +50,9 @@ const G = {
   oxygen: `<rect x="7" y="6" width="10" height="14" rx="2"/><path d="M10 4h4v2h-4z"/><circle cx="12" cy="13" r="2.2"/>`,
   // Fuel: a flask / fuel can with a flame mouth.
   fuel: `<path d="M9 4h6v3l3 5v7H6v-7l3-5z"/><path d="M9 7h6"/><path d="M12 14c1.4-.6 1.4-2 .6-3 .4 1-.6 1.4-1 .6-.4-.8 0-1.6 0-1.6-1.6.8-1.6 3 .4 4z" fill="currentColor" stroke="none"/>`,
+  // Fuel tank: an upright pressure cylinder with banding and a valve neck — the
+  // empty vessel the Chem Reactor cans fuel into (distinct from the Fuel jerrycan).
+  fuel_tank: `<rect x="6" y="7" width="12" height="13" rx="2.5"/><path d="M6 11h12M6 16h12"/><path d="M10 4h4v3h-4z"/>`,
 
   // ── Rocket subsystems ────────────────────────────────────────────────────
   // Engine: a bell nozzle with a flame.
@@ -167,6 +170,7 @@ const BY_DEF: Record<string, Visual> = {
   water: { color: "var(--cat-water)", glyph: G.water },
   hydrogen: { color: "var(--cat-hydrogen)", glyph: G.hydrogen },
   oxygen: { color: "var(--cat-oxygen)", glyph: G.oxygen },
+  fuel_tank: { color: "var(--cat-fuel)", glyph: G.fuel_tank },
   fuel: { color: "var(--cat-fuel)", glyph: G.fuel },
 
   // Rocket subsystems
@@ -225,6 +229,7 @@ const BY_CATEGORY: Record<string, Visual> = {
   water: { color: "var(--cat-water)", glyph: G.water },
   hydrogen: { color: "var(--cat-hydrogen)", glyph: G.hydrogen },
   oxygen: { color: "var(--cat-oxygen)", glyph: G.oxygen },
+  fuel_tank: { color: "var(--cat-fuel)", glyph: G.fuel_tank },
   fuel: { color: "var(--cat-fuel)", glyph: G.fuel },
 
   // Structural / endgame categories
@@ -272,6 +277,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   water: "Water",
   hydrogen: "Hydrogen",
   oxygen: "Oxygen",
+  fuel_tank: "Fuel Tank",
   fuel: "Fuel",
   subsystem: "Subsystem",
   engine: "Engine",
