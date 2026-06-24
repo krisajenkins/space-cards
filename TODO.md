@@ -1,12 +1,12 @@
 # [ ] Achievements text needs human attention
 
+One for you, Kris.
+
 > ⚠ Blocked (2026-06-21): All 21 entries in `ACHIEVEMENT_DEFS`
 > (`content/achievements.ts`) are already written in a consistent voice — there's
 > no objective spec to execute against. This is a creative review only you can do:
 > happy as-is, or which achievements want rewriting and in what direction (tone,
 > length, references)?
-
-One for you, Kris.
 
 # [ ] Layout still needs work
 
@@ -16,7 +16,29 @@ This is the last big blocker. Even with the warehouse, managing screen real esta
 
 I know there are steps needed to go from a test Google OAuth login to a prod one. Need to find out what they are and do them!
 
+> ⚠ Blocked (2026-06-24): This is entirely Google Cloud Console work, not a repo
+> change. The client id lives once in `platform/constants.ts` (`GOOGLE_CLIENT_ID`)
+> and is re-exported via `src/lib/google.ts`; the client uses Google Identity
+> Services (One-Tap/button), governed by **authorized JavaScript origins** + the
+> **consent-screen publishing status** in the Console — there's no env var,
+> redirect-URI list, or separate test/prod client id in the repo, so "test vs
+> prod" is purely a Console property of this one client. To ship prod, in the
+> Console: (1) move the OAuth consent screen from **Testing** → **In production**;
+> (2) confirm User type = External and that the basic scopes (email/profile/openid)
+> don't trigger Google verification — if no sensitive/restricted scopes, only the
+> publish is needed; (3) add every prod-serving domain to **Authorized JavaScript
+> origins** (verify domain ownership if prompted). Decisions for you: which
+> production domain(s) will host the client, and keep the same client id or mint a
+> dedicated prod one? (A new id = change that one constant in `constants.ts` and
+> republish.)
+
 # [ ] It bugs me that we can pull a workshop from the wreck
+
+That's unbelievable. Let's do this:
+
+- Two levels of blueprints
+- You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
+- Eventually you can make a _workshop_, which can make level 2 blueprints.
 
 > ⚠ Blocked (2026-06-21): Mechanism is clear (rename Workshop→Workbench, add a
 > `workshop` verb, add `level: 1|2` to `BUILDS`, gate each bench on the
@@ -26,13 +48,9 @@ I know there are steps needed to go from a test Google OAuth login to a prod one
 > the Wreck now yield a Workbench instead of a Workshop (and rename the
 > `salvage_workshop` achievement)?
 
-That's unbelievable. Let's do this:
-
-- Two levels of blueprints
-- You pull a _workbench_ from the wreck. It can make any level 1 blueprint.
-- Eventually you can make a _workshop_, which can make level 2 blueprints.
-
 # [ ] Scroll to thing (Caz)
+
+Caz wants a way to scroll/jump the viewport to a particular thing on the board.
 
 > ⚠ Blocked (2026-06-21): The board has no scroll/pan model — `.board` is
 > `overflow: hidden` and the content auto-fits the whole tableau on screen, so
@@ -41,9 +59,10 @@ That's unbelievable. Let's do this:
 > click)? (2) what triggers it — manual control or automatic? (3) a new free
 > pan/zoom camera, or just a momentary highlight/centre within the fitted view?
 
-Caz wants a way to scroll/jump the viewport to a particular thing on the board.
-
 # [ ] Blueprint library attached to the workshop (Caz)
+
+Caz wants: maybe some library, attached to the workshop, that keeps your
+blueprints neatly stored.
 
 > ⚠ Blocked (2026-06-21): Tentative idea ("maybe some library") with no settled
 > meaning of "stored", and entangled with the two-tier Workbench/Workshop rework
@@ -52,9 +71,6 @@ Caz wants a way to scroll/jump the viewport to a particular thing on the board.
 > the library automatically (contradicts the deliberate hand-pick bay) or do you
 > still drag blueprints into the hole? (3) wait until the Workbench/Workshop split
 > is settled?
-
-Caz wants: maybe some library, attached to the workshop, that keeps your
-blueprints neatly stored.
 
 # Tips we might want to make visible
 
