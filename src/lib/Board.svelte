@@ -785,10 +785,6 @@ function onUp(e: PointerEvent) {
       />
     </div>
   {/if}
-
-  <div class="hint" class:hidden={!!drag}>
-    Drag a card into a glowing socket · pull output back to the table to collect
-  </div>
 </div>
 
 <style>
