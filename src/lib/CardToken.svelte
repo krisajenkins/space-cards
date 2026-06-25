@@ -28,11 +28,9 @@ const v = $derived(visualFor(defId, category));
   class:grabbing
   style="--tint: {v.color}"
 >
-  <div class="glyph">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      {@html v.glyph}
-    </svg>
+  <div class="glyph" aria-hidden="true">
+    <!-- glyph is a complete <svg>; colour comes from .glyph's `color` via currentColor -->
+    {@html v.glyph}
   </div>
   <div class="name">{name}</div>
 </div>
@@ -83,7 +81,9 @@ const v = $derived(visualFor(defId, category));
   color: var(--tint);
   margin-top: 0.35rem;
 }
-.glyph svg {
+/* :global — the glyph is injected via {@html}, so Svelte's scoping attribute
+   never lands on it; an unscoped descendant selector is the only thing that matches. */
+.glyph :global(svg) {
   width: 46px;
   height: 46px;
   filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.45));
@@ -105,7 +105,7 @@ const v = $derived(visualFor(defId, category));
   border-radius: 10px;
   gap: 0.15rem;
 }
-.token.sm .glyph svg {
+.token.sm .glyph :global(svg) {
   width: 30px;
   height: 30px;
 }
@@ -125,7 +125,7 @@ const v = $derived(visualFor(defId, category));
   gap: 0.6rem;
   padding: 1rem;
 }
-.token.xl .glyph svg {
+.token.xl .glyph :global(svg) {
   width: 92px;
   height: 92px;
 }

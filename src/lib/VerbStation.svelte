@@ -187,12 +187,8 @@ const stateLabel = $derived(
           />
         {/if}
       </svg>
-      <div class="glyph">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true">
-          {@html v.glyph}
-        </svg>
+      <div class="glyph" aria-hidden="true">
+        {@html v.glyph}
       </div>
     </div>
     <div class="heading">
@@ -442,7 +438,8 @@ header {
   background: radial-gradient(circle at 50% 35%, var(--socket-rim), var(--socket-pit));
   border: 1px solid rgba(var(--brass-rgb), 0.3);
 }
-.glyph svg {
+/* :global — glyph injected via {@html}, see CardToken for the why. */
+.glyph :global(svg) {
   width: 30px;
   height: 30px;
 }

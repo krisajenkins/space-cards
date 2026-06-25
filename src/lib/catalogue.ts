@@ -13,119 +13,25 @@ import type { Situation } from "../module_bindings/types";
 
 export type Visual = { color: string; glyph: string };
 
-// 24×24 glyphs, stroke = currentColor unless a path opts into fill. Kept spare
-// and line-drawn so the whole deck feels like one engraved set: thin engraved
-// lines, the occasional solid accent. Theme: "Escape the Moon".
+// 24×24 glyphs live as individual, Inkscape-editable documents under
+// src/assets/glyphs/<name>.svg. Each is a complete <svg> carrying the shared
+// engraved-set attributes (stroke=currentColor, stroke-width 1.6, round caps),
+// so a consumer drops the whole file into the DOM and colours it by setting
+// `color` on a parent. Spare, line-drawn — the whole deck reads as one engraved
+// set. Theme: "Escape the Moon". The drone Mk I–IV share a silhouette, varied
+// only by the count of body pips, so the fleet reads as one family.
 //
-// A shared drone silhouette (a rounded body slung under twin rotor arms) is
-// reused across the Mk I–IV drones, varied only by the count of level pips on
-// the body — so the fleet reads as one family.
-const G = {
-  // ── Resources ────────────────────────────────────────────────────────────
-  // Effort: a worked hand with a sweat-drop.
-  effort: `<path d="M8.5 12V6.4a1.3 1.3 0 012.6 0V11M11.1 11V5.2a1.3 1.3 0 012.6 0V11M13.7 11.4V6.6a1.3 1.3 0 012.6 0V13c0 3.2-2 5.6-5 5.6-2 0-3.2-.8-4.4-2.4L5 13.4a1.3 1.3 0 012.2-1.4L8.5 14"/><path d="M17.4 4.4c.9.7.9 2 0 2.7" stroke-linecap="round"/>`,
-  // Power: a lightning bolt.
-  power: `<path d="M13 2.5 5.5 13.2h5L9.5 21.5 18 10.4h-5z" fill="currentColor" stroke="none"/>`,
-  // Regolith: a granular pile of moon dust.
-  regolith: `<path d="M3 18h18"/><path d="M3 18c2-5 4-7 5.5-7s2.5 2 3.5 2 2-4 4-4 3.4 4 5 9"/><circle cx="8" cy="14" r=".5" fill="currentColor" stroke="none"/><circle cx="13" cy="13" r=".5" fill="currentColor" stroke="none"/><circle cx="16" cy="15" r=".5" fill="currentColor" stroke="none"/>`,
-  // Scrap: a bent, dented metal sheet.
-  scrap: `<path d="M4 9l5-3 4 2 3-2 4 4-3 3 2 4-6 1-3-3-5 2 1-5z"/>`,
-  // Salvage: a usable reclaimed part — a bracket with a bolt hole.
-  salvage: `<path d="M6 5h7l5 5v9H6z"/><path d="M13 5v5h5"/><circle cx="11.5" cy="14" r="2"/>`,
-  // Metal: an ingot / bar.
-  metal: `<path d="M4 14.5l3-4h10l3 4-3 4H7z"/><path d="M7 10.5l1.5-1.8h7L17 10.5"/>`,
-  // Silicon: a wafer disc with a flat edge.
-  silicon: `<circle cx="12" cy="12" r="8.4"/><path d="M6.2 17.8L17.8 6.2"/><path d="M9 4.4l-4.6 4.6"/>`,
-  // Glass: a pane / lens with a glint.
-  glass: `<rect x="5.5" y="4" width="13" height="16" rx="1.5"/><path d="M8.5 7l4 4M8.5 11l2 2" stroke-linecap="round"/>`,
-  // Circuit: a chip with traces.
-  circuit: `<rect x="7" y="7" width="10" height="10" rx="1"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><path d="M10 4v3M14 4v3M10 17v3M14 17v3M4 10h3M4 14h3M17 10h3M17 14h3"/>`,
-  // Component: a cog / machined part.
-  component: `<circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M5.8 5.8l2.1 2.1M16.1 16.1l2.1 2.1M18.2 5.8l-2.1 2.1M7.9 16.1l-2.1 2.1"/>`,
-  // Water: a droplet.
-  water: `<path d="M12 3.5c3 4 5 6.4 5 9.2a5 5 0 01-10 0c0-2.8 2-5.2 5-9.2Z"/>`,
-  // Hydrogen: a gas canister marked H.
-  hydrogen: `<rect x="7" y="6" width="10" height="14" rx="2"/><path d="M10 4h4v2h-4z"/><path d="M10 11v4M14 11v4M10 13h4" stroke-linecap="round"/>`,
-  // Oxygen: a gas canister marked O.
-  oxygen: `<rect x="7" y="6" width="10" height="14" rx="2"/><path d="M10 4h4v2h-4z"/><circle cx="12" cy="13" r="2.2"/>`,
-  // Fuel: a flask / fuel can with a flame mouth.
-  fuel: `<path d="M9 4h6v3l3 5v7H6v-7l3-5z"/><path d="M9 7h6"/><path d="M12 14c1.4-.6 1.4-2 .6-3 .4 1-.6 1.4-1 .6-.4-.8 0-1.6 0-1.6-1.6.8-1.6 3 .4 4z" fill="currentColor" stroke="none"/>`,
-  // Fuel tank: an upright pressure cylinder with banding and a valve neck — the
-  // empty vessel the Chem Reactor cans fuel into (distinct from the Fuel jerrycan).
-  fuel_tank: `<rect x="6" y="7" width="12" height="13" rx="2.5"/><path d="M6 11h12M6 16h12"/><path d="M10 4h4v3h-4z"/>`,
-
-  // ── Rocket subsystems ────────────────────────────────────────────────────
-  // Engine: a bell nozzle with a flame.
-  engine: `<path d="M9 4h6l1 6 3 5H5l3-5z"/><path d="M9.5 15l-.5 4M14.5 15l.5 4M12 15v4" stroke-linecap="round"/>`,
-  // Hull: a riveted fuselage segment / nose cone.
-  hull: `<path d="M12 3c3 3 4 7 4 11v6H8v-6c0-4 1-8 4-11Z"/><path d="M8 14h8" /><circle cx="12" cy="9" r="1" fill="currentColor" stroke="none"/>`,
-  // Avionics: a circuit-board panel with a screen readout.
-  avionics: `<rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M7 9h6v4H7z"/><path d="M15.5 9h2M15.5 11h2M15.5 13h2M7 16h10" stroke-linecap="round"/>`,
-  // Life support: a breathing-loop sphere with a leaf inside.
-  life_support: `<circle cx="12" cy="12" r="8.2"/><path d="M12 16c0-3 1.5-5 4.5-5.5C16 14 14 16 12 16Z" fill="currentColor" stroke="none"/><path d="M12 16c0-3-1.5-5-4.5-5.5C8 14 10 16 12 16Z"/>`,
-  // Heat shield: a layered ablative dome.
-  heat_shield: `<path d="M3.5 13a8.5 8.5 0 0117 0Z"/><path d="M5.5 16a6.5 6.5 0 0113 0Z"/><path d="M3.5 13h17M5.5 16h13"/>`,
-
-  // ── Win token ────────────────────────────────────────────────────────────
-  // Escape: a rocket lifting off, trailing exhaust and stars.
-  escape: `<path d="M12 2c2.6 2.6 4 6 4 9.5L12 15l-4-3.5C8 8 9.4 4.6 12 2Z"/><circle cx="12" cy="9" r="1.6" fill="currentColor" stroke="none"/><path d="M8 11.5l-2.5 1 1.5 2M16 11.5l2.5 1-1.5 2"/><path d="M10.5 16.5l-1.5 4M13.5 16.5l1.5 4M12 16v5" stroke-linecap="round"/>`,
-
-  // ── Drones ─────────────────────────────────────────────────────────────────
-  // One shared silhouette (a body slung under twin rotor arms) reads as the drone
-  // family; the Mk is shown by the count of pips on the body.
-  drone: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/>`,
-  drone_1: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="12" cy="11" r="1" fill="currentColor" stroke="none"/>`,
-  drone_2: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="10.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="13.5" cy="11" r="1" fill="currentColor" stroke="none"/>`,
-  drone_3: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="1" fill="currentColor" stroke="none"/>`,
-  drone_4: `<path d="M3 7h3M18 7h3M5 7v1.5M19 7v1.5"/><rect x="6" y="8" width="12" height="6" rx="2"/><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/><path d="M9 14l-1.5 3M15 14l1.5 3"/><circle cx="8.5" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="10.8" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="13.2" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="11" r="1" fill="currentColor" stroke="none"/>`,
-
-  // ── Blueprint ────────────────────────────────────────────────────────────
-  // A rolled schematic sheet with grid + a drawn part.
-  blueprint: `<path d="M5 5h11l3 3v11H5z"/><path d="M16 5v3h3"/><path d="M8 11h5M8 14h5M8 8h3" stroke-linecap="round"/><circle cx="15" cy="14.5" r="1.6"/>`,
-
-  // ── Machine verbs (one each) ─────────────────────────────────────────────
-  // Survivor: an astronaut figure.
-  survivor: `<circle cx="12" cy="6" r="3"/><path d="M12 6h.01" /><path d="M8.5 13a3.5 3.5 0 017 0v3h-7z"/><path d="M8.5 16l-2.5 4M15.5 16l2.5 4" stroke-linecap="round"/><circle cx="12" cy="6" r="1.4" fill="currentColor" stroke="none"/>`,
-  // Regolith field: a scoop digging a furrow of dust.
-  regolith_field: `<path d="M3 19h18"/><path d="M4 19c1.5-3 3.5-5 5-5"/><path d="M13 7l5 2-2 5-5-2z"/><path d="M11 12l-3 3" stroke-linecap="round"/>`,
-  // Wreck: a crashed ship, broken on the surface.
-  wreck: `<path d="M3 19h18"/><path d="M5 19l3-9 6-2 3 4-2 7z"/><path d="M9 9l3 5M16 12l-5 1" stroke-linecap="round"/>`,
-  // Exhausted wreck: the same hull picked clean — a hollow, broken-open husk.
-  exhausted_wreck: `<path d="M3 19h18"/><path d="M6 19l1.5-7M18 19l-1.5-6"/><path d="M7.5 12l4-1 5 1"/><path d="M10 19v-4.5M13.5 19v-4" stroke-linecap="round"/>`,
-  // Printer: a 3D-printer / fabricator nozzle laying a bead.
-  printer: `<rect x="5" y="4" width="14" height="3" rx="1"/><path d="M12 7v4"/><path d="M10 11h4l-1 3h-2z"/><path d="M8 19h8M8 19l1-2M16 19l-1-2"/>`,
-  // Workbench: a workbench with a wrench crossing a gear.
-  workbench: `<path d="M3 16h18v3H3z"/><circle cx="9" cy="9.5" r="2.6"/><path d="M9 6.9V9.5l1.8 1"/><path d="M13.5 6l4.5 4.5-1.5 1.5L12 7.5z" fill="currentColor" stroke="none"/>`,
-  // Research: a magnifier examining a schematic — discovering the next blueprint.
-  research: `<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.2 15.2l4.6 4.6" stroke-linecap="round"/><path d="M8 9.5h5M8 12h5M10.5 7.5v6" stroke-linecap="round"/>`,
-  // Solar array: a tilted panel of cells on a post.
-  solar_array: `<path d="M4 6h14l2 7H6z"/><path d="M8.7 6l-1 7M13.4 6l.6 7M4 9.5h16"/><path d="M12 13v6M9 19h6" stroke-linecap="round"/>`,
-  // Refinery: a smelter / furnace pouring molten metal.
-  refinery: `<path d="M5 5h9v7l3 7H5z"/><path d="M14 8l4-1v3l-3 1"/><path d="M8 19v-3h3v3" /><path d="M9 9h1.5" stroke-linecap="round"/>`,
-  // Fabricator: a stamping press driving down onto a die.
-  fabricator: `<path d="M5 4h14M5 4v4h14V4"/><path d="M9 8v4h6V8"/><path d="M12 12v3"/><path d="M5 18h14v2H5z"/>`,
-  // Kiln: a domed oven with a flame inside.
-  kiln: `<path d="M4 20V11a8 8 0 0116 0v9z"/><path d="M4 16h16"/><path d="M12 14c1.6-.7 1.6-2.2.7-3.3.5 1.1-.7 1.5-1.1.6-.4-.9 0-1.8 0-1.8-1.8.9-1.8 3.4.4 4.5z" fill="currentColor" stroke="none"/>`,
-  // Electronics fab: a print-head laying chips onto a board.
-  electronics_fab: `<rect x="4" y="13" width="16" height="6" rx="1"/><path d="M10 7h4v4h-4z"/><path d="M12 4v3"/><path d="M7 16h2M11 16h2M15 16h2" stroke-linecap="round"/>`,
-  // Ice mine: a drill bit boring into a layered ice cap.
-  ice_mine: `<path d="M3 13a9 4 0 0118 0"/><path d="M11 6h2v6h-2z"/><path d="M11 12l1 3 1-3"/><path d="M6 16l1 2M18 16l-1 2" stroke-linecap="round"/>`,
-  // Electrolysis: a tank with two electrodes and rising bubbles.
-  electrolysis: `<rect x="5" y="8" width="14" height="12" rx="1.5"/><path d="M9 4v4M15 4v4"/><circle cx="10" cy="14" r="1"/><circle cx="13" cy="16" r="1.2"/><circle cx="14.5" cy="12.5" r=".8"/>`,
-  // Chem reactor: a round flask with bubbling reaction.
-  chem_reactor: `<path d="M10 3h4M11 3v5l-5 9a2 2 0 002 3h8a2 2 0 002-3l-5-9V3"/><circle cx="11" cy="16" r="1"/><circle cx="14" cy="18" r="1.2"/><path d="M8 17h8" stroke-linecap="round"/>`,
-  // Assembler: a robotic arm placing a part.
-  assembler: `<circle cx="5" cy="6" r="1.8"/><path d="M6.5 7L11 10l-1 4"/><path d="M11 10l5-1"/><rect x="9" y="15" width="9" height="4" rx="1"/>`,
-  // Rocket (launchpad): the pre-launch craft standing on a gantry.
-  rocket: `<path d="M12 3c2.4 2.6 3.5 6 3.5 9.5V16h-7v-3.5C8.5 9 9.6 5.6 12 3Z"/><circle cx="12" cy="9.5" r="1.4" fill="currentColor" stroke="none"/><path d="M8.5 14H6v6M15.5 14H18v6"/><path d="M9 16l-1 4M15 16l1 4" stroke-linecap="round"/>`,
-
-  // Warehouse: a stacked-crate store with a wide doorway — the container that
-  // houses factory cards.
-  warehouse: `<path d="M3 9l9-4 9 4v11H3z"/><path d="M3 9h18"/><path d="M9 20v-6h6v6"/><path d="M9 14h6" stroke-linecap="round"/>`,
-
-  // Generic fallback.
-  token: `<rect x="5" y="5" width="14" height="14" rx="3"/>`,
-};
+// import.meta.glob with ?raw inlines each file's text into the bundle at build
+// time: no extra requests, no runtime cost, same payload as the old inline strings.
+const G: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob("../assets/glyphs/*.svg", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>,
+  ).map(([path, svg]) => [path.slice(path.lastIndexOf("/") + 1, -4), svg]),
+);
 
 // Blueprints are seeded as `blueprint_<target>` cards. They share the schematic
 // glyph but are colour-coded by the *family* they build — power, station, drone,

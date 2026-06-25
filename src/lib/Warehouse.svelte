@@ -45,12 +45,8 @@ function visualOf(defId: string) {
 
 <div class="warehouse" style="--tint: {v.color}">
   <header>
-    <div class="badge">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
-        aria-hidden="true">
-        {@html v.glyph}
-      </svg>
+    <div class="badge" aria-hidden="true">
+      {@html v.glyph}
     </div>
     <div class="heading">
       <h3>{def.name}</h3>
@@ -87,12 +83,8 @@ function visualOf(defId: string) {
               />
             {/if}
           </svg>
-          <div class="mini-glyph">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
-              aria-hidden="true">
-              {@html cv.glyph}
-            </svg>
+          <div class="mini-glyph" aria-hidden="true">
+            {@html cv.glyph}
           </div>
         </div>
         <div class="mini-name">{nameOf(c.defId)}</div>
@@ -155,7 +147,8 @@ header {
   background: radial-gradient(circle at 50% 35%, var(--socket-rim), var(--socket-pit));
   border: 1px solid rgba(var(--brass-rgb), 0.3);
 }
-.badge svg {
+/* :global — glyph injected via {@html}, so the scoping attribute never lands on it. */
+.badge :global(svg) {
   width: 28px;
   height: 28px;
 }
@@ -267,7 +260,7 @@ header {
   background: radial-gradient(circle at 50% 35%, var(--socket-rim), var(--socket-pit));
   border: 1px solid rgba(var(--brass-rgb), 0.3);
 }
-.mini-glyph svg {
+.mini-glyph :global(svg) {
   width: 20px;
   height: 20px;
 }

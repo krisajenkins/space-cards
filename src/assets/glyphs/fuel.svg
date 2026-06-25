@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 24 24"
+   fill="none"
+   stroke="currentColor"
+   stroke-width="1.6"
+   stroke-linecap="round"
+   stroke-linejoin="round"
+   version="1.1"
+   id="svg3"
+   sodipodi:docname="fuel.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3" />
+  <sodipodi:namedview
+     id="namedview3"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="14.083333"
+     inkscape:cx="14.804734"
+     inkscape:cy="7.3846154"
+     inkscape:window-width="1470"
+     inkscape:window-height="895"
+     inkscape:window-x="0"
+     inkscape:window-y="33"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3" />
+  <path
+     d="M9 4h6v3l3 5v7H6v-7l3-5z"
+     id="path1" />
+  <path
+     d="M9 7h6"
+     id="path2" />
+  <path
+     d="m 11.672978,15.256376 c 1.511816,-0.185507 1.902476,-1.529897 1.413296,-2.71341 0.105068,1.071896 -0.966827,1.176964 -1.127704,0.297124 -0.160877,-0.87984 0.446469,-1.536446 0.446469,-1.536446 -1.759681,0.321754 -2.373575,2.434367 -0.732061,3.952732 z"
+     fill="currentColor"
+     stroke="none"
+     id="path3" />
+</svg>

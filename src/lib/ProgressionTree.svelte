@@ -447,16 +447,14 @@ function edgePath(
                 class:verb={n.isVerb}
                 style="--node-col:{v.color}"
               />
+              <!-- The glyph is a complete <svg>; nest it in a positioned viewport
+                   and drive its currentColor (stroke + fill) via `color`. -->
               <svg
                 x="9"
                 y={(NODE_H - 22) / 2}
                 width="22"
                 height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={v.color}
-                stroke-width="1.6"
-                stroke-linejoin="round"
+                style="color:{v.color}"
               >
                 {@html v.glyph}
               </svg>
