@@ -90,6 +90,16 @@ function startNewGame() {
         <span class="brand-name">Space Cards</span>
       </div>
       <div class="topbar-right">
+        <button
+          class="mute-trigger"
+          class:muted={$muted}
+          title={$muted ? "Unmute sound" : "Mute sound"}
+          aria-label={$muted ? "Unmute sound" : "Mute sound"}
+          aria-pressed={$muted}
+          onclick={toggleMute}
+        >
+          {$muted ? "🔇" : "🔊"}
+        </button>
         {#if board}
           <button
             class="pill"
@@ -116,16 +126,6 @@ function startNewGame() {
             bind:open={shareOpen}
           />
         </div>
-        <button
-          class="mute-trigger"
-          class:muted={$muted}
-          title={$muted ? "Unmute sound" : "Mute sound"}
-          aria-label={$muted ? "Unmute sound" : "Mute sound"}
-          aria-pressed={$muted}
-          onclick={toggleMute}
-        >
-          {$muted ? "🔇" : "🔊"}
-        </button>
         {#if isAdmin}
           <button
             class="pill"
