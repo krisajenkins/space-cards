@@ -334,6 +334,34 @@ function fitNow() {
   if (f) cam = f;
 }
 
+// Keyboard camera: arrows pan, +/- zoom (toward centre), f fits. Same controls
+// as the wheel/buttons, just driven from the keyboard. Skip when the player is
+// typing into a field or holding a modifier (so browser shortcuts still work).
+const PAN_STEP = 80; // px the camera slides per arrow press
+$effect(() => {
+  const onKey = (e: KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("input, textarea, select, [contenteditable]")) return;
+    // Arrows pan the view: pressing → scrolls right, revealing content there.
+    const pan = (dx: number, dy: number) =>
+      (cam = { ...cam, x: cam.x + dx, y: cam.y + dy });
+    switch (e.key) {
+      case "ArrowLeft": pan(PAN_STEP, 0); break;
+      case "ArrowRight": pan(-PAN_STEP, 0); break;
+      case "ArrowUp": pan(0, PAN_STEP); break;
+      case "ArrowDown": pan(0, -PAN_STEP); break;
+      case "+": case "=": zoomStep(1.2); break;
+      case "-": case "_": zoomStep(1 / 1.2); break;
+      case "f": case "F": fitNow(); break;
+      default: return;
+    }
+    e.preventDefault();
+  };
+  window.addEventListener("keydown", onKey);
+  return () => window.removeEventListener("keydown", onKey);
+});
+
 // ── Countdown clock ──────────────────────────────────────────────────────────
 let now = $state(Date.now());
 $effect(() => {
@@ -760,9 +788,9 @@ function onUp(e: PointerEvent) {
 
   <!-- Camera controls -->
   <div class="cam-controls">
-    <button type="button" title="Zoom in" onclick={() => zoomStep(1.2)}>+</button>
-    <button type="button" title="Zoom out" onclick={() => zoomStep(1 / 1.2)}>−</button>
-    <button type="button" title="Fit the whole board" onclick={fitNow}>Fit</button>
+    <button type="button" title="Zoom in (+)" onclick={() => zoomStep(1.2)}>+</button>
+    <button type="button" title="Zoom out (−)" onclick={() => zoomStep(1 / 1.2)}>−</button>
+    <button type="button" title="Fit the whole board (f)" onclick={fitNow}>Fit</button>
   </div>
 
   <!-- Drag ghost -->
