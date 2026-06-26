@@ -99,6 +99,13 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
         {/if}
       </span>
       <span class="dismiss" aria-hidden="true">×</span>
+      {#if t.achId !== "escape"}
+        <span
+          class="timeout"
+          style="animation-duration: {AUTO_DISMISS_MS}ms"
+          aria-hidden="true"
+        ></span>
+      {/if}
     </button>
   {/each}
 </div>
@@ -117,6 +124,8 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
 }
 .toast {
   pointer-events: auto;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-start;
   gap: 0.7rem;
@@ -200,6 +209,31 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
   from {
     opacity: 0;
     transform: translateX(-16px) scale(0.96);
+  }
+}
+/* Thin bar along the bottom edge that drains over the auto-dismiss window, so
+   the timeout is legible rather than a surprise. duration is set inline to
+   match AUTO_DISMISS_MS; tinted to each toast's accent. */
+.timeout {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  transform-origin: left;
+  background: var(--brass);
+  opacity: 0.5;
+  animation: timeout-drain linear both;
+}
+.toast.intro .timeout {
+  background: var(--ember);
+}
+@keyframes timeout-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
   }
 }
 </style>
