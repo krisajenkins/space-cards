@@ -54,6 +54,21 @@ function dismiss(id: bigint, achId: string) {
   }
 }
 
+// Trophies fade themselves out after a few seconds so the corner doesn't silt up
+// with milestones the player never clicked. The win (`escape`) is the exception:
+// dismissing it rolls the credits, so it must wait for a deliberate click. We
+// schedule each toast exactly once (a per-id Set guards the effect re-running)
+// and let the auto-dismiss route through `dismiss` so it marks the row seen.
+const AUTO_DISMISS_MS = 15000;
+const scheduled = new Set<bigint>();
+$effect(() => {
+  for (const t of toasts) {
+    if (t.achId === "escape" || scheduled.has(t.id)) continue;
+    scheduled.add(t.id);
+    setTimeout(() => dismiss(t.id, t.achId), AUTO_DISMISS_MS);
+  }
+});
+
 // Most milestones are trophies. Two bookend the story and get their own voice:
 // `crash` is the opening distress log (not a reward), `escape` is the win. Falls
 // back to the trophy for everything in between.
