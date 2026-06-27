@@ -9,6 +9,16 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-27 (change olkmustnolqy)*
+
+# [X] Feedback: And what is the purpose of the warehouse when you can drop cards anywhere?
+
+The warehouse is possibly redundant. The idea was to give you a place to hide factories that are fully automated, but on balance I'm not sure it pulls its weight.
+
+Resolved by retiring the Warehouse from new games: removed `blueprint_warehouse`'s `research` entry so the Research bench never offers it again, while leaving the `build` recipe and card_def intact so existing games keep theirs.
+
+---
+
 *Archived: 2026-06-24 (change pnnnxovtqqrp)*
 
 # [X] Should we add Google Analytics tracking?

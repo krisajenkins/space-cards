@@ -28,10 +28,6 @@ blueprints neatly stored.
 
 Ah yes, perhaps I should have the last info popup disappear the way the others do. That would trigger it. 🤔
 
-# [ ] Feedback: And what is the purpose of the warehouse when you can drop cards anywhere?
-
-The warehouse is possibly redundant. The idea was to give you a place to hide factories that are fully automated, but on balance I'm not sure it pulls its weight.
-
 # [ ] People don't like having to log in.
 
 Perhaps we should just use anonymous login via Spacetime OIDC, and give people
