@@ -4,17 +4,13 @@ import {
   holeCards,
   maybeAutostart,
   spawnCard,
-  spawnOutput,
   tryBeginRun,
   wakeBayDrones,
 } from "../engine/engine";
 import { relayout, clusterOf } from "../engine/layout";
-import {
-  OPENING_BOARD_NAME,
-  OPENING_STATIONS,
-  OPENING_OUTPUTS,
-} from "../content/opening";
+import { dealOpening } from "./deal";
 import { requireCaller, requireMember } from "./auth";
+import { ANON_EMAIL_PREFIX, LINK_CLAIM_TTL_MICROS } from "./constants";
 import type { Ctx, Card } from "./types";
 
 // Admin-only: drop a card of `defId` onto a board. An operational tool — gift a
@@ -62,40 +58,7 @@ export const relayoutBoard = spacetimedb.reducer(
 // it at the Workbench, and climb the tree to a Rocket. See docs/ESCAPE_THE_MOON.md.
 export const newGame = spacetimedb.reducer((ctx) => {
   const { user: me } = requireCaller(ctx);
-  const b = ctx.db.board.insert({
-    id: 0n,
-    name: OPENING_BOARD_NAME,
-    owner: me.id,
-    createdAt: ctx.timestamp,
-  });
-  ctx.db.boardMember.insert({
-    id: 0n,
-    boardId: b.id,
-    userId: me.id,
-    role: { tag: "player" },
-  });
-
-  // Deal the opening tableau (content/opening.ts). Spread the stations along the
-  // top at rough coordinates — relayout tidies them (size-aware, overlap-free,
-  // accounting for full footprints) below. Track the spawned cards by defId so
-  // the starting outputs can land in the right station's tray.
-  const dealt = new Map<string, Card>();
-  OPENING_STATIONS.forEach((defId, i) => {
-    dealt.set(
-      defId,
-      spawnCard(ctx, b.id, defId, 40 + (i % 2) * 260, (i / 2) * 40),
-    );
-  });
-
-  // Starting outputs: seed each into its host station's tray (produced-but-
-  // uncollected, exactly as a normal cycle leaves it — each is its own card row,
-  // there is no quantity).
-  for (const { def, into } of OPENING_OUTPUTS) {
-    const host = dealt.get(into);
-    if (host) spawnOutput(ctx, b.id, def, host.id);
-  }
-
-  relayout(ctx, b.id);
+  dealOpening(ctx, me.id);
 });
 
 // Shared gate for slotting card `c` into verb `verb`'s hole `slotIndex`: the
@@ -452,11 +415,110 @@ export const deleteMyAccount = spacetimedb.reducer((ctx) => {
   for (const m of [...ctx.db.boardMember.userId.filter(me.id)])
     ctx.db.boardMember.id.delete(m.id);
 
+  // Drop any pending account-link offer this user minted (anon "Save" in flight).
+  for (const lc of [...ctx.db.linkClaim.by_user.filter(me.id)])
+    ctx.db.linkClaim.code.delete(lc.code);
+
   // Unlink every sign-in principal, then erase the profile itself.
   for (const id of [...ctx.db.identity.by_user.filter(me.id)])
     ctx.db.identity.id.delete(id.id);
   ctx.db.user.id.delete(me.id);
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// Account linking — anonymous → Google ("Save game"). Two reducers, called by
+// two DIFFERENT connections, bridged by a server-minted single-use claim code:
+//
+//   1. The ANON connection calls `beginLink` → mints a code (read back only by
+//      that principal via the my_link_claim view).
+//   2. The player signs in with Google (a separate principal/connection); that
+//      GOOGLE connection calls `claimLink({ code })` → re-points the anon user's
+//      boards/identities onto the Google user and deletes the anon user.
+//
+// Why a code and not an email/JWT arg: a reducer can't trust anything passed in
+// an argument (§11) — only ctx.sender is authenticated. An arg-passed email would
+// let anyone claim anyone's game. The code is server-minted, principal-scoped,
+// single-use and TTL'd, so possession of it is proof the SAME human drove both
+// connections. See docs/DATA_MODEL.md §11.
+// ──────────────────────────────────────────────────────────────────────────
+
+// Anon connection: mint a fresh claim code offering THIS user up for linking.
+// Idempotent-ish: clears any prior code for this user first (only the newest is
+// valid), so re-clicking "Save" doesn't leave stale codes around.
+export const beginLink = spacetimedb.reducer((ctx) => {
+  const { user: me } = requireCaller(ctx);
+  for (const old of [...ctx.db.linkClaim.by_user.filter(me.id)])
+    ctx.db.linkClaim.code.delete(old.code);
+  const bytes = ctx.random.fill(new Uint8Array(16));
+  const code = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  ctx.db.linkClaim.insert({ code, userId: me.id, createdAt: ctx.timestamp });
+});
+
+// Google connection: redeem a claim code minted by an anon connection, merging
+// that anon user's data onto the calling (Google) user. Single-use: the claim is
+// deleted the moment it's looked up, before any work, so a replay finds nothing.
+export const claimLink = spacetimedb.reducer(
+  { code: t.string() },
+  (ctx, { code }) => {
+    const { user: me } = requireCaller(ctx);
+
+    const claim = ctx.db.linkClaim.code.find(code);
+    if (claim === null) throw new SenderError("invalid or expired link code");
+    // Single-use: consume it immediately, before validation/merge, so a replayed
+    // or concurrent call can't redeem the same code twice.
+    ctx.db.linkClaim.code.delete(claim.code);
+
+    if (
+      ctx.timestamp.microsSinceUnixEpoch -
+        claim.createdAt.microsSinceUnixEpoch >
+      LINK_CLAIM_TTL_MICROS
+    )
+      throw new SenderError("link code has expired");
+
+    // Already linked (e.g. a reload re-fired the redeem) — nothing to do.
+    if (claim.userId === me.id) return;
+
+    const anon = ctx.db.user.id.find(claim.userId);
+    if (anon === null) return; // anon user already gone — nothing to merge
+
+    // Defence-in-depth: only an ANON user may be claimed, and only ONTO a real
+    // (non-anon) user. Never let a code merge two real accounts, or fold a real
+    // account into an anon shell.
+    if (!anon.primaryEmail.startsWith(ANON_EMAIL_PREFIX))
+      throw new SenderError("that account cannot be claimed");
+    if (me.primaryEmail.startsWith(ANON_EMAIL_PREFIX))
+      throw new SenderError("sign in with Google to save your game");
+
+    // Re-point everything the anon user owned onto the Google user. Cards,
+    // history, achievements and situations all key on boardId, so they ride along
+    // with the board — only the user-keyed rows need rewriting here.
+    for (const id of [...ctx.db.identity.by_user.filter(anon.id)])
+      ctx.db.identity.id.update({ ...id, userId: me.id });
+    for (const b of [...ctx.db.board.iter()])
+      if (b.owner === anon.id) ctx.db.board.id.update({ ...b, owner: me.id });
+    for (const m of [...ctx.db.boardMember.userId.filter(anon.id)])
+      ctx.db.boardMember.id.update({ ...m, userId: me.id });
+
+    // Tidy any leftover claims for the anon user, then erase the empty shell.
+    for (const lc of [...ctx.db.linkClaim.by_user.filter(anon.id)])
+      ctx.db.linkClaim.code.delete(lc.code);
+    ctx.db.user.id.delete(anon.id);
+  },
+);
+
+// Discard one of the caller's own boards — used by the post-claim conflict
+// prompt to drop the game the player didn't keep. Owner-only; tears the board
+// fully down (cards, history, achievements, situations, timers, memberships).
+export const discardBoard = spacetimedb.reducer(
+  { boardId: t.u64() },
+  (ctx, { boardId }) => {
+    const { user: me } = requireCaller(ctx);
+    const b = ctx.db.board.id.find(boardId);
+    if (b === null) return; // already gone
+    if (b.owner !== me.id) throw new SenderError("not your board");
+    deleteBoardCascade(ctx, boardId);
+  },
+);
 
 // Dismiss an achievement toaster: flip its `seen` flag so it stops popping. The
 // award itself is one-shot (awardAchievements never re-inserts), so this just

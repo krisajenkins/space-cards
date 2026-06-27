@@ -36,6 +36,11 @@ const TOKEN_KEY = `${HOST}/${DB_NAME}/google_id_token`;
 // Cleared on sign-out so we drop back to a fresh anonymous identity rather than
 // reconnecting as the just-signed-out user.
 const STDB_TOKEN_KEY = `${HOST}/${DB_NAME}/auth_token`;
+// A pending account-link claim code, stashed across the Google-sign-in reload.
+// The anonymous session mints it (beginLink), we remember it here, then trigger
+// Google sign-in (which reloads the page). After the reload the now-Google
+// connection reads it back and redeems it (claimLink). See LinkClaim.svelte.
+const LINK_CLAIM_KEY = `${HOST}/${DB_NAME}/link_claim_code`;
 
 // `undefined` = not signed in with Google (connect anonymously / fall back).
 export const googleToken: Writable<string | undefined> =
@@ -190,6 +195,24 @@ async function promptGoogle(): Promise<void> {
   gisId().prompt();
 }
 
+// Trigger the Google One-Tap / sign-in prompt directly (no rendered button) —
+// used by the anonymous "Save game" flow once a link-claim code is in hand.
+export async function promptGoogleSignIn(): Promise<void> {
+  if (!(await ensureInitialised())) return;
+  gisId().prompt();
+}
+
+// ── Pending link-claim code (survives the Google sign-in reload) ────────────
+export function rememberLinkClaim(code: string): void {
+  localStorage.setItem(LINK_CLAIM_KEY, code);
+}
+export function pendingLinkClaim(): string | null {
+  return localStorage.getItem(LINK_CLAIM_KEY);
+}
+export function clearLinkClaim(): void {
+  localStorage.removeItem(LINK_CLAIM_KEY);
+}
+
 // True if any persisted auth token exists. Lets the connection layer tell a
 // stale-token rejection (clear + reload) apart from a server-down error (where
 // there'd be nothing to clear, so reloading would just spin).
@@ -207,12 +230,14 @@ export function hasStoredToken(): boolean {
 export function clearStoredTokens(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(STDB_TOKEN_KEY);
+  localStorage.removeItem(LINK_CLAIM_KEY);
   googleToken.set(undefined);
 }
 
 export function signOutGoogle(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(STDB_TOKEN_KEY);
+  localStorage.removeItem(LINK_CLAIM_KEY);
   googleToken.set(undefined);
   // Reached straight from the UI, possibly before GIS ever loaded, so go
   // through the optional chain rather than gisId()'s load-or-throw assertion.

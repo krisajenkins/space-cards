@@ -4,9 +4,12 @@ import {
   GOOGLE_CLIENT_ID,
   ADMIN_IDENTITY,
   ADMIN_EMAIL,
+  ANON_EMAIL_PREFIX,
+  ANON_DISPLAY_NAME,
 } from "./constants";
 import { normaliseEmail, requireCaller } from "./auth";
 import spacetimedb from "./schema";
+import { dealOpening } from "./deal";
 import { seedCatalogue } from "../content/catalogue";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -75,8 +78,38 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     return;
   }
 
-  // New principal. Only auto-link providers we trust to assert a verified email.
-  if (!isGoogle || email === null) return;
+  // New principal, but NOT a trusted Google login → auto-create an anonymous
+  // account so the visitor can play immediately, and deal them their first
+  // board. The synthetic `anon:<principal>` email keeps the unique constraint
+  // happy and is blanked out of me_view; they upgrade to Google later via the
+  // claim-code "Save" flow. We DON'T deal a board on the Google path below — a
+  // Google user reaches `newGame` (or claims an anon game) explicitly; auto-
+  // dealing there would race the claimed board on createdAt.
+  if (!isGoogle || email === null) {
+    // EXCEPT the admin's CLI principal: it is the one SpacetimeAuth identity that
+    // links explicitly (and idempotently) via `register_admin`. Auto-creating an
+    // anonymous account for it here would leave register_admin finding an existing
+    // identity pointed at the wrong (anon) user and throwing — never bootstrapping
+    // the admin. Leave it unlinked so register_admin owns its linking. See §11.
+    if (ctx.sender.toHexString() === ADMIN_IDENTITY) return;
+
+    const anon = ctx.db.user.insert({
+      id: 0n,
+      primaryEmail: `${ANON_EMAIL_PREFIX}${ctx.sender.toHexString()}`,
+      displayName: ANON_DISPLAY_NAME,
+      pictureUrl: undefined,
+      isAdmin: false,
+      createdAt: ctx.timestamp,
+    });
+    ctx.db.identity.insert({
+      id: ctx.sender,
+      userId: anon.id,
+      provider: { tag: "Anonymous" },
+      linkedAt: ctx.timestamp,
+    });
+    dealOpening(ctx, anon.id);
+    return;
+  }
 
   // Find-or-create the user by email, then attach this principal. This is what
   // merges providers: an existing user with that email (CLI bootstrap, prior

@@ -4,12 +4,14 @@ import spacetimedb, {
   boardMember,
   card,
   cardHistory,
+  linkClaim,
   situation,
   user,
 } from "./schema";
 import { MeRow, MyAchievementRow } from "./types";
 import type { Board, BoardMember, User, Card, Situation } from "./types";
 import { lookupCaller } from "./auth";
+import { ANON_EMAIL_PREFIX } from "./constants";
 import { GraphNode, GraphEdge, buildProgressionGraph } from "./graph";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -31,15 +33,36 @@ export const meView = spacetimedb.view(
     const caller = lookupCaller(ctx);
     if (caller === null) return [];
     const { user: u } = caller;
+    // An anonymous user carries a synthetic `anon:<principal>` email — never a
+    // real address. Blank it out (the client shows the "Save game" CTA instead)
+    // and flag the state so the UI can offer the upgrade-to-Google flow.
+    const isAnon = u.primaryEmail.startsWith(ANON_EMAIL_PREFIX);
     return [
       {
         userId: u.id,
-        primaryEmail: u.primaryEmail,
+        primaryEmail: isAnon ? "" : u.primaryEmail,
         displayName: u.displayName,
         pictureUrl: u.pictureUrl,
         isAdmin: u.isAdmin,
+        isAnonymous: isAnon,
       },
     ];
+  },
+);
+
+// The pending link-claim code for the CALLING anonymous principal, if any. This
+// is the security boundary of the account-link flow: ONLY the anon principal
+// that minted the code (via beginLink) can read it here, scoped to its own
+// user.id. The client watches this view; when a code arrives it stashes it,
+// kicks off Google sign-in, and the (separate) Google connection redeems it via
+// claimLink. Almost always 0 or 1 rows.
+export const myLinkClaim = spacetimedb.view(
+  { name: "my_link_claim", public: true },
+  t.array(linkClaim.rowType),
+  (ctx) => {
+    const caller = lookupCaller(ctx);
+    if (caller === null) return [];
+    return [...ctx.db.linkClaim.by_user.filter(caller.user.id)];
   },
 );
 

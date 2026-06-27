@@ -40,6 +40,10 @@ export const Location = t.enum("Location", {
 export const IdentityProvider = t.enum("IdentityProvider", {
   Google: t.unit(),
   Spacetime: t.unit(),
+  // An untrusted, throwaway principal (a SpacetimeAuth/anonymous session token).
+  // Auto-created on connect so a visitor can play instantly; upgraded to Google
+  // when they "Save" via the claim-code link flow (see claimLink in reducers.ts).
+  Anonymous: t.unit(),
 });
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -93,6 +97,10 @@ export const MeRow = t.object("MeRow", {
   displayName: t.string(),
   pictureUrl: t.option(t.string()),
   isAdmin: t.bool(),
+  // True while this is a throwaway anonymous account (no real email yet). The
+  // client shows a highlighted "Save game" button in this state; the synthetic
+  // `anon:<principal>` email is blanked out of `primaryEmail` above.
+  isAnonymous: t.bool(),
 });
 
 // An earned achievement joined to its catalogue text. achievement_def is private

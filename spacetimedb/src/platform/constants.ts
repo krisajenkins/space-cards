@@ -20,3 +20,15 @@ export const GOOGLE_CLIENT_ID =
 export const ADMIN_IDENTITY =
   "c2005efe02e92547ddd4bd106e84a281ead78a30fa26f42e619d70b20917c3dd";
 export const ADMIN_EMAIL = "krisajenkins@gmail.com";
+
+// ──────────────────────────────────────────────────────────────────────────
+// Anonymous play. A first-time visitor is auto-linked on connect as a throwaway
+// `Anonymous` identity so they can start playing immediately, with no sign-in.
+// Their `user.primaryEmail` is a synthetic `anon:<principal-hex>` (kept off the
+// wire by me_view) until they "Save" by linking a Google account.
+// ──────────────────────────────────────────────────────────────────────────
+export const ANON_EMAIL_PREFIX = "anon:";
+export const ANON_DISPLAY_NAME = "Castaway";
+// How long a link-claim code stays redeemable. 10 minutes — long enough to round-
+// trip a Google sign-in (which reloads the page), short enough to bound exposure.
+export const LINK_CLAIM_TTL_MICROS = 600_000_000n;

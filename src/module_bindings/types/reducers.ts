@@ -6,9 +6,12 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import BeginLinkReducer from "../begin_link_reducer";
+import ClaimLinkReducer from "../claim_link_reducer";
 import CollectAndSlotReducer from "../collect_and_slot_reducer";
 import DeleteMyAccountReducer from "../delete_my_account_reducer";
 import DevGrantReducer from "../dev_grant_reducer";
+import DiscardBoardReducer from "../discard_board_reducer";
 import HouseCardReducer from "../house_card_reducer";
 import MarkAchievementSeenReducer from "../mark_achievement_seen_reducer";
 import MoveCardReducer from "../move_card_reducer";
@@ -19,9 +22,12 @@ import ReseedCatalogueReducer from "../reseed_catalogue_reducer";
 import SlotCardReducer from "../slot_card_reducer";
 import UnhouseCardReducer from "../unhouse_card_reducer";
 
+export type BeginLinkParams = __Infer<typeof BeginLinkReducer>;
+export type ClaimLinkParams = __Infer<typeof ClaimLinkReducer>;
 export type CollectAndSlotParams = __Infer<typeof CollectAndSlotReducer>;
 export type DeleteMyAccountParams = __Infer<typeof DeleteMyAccountReducer>;
 export type DevGrantParams = __Infer<typeof DevGrantReducer>;
+export type DiscardBoardParams = __Infer<typeof DiscardBoardReducer>;
 export type HouseCardParams = __Infer<typeof HouseCardReducer>;
 export type MarkAchievementSeenParams = __Infer<
   typeof MarkAchievementSeenReducer

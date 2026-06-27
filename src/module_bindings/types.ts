@@ -110,8 +110,16 @@ export type Identity = __Infer<typeof Identity>;
 export const IdentityProvider = __t.enum("IdentityProvider", {
   Google: __t.unit(),
   Spacetime: __t.unit(),
+  Anonymous: __t.unit(),
 });
 export type IdentityProvider = __Infer<typeof IdentityProvider>;
+
+export const LinkClaim = __t.object("LinkClaim", {
+  code: __t.string(),
+  userId: __t.u64(),
+  createdAt: __t.timestamp(),
+});
+export type LinkClaim = __Infer<typeof LinkClaim>;
 
 // The tagged union or sum type for the algebraic type `Location`.
 export const Location = __t.enum("Location", {
@@ -136,6 +144,7 @@ export const MeRow = __t.object("MeRow", {
   displayName: __t.string(),
   pictureUrl: __t.option(__t.string()),
   isAdmin: __t.bool(),
+  isAnonymous: __t.bool(),
 });
 export type MeRow = __Infer<typeof MeRow>;
 
@@ -174,6 +183,9 @@ export type MyCardHistory = __Infer<typeof MyCardHistory>;
 
 export const MyCards = __t.object("MyCards", {});
 export type MyCards = __Infer<typeof MyCards>;
+
+export const MyLinkClaim = __t.object("MyLinkClaim", {});
+export type MyLinkClaim = __Infer<typeof MyLinkClaim>;
 
 export const MyPlayers = __t.object("MyPlayers", {});
 export type MyPlayers = __Infer<typeof MyPlayers>;

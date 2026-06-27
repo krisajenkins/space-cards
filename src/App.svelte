@@ -2,6 +2,7 @@
 import { useSpacetimeDB, useTable, useReducer } from "spacetimedb/svelte";
 import { tables, reducers } from "./module_bindings";
 import SignIn from "./lib/SignIn.svelte";
+import LinkClaim from "./lib/LinkClaim.svelte";
 import Board from "./lib/Board.svelte";
 import Achievements from "./lib/Achievements.svelte";
 import About from "./lib/About.svelte";
@@ -24,7 +25,11 @@ const [boards, boardsReady] = useTable(tables.myBoards);
 
 const newGame = useReducer(reducers.newGame);
 
-const signedIn = $derived($meReady && $me.length > 0);
+// Everyone gets an identity now: a first-time visitor is auto-linked as an
+// anonymous account on connect (server onConnect) and dealt a board. So "ready"
+// just means the socket is up and our me_view row has arrived — there is no
+// signed-out title screen anymore, only a brief connecting state.
+const ready = $derived($conn.isActive && $meReady && $me.length > 0);
 // Admin-only: the progression-tree visualiser. The `me_view` carries the
 // caller's isAdmin flag (same signal SignIn uses for its badge); we mirror it
 // here to gate the topbar toggle. The progression_* views are public, but only
@@ -58,8 +63,10 @@ function startNewGame() {
 }
 </script>
 
-{#if !signedIn}
-  <!-- ── Signed-out: the title screen ─────────────────────────────────── -->
+{#if !ready}
+  <!-- ── Connecting: the title screen while we open the socket and the server
+       auto-creates / restores this player's account. No sign-in CTA — play is
+       anonymous by default; saving to Google is offered later, in-game. ──── -->
   <main class="hero">
     <div class="hero-glow"></div>
     <div class="hero-inner">
@@ -67,11 +74,7 @@ function startNewGame() {
       <h1>Escape the Moon</h1>
       <p class="tagline">You've crash-landed. Your only hopes lie through knowledge, effort, and whatever you can scrounge up from the moon's surface.</p>
       <div class="hero-cta">
-        {#if $conn.isActive}
-          <SignIn />
-        {:else}
-          <span class="connecting">Opening a channel to the table…</span>
-        {/if}
+        <span class="connecting">Opening a channel to the table…</span>
       </div>
     </div>
     <footer class="hero-foot">
@@ -147,6 +150,12 @@ function startNewGame() {
         <SignIn />
       </div>
     </header>
+
+    <!-- The account-link redeemer: after a Google sign-in reload, if a pending
+         claim code is stashed it redeems it (claimLink) and, if that surfaces
+         two saved games, runs the keep-newer conflict prompt. Renders its own
+         full-screen overlay / modal; otherwise nothing. -->
+    <LinkClaim />
 
     {#if isAdmin && treeOpen}
       <ProgressionTree onClose={() => (treeOpen = false)} />

@@ -34,9 +34,12 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import BeginLinkReducer from "./begin_link_reducer";
+import ClaimLinkReducer from "./claim_link_reducer";
 import CollectAndSlotReducer from "./collect_and_slot_reducer";
 import DeleteMyAccountReducer from "./delete_my_account_reducer";
 import DevGrantReducer from "./dev_grant_reducer";
+import DiscardBoardReducer from "./discard_board_reducer";
 import HouseCardReducer from "./house_card_reducer";
 import MarkAchievementSeenReducer from "./mark_achievement_seen_reducer";
 import MoveCardReducer from "./move_card_reducer";
@@ -57,6 +60,7 @@ import MyBoardMembersRow from "./my_board_members_table";
 import MyBoardsRow from "./my_boards_table";
 import MyCardHistoryRow from "./my_card_history_table";
 import MyCardsRow from "./my_cards_table";
+import MyLinkClaimRow from "./my_link_claim_table";
 import MyPlayersRow from "./my_players_table";
 import MySituationsRow from "./my_situations_table";
 import ProgressionEdgesRow from "./progression_edges_table";
@@ -159,6 +163,14 @@ const tablesSchema = __schema({
     },
     MyCardsRow,
   ),
+  myLinkClaim: __table(
+    {
+      name: "my_link_claim",
+      indexes: [],
+      constraints: [],
+    },
+    MyLinkClaimRow,
+  ),
   myPlayers: __table(
     {
       name: "my_players",
@@ -195,9 +207,12 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("begin_link", BeginLinkReducer),
+  __reducerSchema("claim_link", ClaimLinkReducer),
   __reducerSchema("collect_and_slot", CollectAndSlotReducer),
   __reducerSchema("delete_my_account", DeleteMyAccountReducer),
   __reducerSchema("dev_grant", DevGrantReducer),
+  __reducerSchema("discard_board", DiscardBoardReducer),
   __reducerSchema("house_card", HouseCardReducer),
   __reducerSchema("mark_achievement_seen", MarkAchievementSeenReducer),
   __reducerSchema("move_card", MoveCardReducer),

@@ -24,27 +24,6 @@ blueprints neatly stored.
 
 "Always be ready to research - keep an Effort card in Research at all times."
 
-# [ ] People don't like having to log in.
-
-Perhaps we should just use anonymous login via Spacetime OIDC, and give people
-the option to carry their game across devices by logging in with Google.
-
-> ⚠ Blocked (2026-06-27): The "play anonymously" half is mechanical, but it
-> reverses the trust rule documented in `docs/DATA_MODEL.md` §11 ("SpacetimeAuth
-> is **not** auto-linked"), and the "carry your game across devices by logging in
-> with Google" half is an account-**merge** problem the doc defers to "a future
-> link-account button". Product decisions only you can make: (1) **Merge policy** —
-> when an anonymous player with a game in progress signs in with Google and that
-> email already has a cloud game from another device, what reconciles them (attach
-> the Google identity to the anonymous user / prefer the cloud game / keep both /
-> prompt)? And how does the reloaded Google principal learn *which* prior anonymous
-> user to claim, given the token swaps and the page reloads between sessions? (2)
-> **Retention/GDPR** — every visitor now creates a durable `user`; do we need
-> expiry/cleanup + privacy wording for abandoned anonymous accounts? (3)
-> **First-run UX** — replace the signed-out hero with dropping straight into an
-> auto-dealt game, demoting Google to an optional "save/sync" affordance — and
-> where does that affordance live?
-
 # [ ] I should really understand:
 
 spacetimedb/src/content/catalogue.ts

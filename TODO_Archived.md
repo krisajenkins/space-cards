@@ -9,6 +9,34 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change ovmuuqry)*
+
+# [X] People don't like having to log in.
+
+Perhaps we should just use anonymous login via Spacetime OIDC, and give people
+the option to carry their game across devices by logging in with Google.
+
+Done: every visitor now connects as an anonymous "Castaway" with an auto-dealt
+board (no sign-in wall), and a highlighted Google "Save game" button mints a
+single-use, TTL'd, principal-scoped claim code that the post-reload Google
+connection redeems via `claim_link` to merge the anonymous boards onto the
+Google account — with a keep-newer conflict prompt (and board-selection
+override) when both a local and a cloud game exist. The synthetic `anon:<hex>`
+email key can never collide-merge with a real Google email, so the §11 trust
+rule is preserved.
+
+* Merge policy...I think we have to prompt the user. Steam does this when it hits a problem - it asks if you want to use the local save or the cloud save. We should do similar - do you want to take the game in progress or the game connected to your Google account. Normally we take whichever game was created later. I think in this case that's going to mean that for the google choice, we'd need to delete the in-progress game to allow the google game to be the newest, but you check and tell me.
+* GDPR - if they're anonymous, is that really data we have to worry about privacy on? There's nothing identifying...
+* Yes, first run UX as you describe. There should be a save button with a google icon, top right, where the avatar/logout button would be, with some colour highlighting to make it stand out from the other menu options.
+
+> Resolved: deleting the in-progress game is **not** needed for the default —
+> the app already renders the newest board, so merging both under one user
+> surfaces the newer one automatically. Deletion only happens when the player
+> explicitly picks an older cloud save over a newer local one (the
+> `discard_board` path behind the conflict prompt).
+
+---
+
 *Archived: 2026-06-27 (change lomlvzyoxklz)*
 
 # [X] Feedback: A minor UI issue in the end: I desperately clicked on the escape card, but to finish the game I had to click on the info popup.

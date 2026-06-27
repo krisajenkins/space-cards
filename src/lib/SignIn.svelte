@@ -1,13 +1,43 @@
 <script lang="ts">
 import { useTable, useReducer } from 'spacetimedb/svelte';
 import { tables, reducers } from '../module_bindings';
-import { GOOGLE_CLIENT_ID, renderGoogleButton, signOutGoogle } from './google';
+import {
+  GOOGLE_CLIENT_ID,
+  renderGoogleButton,
+  signOutGoogle,
+  rememberLinkClaim,
+  promptGoogleSignIn,
+} from './google';
 import Modal from './Modal.svelte';
 
 // `me_view` returns one row once this principal is linked to a user, else [].
 const [me, meReady] = useTable(tables.meView);
+// The pending link-claim code for the anonymous "Save game" flow (empty until
+// beginLink mints one, then this principal — and only it — can read it back).
+const [linkClaim] = useTable(tables.myLinkClaim);
 
 const deleteMyAccount = useReducer(reducers.deleteMyAccount);
+const beginLink = useReducer(reducers.beginLink);
+
+// "Save game": ask the server to mint a claim code, then (once it arrives) stash
+// it and trigger Google sign-in — which reloads the page, after which LinkClaim
+// redeems the code as the now-Google connection. `prompted` keeps the reactive
+// $effect from re-firing the prompt while we wait on the reload.
+let saving = $state(false);
+let prompted = $state(false);
+function startSave() {
+  if (saving) return;
+  saving = true;
+  prompted = false;
+  beginLink();
+}
+$effect(() => {
+  if (saving && !prompted && $linkClaim.length > 0) {
+    prompted = true;
+    rememberLinkClaim($linkClaim[0].code);
+    void promptGoogleSignIn();
+  }
+});
 
 let buttonEl = $state<HTMLDivElement>();
 // The avatar opens a profile modal (also the GDPR "right of access" surface — it
@@ -49,6 +79,23 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
 <div class="signin">
   {#if !$meReady}
     <span class="muted">Connecting…</span>
+  {:else if profile && profile.isAnonymous}
+    <!-- Anonymous play: a highlighted CTA to link a Google account so the game
+         is saved and portable across devices. -->
+    <button
+      class="pill pill--go save-btn"
+      onclick={startSave}
+      disabled={saving}
+      title="Saving links your game to Google so you can play on any device"
+    >
+      <svg class="g-glyph" viewBox="0 0 18 18" aria-hidden="true">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.94H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.06l3.01-2.34z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.94l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
+      </svg>
+      {saving ? 'Saving…' : 'Save game'}
+    </button>
   {:else if profile}
     {#if profile.isAdmin}<span class="badge">admin</span>{/if}
     <button
@@ -147,6 +194,26 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.g-glyph {
+  width: 1rem;
+  height: 1rem;
+  /* Sit the multicolour Google mark on a white chip so it reads on the brass
+     pill without the coloured strokes muddying into the background. */
+  background: #fff;
+  border-radius: 2px;
+  padding: 1px;
+  box-sizing: content-box;
 }
 .avatar-btn {
   appearance: none;

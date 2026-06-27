@@ -10,11 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  userId: __t.u64().name("user_id"),
-  primaryEmail: __t.string().name("primary_email"),
-  displayName: __t.string().name("display_name"),
-  pictureUrl: __t.option(__t.string()).name("picture_url"),
-  isAdmin: __t.bool().name("is_admin"),
-  isAnonymous: __t.bool().name("is_anonymous"),
-});
+export default {
+  boardId: __t.u64(),
+};

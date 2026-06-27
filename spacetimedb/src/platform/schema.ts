@@ -98,6 +98,27 @@ export const identity = table(
   },
 );
 
+// A pending account-link offer. PRIVATE — read ONLY by its owner through the
+// `my_link_claim` view. When an anonymous player clicks "Save", `beginLink`
+// mints a high-entropy single-use code here, scoped to THIS anon user. The
+// player then signs in with Google; that (separate) Google connection redeems
+// the code via `claimLink`, which re-points the anon user's boards onto the
+// Google user. The code is the security boundary: it's server-minted, only the
+// anon principal can read it (this view), it's single-use (deleted on redeem),
+// and it expires (LINK_CLAIM_TTL_MICROS) — so a leaked/guessed email can't be
+// used to hijack a game (the §11 takeover vector an arg-passed token would open).
+export const linkClaim = table(
+  {
+    name: "link_claim",
+    indexes: [{ accessor: "by_user", algorithm: "btree", columns: ["userId"] }],
+  },
+  {
+    code: t.string().primaryKey(), // high-entropy hex, server-minted
+    userId: t.u64(), // the ANON user offered up for claiming
+    createdAt: t.timestamp(),
+  },
+);
+
 export const board = table(
   { name: "board" },
   {
@@ -210,6 +231,7 @@ const spacetimedb = schema({
   achievementDef,
   user,
   identity,
+  linkClaim,
   board,
   boardMember,
   card,
