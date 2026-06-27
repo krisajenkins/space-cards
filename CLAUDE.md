@@ -116,10 +116,6 @@ Default DB name is `spacecards`, default server is `maincloud` (see
 `spacetime.json` / `.env.local`). The client reads `VITE_SPACETIMEDB_HOST` and
 `VITE_SPACETIMEDB_DB_NAME`.
 
-Note: the `pnpm generate` script in `package.json` invokes `cargo run -p
-gen-bindings`, but there is no Rust crate in this repo — use
-`pnpm spacetime:generate` (the `spacetime` CLI) instead.
-
 Local iteration loop: `spacetime start` (server) → `pnpm spacetime:publish:local`
 → `pnpm spacetime:generate` → `pnpm dev`. `spacetime dev` automates rebuild +
 publish + bindings if you prefer it.
