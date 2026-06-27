@@ -44,22 +44,31 @@ flake` activates the dev shell with `nodejs`, `pnpm`, `spacetimedb`, etc.).
   So `platform/{schema,types}` is the foundation everything sits on, even though it
   lives in the "surface" folder; the groups below organise concerns, they don't
   layer dependencies top-to-bottom.
-  - **`content/`** — "what the game IS" (authoring + data). `catalogue.ts`
-    (`seedCatalogue` — the `card_def` / `slot_def` / `achievement_def` authoring:
-    **this is where the cards are defined**), `recipes.ts` (the recipe DATA tables
-    — `BUILDS`, `SUBSYSTEMS`, `RESEARCH_TREE`, `WRECK_CONTENTS`: the Wreck's
-    contents, the build costs, the research tree, the subsystem recipes; plus
-    `VERB_OUTPUTS` / `VERB_BECOMES`, the verb produces/becomes relations restated
-    as data for the admin graph to read), `opening.ts` (the turn-zero deal —
-    board name, tier-0 stations, starting Effort — that `newGame` interprets),
-    `achievements.ts` (both halves of each milestone — the display text
-    `ACHIEVEMENT_DEFS` **and** the earning conditions `ACHIEVEMENTS` + the
-    `awardAchievements` funnel), `durations.ts` (the per-verb run lengths — the
-    timing-balance sibling of `recipes.ts`, read by `engine/resolvers.ts`).
+  - **`content/`** — "what the game IS" (authoring + data). `cards/` holds **ONE
+    file per card** (`cards/refinery.ts`, `cards/blueprint_solar.ts`, …): each
+    exports a single `CardModule` that owns *everything* about that card — its
+    `card_def` fields, its holes (`slots`, built with the `cards/_types.ts`
+    helpers), its recipe/research data (a blueprint's `build` + `research`, a
+    subsystem's `subsystem`, the Wreck's `wreckManifest`, a verb's `produces` /
+    `becomes`), its runtime `resolver`, its `opening` deal, and the `achievement`
+    its first appearance earns. **This is where the cards are defined.**
+    `cards/index.ts` collects them into `CARDS` (and projects the `RESOLVERS`
+    map). The other content modules are now **projections over `CARDS`**, not
+    hand-written tables: `catalogue.ts` (`seedCatalogue` writes
+    `card_def`/`slot_def`/`achievement_def` from `CARDS`), `recipes.ts`
+    (`BUILDS`/`SUBSYSTEMS`/`RESEARCH_TREE`/`WRECK_CONTENTS` + the
+    `verbOutputs`/`verbBecomes` relations, all **lazy memoised getters** derived
+    from `CARDS` — lazy on purpose to keep the cards↔recipes import cycle benign),
+    `achievements.ts` (`awardAchievements` runs each card's earning predicate),
+    `opening.ts` (the turn-zero deal derived from each card's `opening`),
+    `durations.ts` (the per-verb run lengths — a shared timing-balance leaf each
+    card imports its constant from).
   - **`engine/`** — "how it RUNS" (mechanism). `engine.ts` (the generic verb
-    engine — assembly, runs, output caps, spawning, the `tally`), `resolvers.ts`
-    (the `RESOLVERS` map: per-verb behaviour, the bay-drone feeder, and the
-    research/wreck/assembler logic that READS `content/recipes.ts`), `layout.ts`
+    engine — assembly, runs, output caps, spawning, the `tally`), `verb-api.ts`
+    (the **shared verb machinery** a card's `resolver` is written against — the
+    hole helpers, the `poweredOne` factory, the bay-drone feeder, and the
+    research/wreck/assembler cursors that READ `content/recipes.ts`; the per-verb
+    behaviour itself lives in each `content/cards/*` file), `layout.ts`
     (the authoritative tabletop layout — VPSC overlap removal via the `webcola`
     dep; see `docs/LAYOUT.md`).
   - **`platform/`** — the SpacetimeDB surface + shared infra. `schema.ts` (tables,
@@ -168,12 +177,15 @@ There is no test suite. Type-check the client with `svelte-check`.
   card UI section that changes a card's size, update `footprint()` or it will
   overlap.** See `docs/LAYOUT.md`.
 - **Verb behaviour is code, not data.** The generic engine (assembly, recycling,
-  output-cap stalls) is shared; per-verb resolution lives in the `RESOLVERS` map
-  keyed by `defId`. A resolver decides duration, what to consume, and whether to
-  re-fire (`again`) at runtime from what's in the holes — durations are not static
-  columns. To add a verb: author its `card_def` (+ `slot_def`s) in
-  `content/catalogue.ts`, then add a `RESOLVERS` entry in `engine/resolvers.ts`
-  (recipe data, if any, goes in `content/recipes.ts`).
+  output-cap stalls) is shared; per-verb resolution is each card's own `resolver`,
+  collected into the `RESOLVERS` map (keyed by `defId`) in `content/cards/index.ts`.
+  A resolver decides duration, what to consume, and whether to re-fire (`again`) at
+  runtime from what's in the holes — durations are not static columns. **To add a
+  card (verb or not): write one file in `content/cards/` and add it to the array in
+  `cards/index.ts`.** Put its `card_def` fields, `slots`, any recipe/research data,
+  its `resolver`, and its `achievement` in that one `CardModule`; the resolver is
+  built from the shared helpers in `engine/verb-api.ts`. The aggregate maps update
+  automatically (they're projections over `CARDS`).
 - **Calls run on per-situation one-shot timers** (`situation_timer`, a scheduled
   table → `completeSituation`), not a global tick. Zero running calls → zero
   scheduler work. A re-firing verb inserts a fresh timer each cycle.

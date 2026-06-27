@@ -6,7 +6,7 @@ import {
   MemberRole,
   type Effects,
 } from "./types";
-import { RESOLVERS } from "../engine/resolvers";
+import { RESOLVERS } from "../content/cards";
 import {
   holeCards,
   maybeAutostart,

@@ -4,13 +4,18 @@
 // modules under three folders — this file just re-exports them.
 //
 // content/   — "what the game IS" (authoring + data)
-//   catalogue     — card_def / slot_def / achievement_def authoring (seedCatalogue)
-//   recipes       — BUILDS / SUBSYSTEMS / RESEARCH_TREE / WRECK_CONTENTS data
-//   achievements  — milestone text + the conditions that earn each one
+//   cards/        — ONE file per card: its card_def, holes, recipe/research data,
+//                   resolver, and the achievement its first appearance earns.
+//                   cards/index.ts collects them into CARDS (+ the RESOLVERS map)
+//   catalogue     — seedCatalogue: writes card_def/slot_def/achievement_def from CARDS
+//   recipes       — BUILDS / SUBSYSTEMS / RESEARCH_TREE / WRECK_CONTENTS, derived from CARDS
+//   achievements  — awardAchievements: runs each card's earning predicate
+//   opening       — the turn-zero deal, derived from each card's `opening`
 //
 // engine/    — "how it RUNS" (mechanism)
 //   engine        — the generic verb engine (assembly, runs, output caps, spawning)
-//   resolvers     — per-verb behaviour (the RESOLVERS map + drone/research/wreck logic)
+//   verb-api      — the shared verb machinery card resolvers are written against
+//                   (hole helpers, the drone feeder, the research/wreck/assembler cursors)
 //   layout        — the authoritative tabletop layout (VPSC overlap removal)
 //
 // platform/  — the SpacetimeDB surface + shared infra

@@ -1,36 +1,34 @@
-import {
-  DRONE_TICK,
-  EFFORT,
-  SOLAR,
-  GATHER,
-  PRINT,
-  BUILD,
-  RESEARCH,
-  REFINE,
-  FABRICATE,
-  KILN,
-  ELECTRONICS,
-  MINE_ICE,
-  ELECTROLYSIS,
-  CHEM,
-  ASSEMBLE,
-  LAUNCH,
-} from "../content/durations";
+import { DRONE_TICK } from "../content/durations";
 import type { Ctx, Card, Effects, SlottedCard } from "../platform/types";
 import {
-  BUILDS,
-  SUBSYSTEMS,
-  RESEARCH_TREE,
-  WRECK_CONTENTS,
+  subsystems,
+  researchTree,
+  wreckContents,
   recipeSatisfied,
   type Recipe,
 } from "../content/recipes";
 
 // ──────────────────────────────────────────────────────────────────────────
-// Verb behaviour ("code per verb"): duration + resolution decided at runtime
-// from whatever is in the holes. `resolve` also receives the verb card itself,
-// so a hole-less verb (a drone) can still find its own id / board.
+// The verb API — the SHARED machinery every verb's behaviour is written against.
+// A card's own resolver (in its content/cards/<id>.ts file) is a thin object
+// built from these helpers; the generic, cross-card mechanism — the hole
+// helpers, the powered-machine shape, the whole drone feeder, and the research /
+// wreck / assembler cursors that read content/recipes.ts — lives here.
+//
+// This is the old engine/resolvers.ts with the per-verb RESOLVERS table removed:
+// those entries now live one-per-file under content/cards/, and the RESOLVERS map
+// is projected from them in content/cards/index.ts.
+//
+// We import the recipe getters from content/recipes.ts, which is a sink (it gets
+// the card array injected, not imported), so this is a plain one-way edge — no
+// import cycle. Still, only read a recipe getter INSIDE a function (at reducer
+// time): the cards register themselves at module load, so a top-level read here
+// could run before that and throw.
 // ──────────────────────────────────────────────────────────────────────────
+
+// Verb behaviour ("code per verb"): duration + resolution decided at runtime from
+// whatever is in the holes. `resolve` also receives the verb card itself, so a
+// hole-less verb (a drone) can still find its own id / board.
 export type Resolver = {
   duration: (holes: SlottedCard[]) => bigint;
   resolve: (ctx: Ctx, holes: SlottedCard[], verb: Card) => Effects;
@@ -41,20 +39,20 @@ export type Resolver = {
   ready?: (ctx: Ctx, holes: SlottedCard[], verb: Card) => boolean;
 };
 
-const NOOP: Effects = { consume: [], produce: [], again: false };
+export const NOOP: Effects = { consume: [], produce: [], again: false };
 
 // ──────────────────────────────────────────────────────────────────────────
 // Small hole helpers. A "hole" is a card slotted into a verb; we routinely ask
 // what category it is, count a category, or take N ids of one to consume.
 // ──────────────────────────────────────────────────────────────────────────
-function catOf(ctx: Ctx, card: Card): string {
+export function catOf(ctx: Ctx, card: Card): string {
   const d = ctx.db.cardDef.defId.find(card.defId);
   return d ? d.category : "";
 }
-function count(ctx: Ctx, holes: SlottedCard[], cat: string): number {
+export function count(ctx: Ctx, holes: SlottedCard[], cat: string): number {
   return holes.filter((h) => catOf(ctx, h) === cat).length;
 }
-function take(
+export function take(
   ctx: Ctx,
   holes: SlottedCard[],
   cat: string,
@@ -65,12 +63,12 @@ function take(
     .slice(0, n)
     .map((h) => h.id);
 }
-const hasPower = (holes: SlottedCard[]) =>
+export const hasPower = (holes: SlottedCard[]) =>
   holes.some((h) => h.defId === "power");
 
 // How many cards of `defId` sit in a verb's own output tray. Lets a producer
 // see what's piling up unconsumed and steer its next output accordingly.
-const trayCount = (ctx: Ctx, verb: Card, defId: string): number =>
+export const trayCount = (ctx: Ctx, verb: Card, defId: string): number =>
   [...ctx.db.card.boardId.filter(verb.boardId)].filter(
     (c) =>
       c.defId === defId &&
@@ -82,7 +80,7 @@ const trayCount = (ctx: Ctx, verb: Card, defId: string): number =>
 // drone sitting in its drone bay. Single-input stations (gatherers, the Printer)
 // read `inputs(...)[0]`; without this filter a lone drone in the bay would be
 // mistaken for the input and consumed.
-const inputs = (ctx: Ctx, holes: SlottedCard[]): SlottedCard[] =>
+export const inputs = (ctx: Ctx, holes: SlottedCard[]): SlottedCard[] =>
   holes.filter((h) => catOf(ctx, h) !== "drone");
 
 // The worker in a machine's bay — an Effort (inert) or a mechanical drone (verb),
@@ -91,15 +89,17 @@ const inputs = (ctx: Ctx, holes: SlottedCard[]): SlottedCard[] =>
 // lets the machine re-fire continuously; an Effort is CONSUMED (one cycle, then
 // the machine idles until you place fresh labour). `workerCost` returns the ids to
 // consume (the Effort, or nothing for a drone); `workerIsDrone` is the re-fire flag.
-const theWorker = (ctx: Ctx, holes: SlottedCard[]): SlottedCard | undefined =>
-  holes.find((h) => catOf(ctx, h) === "drone");
-function workerIsDrone(ctx: Ctx, holes: SlottedCard[]): boolean {
+export const theWorker = (
+  ctx: Ctx,
+  holes: SlottedCard[],
+): SlottedCard | undefined => holes.find((h) => catOf(ctx, h) === "drone");
+export function workerIsDrone(ctx: Ctx, holes: SlottedCard[]): boolean {
   const w = theWorker(ctx, holes);
   if (!w) return false;
   const d = ctx.db.cardDef.defId.find(w.defId);
   return !!d && d.isVerb;
 }
-const workerCost = (ctx: Ctx, holes: SlottedCard[]): bigint[] => {
+export const workerCost = (ctx: Ctx, holes: SlottedCard[]): bigint[] => {
   const w = theWorker(ctx, holes);
   return w && !workerIsDrone(ctx, holes) ? [w.id] : [];
 };
@@ -108,7 +108,11 @@ const workerCost = (ctx: Ctx, holes: SlottedCard[]): bigint[] => {
 // `output`. Re-fires while both are present; consuming the Power leaves the
 // required power hole empty, so it idles the moment power runs out (the Power
 // gate) and resumes when a Hauler — or the player — re-feeds it.
-function poweredOne(dur: bigint, inputCat: string, output: string): Resolver {
+export function poweredOne(
+  dur: bigint,
+  inputCat: string,
+  output: string,
+): Resolver {
   return {
     duration: () => dur,
     // The worker is required by verbReady; here we just need power + the input.
@@ -127,18 +131,18 @@ function poweredOne(dur: bigint, inputCat: string, output: string): Resolver {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// The recipe DATA (BUILDS / SUBSYSTEMS / RESEARCH_TREE / WRECK_CONTENTS) lives
-// in ../content/recipes.ts — "what the game is", apart from this behaviour code.
-// The engine below READS those tables. recipeSatisfied is generic over a `count`
-// helper, so we pass our local `count` (defined above) at each call site.
+// The recipe DATA (BUILDS / SUBSYSTEMS / RESEARCH_TREE / WRECK_CONTENTS) is
+// projected from the card array in ../content/recipes.ts. The code below READS
+// those tables. recipeSatisfied is generic over a `count` helper, so we pass our
+// local `count` (defined above) at each call site.
 // ──────────────────────────────────────────────────────────────────────────
 const subsystemSatisfied = (ctx: Ctx, holes: SlottedCard[], r: Recipe) =>
   recipeSatisfied(ctx, holes, r, count);
 
 // ──────────────────────────────────────────────────────────────────────────
 // Research bench logic. The RESEARCH_TREE data (which blueprint unlocks on which
-// prerequisites) lives in ../content/recipes.ts; the code that reads the board's
-// lifetime card history to pick the next earned blueprint lives here.
+// prerequisites) is projected in ../content/recipes.ts; the code that reads the
+// board's lifetime card history to pick the next earned blueprint lives here.
 // ──────────────────────────────────────────────────────────────────────────
 
 // Has this exact card ever been created on the board? (Discovered blueprints are
@@ -165,8 +169,8 @@ function histCategory(ctx: Ctx, boardId: bigint, category: string): bigint {
 // priority order that the board has qualified for but not yet discovered. Null
 // when there's nothing left to research (the `ready` hook then keeps the bench
 // idle rather than spending Effort for nothing).
-function researchTarget(ctx: Ctx, boardId: bigint): string | null {
-  for (const r of RESEARCH_TREE) {
+export function researchTarget(ctx: Ctx, boardId: bigint): string | null {
+  for (const r of researchTree()) {
     const bp = `blueprint_${r.target}`;
     if (discovered(ctx, boardId, bp)) continue;
     // An explicit prerequisite ladder (the drone Marks): every listed blueprint
@@ -198,7 +202,7 @@ function researchTarget(ctx: Ctx, boardId: bigint): string | null {
 // ever feeds its own host, two drones never fight over the work the way roaming
 // couriers did. Most bays take a blind feeder; the Assembler is the one host that
 // needs intent (it picks its own recipe), so a Mk IV there runs a targeted variant
-// — see assemblerDroneResolve. This single behaviour subsumes the old catalyst +
+// — see assemblerDroneMove. This single behaviour subsumes the old catalyst +
 // courier shapes.
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -309,14 +313,14 @@ function nextDroneMove(ctx: Ctx, verb: Card): Effects | null {
 // slotted)? Used both to decide which rocket subsystems the Assembler drone still
 // owes us (the Rocket wants one of each) and to gate the Wreck's salvaged machines
 // (you only pull a Printer/Workbench while you don't already have one).
-function boardHas(ctx: Ctx, boardId: bigint, defId: string): boolean {
+export function boardHas(ctx: Ctx, boardId: bigint, defId: string): boolean {
   for (const c of ctx.db.card.boardId.filter(boardId))
     if (c.defId === defId) return true;
   return false;
 }
 
 // The Wreck's manifest (WRECK_CONTENTS) — the fixed list of what the crash
-// buried — is authored data, so it lives in ../content/recipes.ts; the cursor
+// buried — is projected from the Wreck card in ../content/recipes.ts; the cursor
 // logic that draws from it (below) is behaviour and stays here.
 
 // Lifetime count of one defId created on this board (the full two-column key — the
@@ -330,17 +334,18 @@ function histDef(ctx: Ctx, boardId: bigint, defId: string): bigint {
 
 // What the Wreck yields this scavenge — the next manifest item, or `null` once the
 // list is exhausted (the resolver then collapses it into an Exhausted Wreck husk).
-function wreckDrop(ctx: Ctx, boardId: bigint): string | null {
+export function wreckDrop(ctx: Ctx, boardId: bigint): string | null {
+  const manifest = wreckContents();
   let drawn = 0;
-  for (const defId of new Set(WRECK_CONTENTS))
+  for (const defId of new Set(manifest))
     drawn += Number(histDef(ctx, boardId, defId));
-  return WRECK_CONTENTS[drawn] ?? null;
+  return manifest[drawn] ?? null;
 }
 
 // The next subsystem a Mk IV Assembler drone should build: the first recipe whose
 // output we don't already have. Null once we hold all five (the drone then idles).
 function nextSubsystem(ctx: Ctx, boardId: bigint): Recipe | null {
-  for (const r of SUBSYSTEMS) if (!boardHas(ctx, boardId, r.output)) return r;
+  for (const r of subsystems()) if (!boardHas(ctx, boardId, r.output)) return r;
   return null;
 }
 
@@ -352,13 +357,13 @@ function nextSubsystem(ctx: Ctx, boardId: bigint): Recipe | null {
 // not lifetime history: a subsystem only ever leaves the board by flying into the
 // Rocket, which is terminal, so "on the board now" and "ever made" coincide for
 // these — and boardHas keeps the documented rebuild-if-spent path intact.)
-function chosenSubsystem(
+export function chosenSubsystem(
   ctx: Ctx,
   holes: SlottedCard[],
   boardId: bigint,
 ): Recipe | null {
   return (
-    SUBSYSTEMS.find(
+    subsystems().find(
       (r) =>
         subsystemSatisfied(ctx, holes, r) && !boardHas(ctx, boardId, r.output),
     ) ?? null
@@ -408,335 +413,8 @@ function assemblerDroneMove(ctx: Ctx, host: Card): Effects | null {
 // The shared drone behaviour (all four Marks). `ready` and `resolve` both go
 // through nextDroneMove so they can never disagree; `resolve` parks the drone
 // (again:false) when there's no move, leaving it to wakeBayDrones to re-fire.
-const droneResolver: Resolver = {
+export const droneResolver: Resolver = {
   duration: () => DRONE_TICK,
   ready: (ctx, _h, verb) => nextDroneMove(ctx, verb) !== null,
   resolve: (ctx, _h, verb) => nextDroneMove(ctx, verb) ?? NOOP,
-};
-
-// ──────────────────────────────────────────────────────────────────────────
-// The resolver table — one entry per verb defId.
-// ──────────────────────────────────────────────────────────────────────────
-export const RESOLVERS: Record<string, Resolver> = {
-  // ── Tier 0: the crash site (hand-cranked, no power) ──────────────────────
-
-  // Survivor: your own two hands. Emits one Effort per cycle, forever.
-  survivor: {
-    duration: () => EFFORT,
-    resolve: () => ({ consume: [], produce: ["effort"], again: true }),
-  },
-
-  // Regolith Field: a labour machine with no material input — the worker IS the
-  // input. A worker in the bay (required by verbReady) yields one Regolith;
-  // Effort is spent (one gather), a mechanical drone keeps gathering.
-  regolith_field: {
-    duration: () => GATHER,
-    resolve: (ctx, holes) => {
-      if (!theWorker(ctx, holes)) return NOOP;
-      return {
-        consume: workerCost(ctx, holes),
-        produce: ["regolith"],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Wreck: the discovery node, holding a fixed manifest (WRECK_CONTENTS) — Scrap,
-  // Salvage, and the only Printer + Workbench you'll get — handed out one item per
-  // scavenge in order. When the manifest is spent wreckDrop returns null and the
-  // Wreck collapses into an inert Exhausted Wreck husk (become). Effort scavenges
-  // once; a drone keeps it worked — and burns through the contents faster.
-  wreck: {
-    duration: () => GATHER,
-    resolve: (ctx, holes, verb) => {
-      const worker = theWorker(ctx, holes);
-      if (!worker) return NOOP;
-      const drop = wreckDrop(ctx, verb.boardId);
-      if (drop === null) {
-        // Picked clean. Free a mechanical drone from the bay before the Wreck card
-        // is replaced, or it would be left slotted into a card that no longer
-        // exists; an Effort worker is just spent (workerCost). It lands where the
-        // Wreck stood — relayout (run after the become) nudges it clear of the husk.
-        const moves =
-          workerIsDrone(ctx, holes) && verb.location.tag === "tabletop"
-            ? [
-                {
-                  cardId: worker.id,
-                  to: {
-                    tag: "tabletop" as const,
-                    value: {
-                      x: verb.location.value.x,
-                      y: verb.location.value.y,
-                    },
-                  },
-                },
-              ]
-            : undefined;
-        return {
-          consume: workerCost(ctx, holes),
-          produce: [],
-          again: false,
-          become: "exhausted_wreck",
-          moves,
-        };
-      }
-      return {
-        consume: workerCost(ctx, holes),
-        produce: [drop],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Printer: the crude bootstrap Component press — raw → Component, no power, slow.
-  // The sole Component source now (the Fabricator presses Fuel Tanks instead). An
-  // inbox queue that drains one per cycle. `ready` guards against firing with a
-  // worker but no raw (the raw holes are optional, so the generic check can't).
-  printer: {
-    duration: () => PRINT,
-    ready: (ctx, holes) => inputs(ctx, holes).length > 0,
-    resolve: (ctx, holes) => {
-      const input = inputs(ctx, holes)[0];
-      if (!input) return NOOP;
-      return {
-        consume: [input.id, ...workerCost(ctx, holes)],
-        produce: ["component"],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Workbench: hand-cranked constructor. Blueprint (selects the output) + enough
-  // Components + a worker in its bay → the machine/drone, dormant in the tray to
-  // be planted. The worker is Effort OR a Mk I+ drone (theWorker), but the drone
-  // can never PICK the blueprint — the feeder skips blueprint holes, so you always
-  // choose what to build. Cranked, not powered: works from turn one.
-  workbench: {
-    duration: () => BUILD,
-    ready: (ctx, holes) => {
-      const bp = holes.find((h) => catOf(ctx, h) === "blueprint");
-      const worker = theWorker(ctx, holes);
-      if (!bp || !worker) return false;
-      const recipe = BUILDS[bp.defId];
-      return !!recipe && count(ctx, holes, "component") >= recipe.cost;
-    },
-    resolve: (ctx, holes) => {
-      const bp = holes.find((h) => catOf(ctx, h) === "blueprint");
-      const worker = theWorker(ctx, holes);
-      if (!bp || !worker) return NOOP;
-      const recipe = BUILDS[bp.defId];
-      if (!recipe) return NOOP;
-      const comps = take(ctx, holes, "component", recipe.cost);
-      if (comps.length < recipe.cost) return NOOP;
-      // A kept blueprint is consumed-and-reproduced: it lands in the tray for the
-      // player to re-slot, so the Workbench frees up for the next build. Effort is
-      // spent (workerCost); a drone persists and re-fires — but with the blueprint
-      // now gone from its hole it idles until you slot the next one.
-      return {
-        consume: [bp.id, ...workerCost(ctx, holes), ...comps],
-        produce: recipe.keep ? [recipe.output, bp.defId] : [recipe.output],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Research: hand-cranked discovery bench. A WORKER-only bay (Effort, like the
-  // Workbench) — one Effort yields the next blueprint you've earned (researchTarget
-  // reads your card history). `ready` keeps it idle when nothing's left to learn,
-  // so Effort is never spent for nothing. One blueprint per crank (Effort is no
-  // drone → no re-fire), which paces discovery against your scarce early labour.
-  // It also stays idle until the board has a Workbench: a blueprint is useless with
-  // nothing to BUILD it at, so we don't spend the worker earning one you can't use
-  // (the Workbench is salvaged from the Wreck — see wreckDrop). Same idle/ready
-  // pattern as "nothing left to learn", so the Effort is never consumed when blocked.
-  research: {
-    duration: () => RESEARCH,
-    ready: (ctx, _holes, verb) =>
-      boardHas(ctx, verb.boardId, "workbench") &&
-      researchTarget(ctx, verb.boardId) !== null,
-    resolve: (ctx, holes, verb) => {
-      if (!boardHas(ctx, verb.boardId, "workbench")) return NOOP;
-      const target = researchTarget(ctx, verb.boardId);
-      if (!target) return NOOP;
-      return {
-        consume: workerCost(ctx, holes),
-        produce: [target],
-        again: false,
-      };
-    },
-  },
-
-  // ── Power: the emitter that opens up every big machine ───────────────────
-  solar_array: {
-    duration: () => SOLAR,
-    resolve: () => ({ consume: [], produce: ["power"], again: true }),
-  },
-
-  // ── Tier 1–3: power-gated production line ────────────────────────────────
-  refinery: poweredOne(REFINE, "raw", "metal"),
-  // Fabricator: Metal + Power → Fuel Tank. NOT a second Component source (that was
-  // redundant with the crude Printer) — it presses Metal into the tanks the Chem
-  // Reactor cans Fuel into, keeping the smelting line meaningful up to liftoff.
-  fabricator: poweredOne(FABRICATE, "metal", "fuel_tank"),
-  electronics_fab: poweredOne(ELECTRONICS, "silicon", "circuit"),
-
-  // Kiln: raw → Silicon or Glass, Powered. It bakes whichever of the two its
-  // own outbox currently holds the FEWER of (coin-toss on a tie). Because a
-  // consumed product (Silicon, pulled on for circuits) stays low in the tray
-  // while an unwanted one (Glass, once the Heat Shield is built) plateaus, this
-  // self-balances toward what's actually being used — and stops a dead product
-  // from saturating the shared 5-slot tray and starving the other, which would
-  // otherwise hard-lock the silicon→circuit→engine line. See docs/ESCAPE_THE_MOON.
-  kiln: {
-    duration: () => KILN,
-    ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, "raw") > 0,
-    resolve: (ctx, holes, verb) => {
-      const power = take(ctx, holes, "power", 1);
-      const input = take(ctx, holes, "raw", 1);
-      if (power.length === 0 || input.length === 0) return NOOP;
-      const silicon = trayCount(ctx, verb, "silicon");
-      const glass = trayCount(ctx, verb, "glass");
-      const out =
-        silicon < glass
-          ? "silicon"
-          : glass < silicon
-            ? "glass"
-            : ctx.random() < 0.5
-              ? "silicon"
-              : "glass";
-      return {
-        consume: [...power, ...input, ...workerCost(ctx, holes)],
-        produce: [out],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Ice Mine: Power + a worker → Water (no material input besides Power).
-  ice_mine: {
-    duration: () => MINE_ICE,
-    ready: (_ctx, holes) => hasPower(holes),
-    resolve: (ctx, holes) => {
-      const power = take(ctx, holes, "power", 1);
-      if (power.length === 0) return NOOP;
-      return {
-        consume: [...power, ...workerCost(ctx, holes)],
-        produce: ["water"],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Electrolysis: Water + Power → Hydrogen + Oxygen.
-  //
-  // This is a DUAL-output producer feeding one shared, capped tray — the same
-  // shape that hard-locked the Kiln (silicon trapped behind un-consumed glass).
-  // It's safe ONLY because H2 and O2 are produced 1:1 here and consumed 1:1 by
-  // their sole consumer (the Chem Reactor), so neither can ever pile up behind
-  // the other; the even cap (6) packs the 2-per-cycle output cleanly too. If you
-  // ever add a recipe that consumes H2 or O2 ALONE, or in a non-1:1 ratio, that
-  // symmetry breaks and this clogs exactly like the Kiln did — at which point
-  // give it the Kiln's demand-aware "emit whichever the tray holds least of".
-  electrolysis: {
-    duration: () => ELECTROLYSIS,
-    ready: (ctx, holes) => hasPower(holes) && count(ctx, holes, "water") > 0,
-    resolve: (ctx, holes) => {
-      const power = take(ctx, holes, "power", 1);
-      const water = take(ctx, holes, "water", 1);
-      if (power.length === 0 || water.length === 0) return NOOP;
-      return {
-        consume: [...power, ...water, ...workerCost(ctx, holes)],
-        produce: ["hydrogen", "oxygen"],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Chem Reactor: Hydrogen + Oxygen + Power + a Fuel Tank → Fuel. The late
-  // bottleneck (slow, and the only path to the Fuel the Rocket burns). The Fuel
-  // Tank (Metal → Fabricator) is consumed one-per-Fuel — the fuel needs something
-  // to go in — so a dry smelting line now stalls fuel production (a deliberate
-  // dependency, not a bug).
-  chem_reactor: {
-    duration: () => CHEM,
-    ready: (ctx, holes) =>
-      hasPower(holes) &&
-      count(ctx, holes, "hydrogen") > 0 &&
-      count(ctx, holes, "oxygen") > 0 &&
-      count(ctx, holes, "fuel_tank") > 0,
-    resolve: (ctx, holes) => {
-      const power = take(ctx, holes, "power", 1);
-      const h2 = take(ctx, holes, "hydrogen", 1);
-      const o2 = take(ctx, holes, "oxygen", 1);
-      const tank = take(ctx, holes, "fuel_tank", 1);
-      if (
-        power.length === 0 ||
-        h2.length === 0 ||
-        o2.length === 0 ||
-        tank.length === 0
-      )
-        return NOOP;
-      return {
-        consume: [...power, ...h2, ...o2, ...tank, ...workerCost(ctx, holes)],
-        produce: ["fuel"],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // Assembler: components → a rocket Subsystem. Recipe choice (`ready` hook):
-  // whichever subsystem's ingredients you've loaded, most-specific-first — but
-  // never one you already hold, so each part is built at most once (see
-  // chosenSubsystem). `ready` and `resolve` both go through it so they agree.
-  assembler: {
-    duration: () => ASSEMBLE,
-    ready: (ctx, holes, verb) =>
-      hasPower(holes) && chosenSubsystem(ctx, holes, verb.boardId) !== null,
-    resolve: (ctx, holes, verb) => {
-      const power = take(ctx, holes, "power", 1);
-      if (power.length === 0) return NOOP;
-      const recipe = chosenSubsystem(ctx, holes, verb.boardId);
-      if (!recipe) return NOOP;
-      const consume = [...power, ...workerCost(ctx, holes)];
-      for (const [cat, n] of Object.entries(recipe.need))
-        consume.push(...take(ctx, holes, cat, n));
-      return {
-        consume,
-        produce: [recipe.output],
-        again: workerIsDrone(ctx, holes),
-      };
-    },
-  },
-
-  // ── Liftoff ──────────────────────────────────────────────────────────────
-  // Rocket: all five Subsystems + three Fuel (all required holes) → it fires
-  // and metamorphoses into Escape where it stood. One-shot. You're home.
-  rocket: {
-    duration: () => LAUNCH,
-    resolve: (ctx, holes) => ({
-      // Consume the loaded craft (subsystems + fuel) plus an Effort worker if
-      // that's who pressed the button; a mechanical Mk IV in the bay is left be
-      // (the launchpad becomes Escape and the drone simply goes with it).
-      consume: [
-        ...inputs(ctx, holes).map((h) => h.id),
-        ...workerCost(ctx, holes),
-      ],
-      produce: [],
-      again: false,
-      become: "escape",
-    }),
-  },
-
-  // ── The automation layer: drones ─────────────────────────────────────────
-  // One generic behaviour per Mk (the level is enforced by the host's bay, not
-  // here), so all four share `droneResolver`. A drone is event-driven, not polled:
-  // it feeds one card per DRONE_TICK while it has work, then PARKS (resolve →
-  // again:false → assembling, no timer). The `ready` hook — same nextDroneMove the
-  // resolve uses — lets wakeBayDrones re-fire it only when a board change actually
-  // gave it something to do, so an idle board runs zero drone timers. See engine.ts
-  // wakeBayDrones and the nextDroneMove note above.
-  drone_1: droneResolver,
-  drone_2: droneResolver,
-  drone_3: droneResolver,
-  drone_4: droneResolver,
 };

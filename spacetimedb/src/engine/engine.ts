@@ -1,5 +1,5 @@
 import { ScheduleAt, Timestamp } from "spacetimedb";
-import { RESOLVERS } from "./resolvers";
+import { RESOLVERS } from "../content/cards";
 import { awardAchievements } from "../content/achievements";
 import type { Ctx, Card, SlottedCard } from "../platform/types";
 

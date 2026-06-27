@@ -1,12 +1,12 @@
 import { t } from "spacetimedb/server";
 import type { ReadCtx } from "./types";
 import {
-  BUILDS,
-  SUBSYSTEMS,
-  RESEARCH_TREE,
-  WRECK_CONTENTS,
-  VERB_OUTPUTS,
-  VERB_BECOMES,
+  builds,
+  subsystems,
+  researchTree,
+  wreckContents,
+  verbOutputs,
+  verbBecomes,
 } from "../content/recipes";
 
 // The graph builder only ever READS catalogue tables — it needs `ctx.db`, not
@@ -74,6 +74,15 @@ export function buildProgressionGraph(ctx: GraphCtx): {
   }[];
   edges: Edge[];
 } {
+  // The recipe maps are derived from the per-card modules (content/recipes.ts);
+  // bind them once here, then walk them exactly as before.
+  const VERB_OUTPUTS = verbOutputs();
+  const VERB_BECOMES = verbBecomes();
+  const BUILDS = builds();
+  const RESEARCH_TREE = researchTree();
+  const SUBSYSTEMS = subsystems();
+  const WRECK_CONTENTS = wreckContents();
+
   const defs = [...ctx.db.cardDef.iter()];
   const known = new Set(defs.map((d) => d.defId));
   const isDef = (id: string) => known.has(id);
