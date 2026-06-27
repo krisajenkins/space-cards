@@ -36,3 +36,10 @@ The warehouse is possibly redundant. The idea was to give you a place to hide fa
 
 Perhaps we should just use anonymous login via Spacetime OIDC, and give people
 the option to carry their game across devices by logging in with Google.
+
+# [ ] I should really understand:
+
+spacetimedb/src/content/catalogue.ts
+spacetimedb/src/content/opening.ts
+spacetimedb/src/content/recipes.ts
+spacetimedb/src/engine/verb-api.ts
