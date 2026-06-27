@@ -24,10 +24,6 @@ blueprints neatly stored.
 
 "Always be ready to research - keep an Effort card in Research at all times."
 
-# [ ] Feedback: A minor UI issue in the end: I desperately clicked on the escape card, but to finish the game I had to click on the info popup.
-
-Ah yes, perhaps I should have the last info popup disappear the way the others do. That would trigger it. 🤔
-
 # [ ] People don't like having to log in.
 
 Perhaps we should just use anonymous login via Spacetime OIDC, and give people

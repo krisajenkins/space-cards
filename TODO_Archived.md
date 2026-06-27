@@ -9,6 +9,19 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-27 (change lomlvzyoxklz)*
+
+# [X] Feedback: A minor UI issue in the end: I desperately clicked on the escape card, but to finish the game I had to click on the info popup.
+
+Ah yes, perhaps I should have the last info popup disappear the way the others do. That would trigger it. 🤔
+
+Done: the win (`escape`) toast now auto-dismisses after `AUTO_DISMISS_MS` like
+every other toast, routing through the existing `dismiss()` special-case that
+rolls the credits (`track("game_won")` + `playFinale()`), so the finale fires on
+its own with no click required. The draining timeout bar now renders on the win
+toast too (astral-cyan accent) so the countdown is legible. A manual click still
+works. Client-only change to `src/lib/Achievements.svelte`.
+
 *Archived: 2026-06-27 (change olkmustnolqy)*
 
 # [X] Feedback: And what is the purpose of the warehouse when you can drop cards anywhere?

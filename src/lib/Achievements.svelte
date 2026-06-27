@@ -47,7 +47,8 @@ function dismiss(id: bigint, achId: string) {
   // The win toast doesn't just go quiet — dismissing it rolls the credits:
   // launch the endgame cinematic over the (now-faded) board. This is the real
   // win (the admin "Finale" preview calls playFinale() directly), so it's the
-  // one place to count game_won.
+  // one place to count game_won. This fires whether the player clicks the toast
+  // or it auto-dismisses, so the credits roll either way.
   if (achId === "escape") {
     track("game_won");
     playFinale();
@@ -55,15 +56,17 @@ function dismiss(id: bigint, achId: string) {
 }
 
 // Trophies fade themselves out after a few seconds so the corner doesn't silt up
-// with milestones the player never clicked. The win (`escape`) is the exception:
-// dismissing it rolls the credits, so it must wait for a deliberate click. We
-// schedule each toast exactly once (a per-id Set guards the effect re-running)
-// and let the auto-dismiss route through `dismiss` so it marks the row seen.
+// with milestones the player never clicked. The win (`escape`) auto-dismisses
+// too — and because dismissing it rolls the credits, the finale plays itself
+// without the player having to click the toast (an impatient player can still
+// click to trigger it early). We schedule each toast exactly once (a per-id Set
+// guards the effect re-running) and let the auto-dismiss route through `dismiss`
+// so it marks the row seen.
 const AUTO_DISMISS_MS = 15000;
 const scheduled = new Set<bigint>();
 $effect(() => {
   for (const t of toasts) {
-    if (t.achId === "escape" || scheduled.has(t.id)) continue;
+    if (scheduled.has(t.id)) continue;
     scheduled.add(t.id);
     setTimeout(() => dismiss(t.id, t.achId), AUTO_DISMISS_MS);
   }
@@ -99,13 +102,11 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
         {/if}
       </span>
       <span class="dismiss" aria-hidden="true">×</span>
-      {#if t.achId !== "escape"}
-        <span
-          class="timeout"
-          style="animation-duration: {AUTO_DISMISS_MS}ms"
-          aria-hidden="true"
-        ></span>
-      {/if}
+      <span
+        class="timeout"
+        style="animation-duration: {AUTO_DISMISS_MS}ms"
+        aria-hidden="true"
+      ></span>
     </button>
   {/each}
 </div>
@@ -227,6 +228,9 @@ const eyebrowFor = (achId: string) => EYEBROW[achId] ?? "Achievement unlocked";
 }
 .toast.intro .timeout {
   background: var(--ember);
+}
+.toast.win .timeout {
+  background: var(--astral);
 }
 @keyframes timeout-drain {
   from {
