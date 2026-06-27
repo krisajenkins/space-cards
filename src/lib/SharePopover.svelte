@@ -5,6 +5,7 @@
 // player gets a real prefilled post on the network of their choice. Anchored by
 // its caller (positioned relative to the Share button). Dismisses on
 // outside-click and Escape; styled to match the topbar's brass/astral pills.
+import { track } from "./analytics";
 import { copyLink, shareLinks } from "./share";
 
 let {
@@ -22,7 +23,14 @@ const links = $derived(shareLinks({ text }));
 let copyLabel = $state("Copy link");
 let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
+// Record which share target the player chose. The label is a fixed network
+// name (or "Copy link") — never anything that identifies the player.
+function onChoose(target: string) {
+  track("share", { target });
+}
+
 async function onCopy() {
+  onChoose("Copy link");
   const ok = await copyLink();
   if (ok) {
     copyLabel = "Link copied!";
@@ -67,7 +75,10 @@ function onWindowPointerdown() {
         href={link.href}
         target="_blank"
         rel="noopener noreferrer"
-        onclick={close}
+        onclick={() => {
+          onChoose(link.label);
+          close();
+        }}
       >
         {link.label}
       </a>

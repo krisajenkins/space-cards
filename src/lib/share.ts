@@ -8,13 +8,21 @@
 
 const enc = encodeURIComponent;
 
+// Appended to every shared post so we can search each network for shares of the
+// game. Folded in centrally here rather than in each `text` prop, so no share
+// point can forget it.
+const HASHTAG = "#escapethemoon";
+
 export type ShareLink = { label: string; href: string };
 
 // Build the ordered list of network share links for a piece of share copy.
 // Read the page URL at call time so it tracks the deployed domain.
-export function shareLinks({ text }: { text: string }): ShareLink[] {
+export function shareLinks({ text: copy }: { text: string }): ShareLink[] {
+  // copy, a blank line, then the hashtag — and the url on its own line for the
+  // networks that don't take it as a separate param.
+  const text = `${copy}\n\n${HASHTAG}`;
   const url = typeof window !== "undefined" ? window.location.href : "";
-  const textAndUrl = `${text} ${url}`;
+  const textAndUrl = `${text}\n${url}`;
   return [
     {
       label: "X / Twitter",
