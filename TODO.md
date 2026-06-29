@@ -40,11 +40,6 @@ spacetimedb/src/engine/verb-api.ts
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
 
-# [ ] Wreck bug
-
-When the wreck gets exhausted, what happens to the cards in its outbox? Do they
-disappear? They ought to just land on the table.
-
 # [ ] Make the sound on/off much clearer (i'm squinting at a small emoji in the toolbar).
 
 # [ ] Add a "tidy" button

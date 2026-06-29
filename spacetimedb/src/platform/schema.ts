@@ -307,6 +307,19 @@ export const completeSituation = spacetimedb.reducer(
     if (eff.become) {
       const pos =
         verb.location.tag === "tabletop" ? verb.location.value : { x: 0, y: 0 };
+      // Anything still sitting in the retiring verb's output tray would be
+      // orphaned (it points at a card we're about to delete), so spill it onto
+      // the tabletop where the husk stood — relayout below fans it clear.
+      for (const c of ctx.db.card.boardId.filter(verb.boardId)) {
+        if (
+          c.location.tag === "output" &&
+          c.location.value.verbCardId === verbCardId
+        )
+          ctx.db.card.id.update({
+            ...c,
+            location: { tag: "tabletop", value: { x: pos.x, y: pos.y } },
+          });
+      }
       ctx.db.situation.cardId.delete(verbCardId);
       ctx.db.card.id.delete(verbCardId);
       const grown = spawnCard(ctx, verb.boardId, eff.become, pos.x, pos.y);

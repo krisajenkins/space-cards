@@ -9,6 +9,21 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change mlvzowulprkx)*
+
+# [X] Wreck bug
+
+When the wreck gets exhausted, what happens to the cards in its outbox? Do they
+disappear? They ought to just land on the table.
+
+Done: the generic `eff.become` branch of `completeSituation` (`schema.ts`) now
+relocates every card still in the retiring verb's output tray onto the tabletop
+at the husk's position before deleting the verb, so the Wreck's uncollected
+salvage lands on the table instead of being orphaned. Fixed at the generic
+`become` site, so any future produce-then-become verb is covered.
+
+---
+
 *Archived: 2026-06-29 (change ovmuuqry)*
 
 # [X] People don't like having to log in.
