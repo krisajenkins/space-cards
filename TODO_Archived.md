@@ -9,6 +9,21 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change zkkmsnzvuqql)*
+
+# [X] New game should automatically call fit afterwards.
+
+It can happen that your game has moved a long way from the origin coordinates. If that happens and you press "new game", no cards appear (because they're off screen). Let's just call fit as the last step of creating a new game.
+
+Done: the one-shot auto-fit in `Board.svelte` now tracks *which* board it framed
+(`framedBoardId` instead of a global `framed` boolean). The fit `$effect` re-runs
+when the `boardId` prop changes — which is what New Game does, since `App.svelte`
+retargets `<Board>` onto the latest board rather than remounting it — and because
+it gates on `computeFit()` returning non-null, it waits for the new board's cards
+to arrive before reframing, so the camera lands on the freshly-dealt cards.
+
+---
+
 *Archived: 2026-06-29 (change vvvpkosnzxzs)*
 
 # [X] If I press "new game" twice in a row, I get two "Crash Landing" achievements.

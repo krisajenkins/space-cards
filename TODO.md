@@ -40,6 +40,3 @@ spacetimedb/src/engine/verb-api.ts
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
 
-# [ ] New game should automatically call fit afterwards.
-
-It can happen that your game has moved a long way from the origin coordinates. If that happens and you press "new game", no cards appear (because they're off screen). Let's just call fit as the last step of creating a new game.

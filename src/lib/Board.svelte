@@ -226,16 +226,22 @@ function computeFit(): { x: number; y: number; scale: number } | null {
   return { x, y, scale };
 }
 
-// Frame the board ONCE, the first time there's something to look at (and a
-// measured viewport). After that the camera is the player's — we never auto-fit
-// again, so the view never yanks out from under them as cards appear or grow.
-let framed = false;
+// Frame the board ONCE per board, the first time there's something to look at
+// (and a measured viewport). After that the camera is the player's — we never
+// auto-fit again, so the view never yanks out from under them as cards appear or
+// grow. We track WHICH board we framed (not just a bool) so that starting a New
+// Game — which retargets `boardId` onto the freshly-dealt board — reframes onto
+// it. Without this, the camera could be panned far from origin (where the new
+// cards are dealt) and the new game would open on empty space. Gating on
+// `computeFit()` returning non-null means we wait for the new board's cards to
+// actually stream in before fitting — fitting an empty board does nothing.
+let framedBoardId: bigint | null = null;
 $effect(() => {
-  if (framed) return;
+  if (framedBoardId === boardId) return;
   const f = computeFit();
   if (!f) return;
   cam = f;
-  framed = true;
+  framedBoardId = boardId;
 });
 
 // Which sides have content spilling off-screen, so the edge bars can point the
