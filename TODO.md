@@ -64,3 +64,7 @@ Double click again to zoom back out.
 ...because I need to know how large it'll be when I drop it in place.
 
 # [ ] If I press "new game" twice in a row, I get two "Crash Landing" achievements.
+
+# [ ] New game should automatically call fit afterwards.
+
+It can happen that your game has moved a long way from the origin coordinates. If that happens and you press "new game", no cards appear (because they're off screen). Let's just call fit as the last step of creating a new game.
