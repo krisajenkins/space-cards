@@ -370,6 +370,24 @@ function fitNow() {
   reframeTimer = setTimeout(() => (reframing = false), FIT_DURATION);
 }
 
+// Tidy re-arranges the board server-side; once the new positions stream back we
+// re-fit so the freshly-tidied tableau is framed. `pendingTidyFit` is a plain
+// (non-$state) flag on purpose — arming it must NOT itself trigger the effect;
+// the effect's only reactive dependency is the card set, so the fit fires when
+// the relayout update lands, not the instant the button is pressed (which would
+// fit the pre-tidy positions).
+let pendingTidyFit = false;
+function tidy() {
+  autoLayout({ boardId });
+  pendingTidyFit = true;
+}
+$effect(() => {
+  void onBoard; // track the live card set; re-runs when the tidy relayout lands
+  if (pendingTidyFit) {
+    pendingTidyFit = false;
+    fitNow();
+  }
+});
 // Keyboard camera: arrows pan, +/- zoom (toward centre), f fits. Same controls
 // as the wheel/buttons, just driven from the keyboard. Skip when the player is
 // typing into a field or holding a modifier (so browser shortcuts still work).
@@ -839,7 +857,7 @@ function onUp(e: PointerEvent) {
       class="tidy"
       type="button"
       title="Tidy the table into its story order"
-      onclick={() => autoLayout({ boardId })}
+      onclick={tidy}
     >
       Tidy board
     </button>
@@ -1125,7 +1143,10 @@ function onUp(e: PointerEvent) {
   gap: 6px;
   z-index: 50;
 }
-.cam-controls button {
+/* The square zoom controls — :not(.tidy) so the Tidy pill below keeps its own
+   content-sized width instead of being squeezed to 38px (which overflowed its
+   label off-screen). */
+.cam-controls button:not(.tidy) {
   width: 38px;
   height: 38px;
   border-radius: 10px;
@@ -1142,12 +1163,12 @@ function onUp(e: PointerEvent) {
     border-color 0.15s ease,
     background 0.15s ease;
 }
-.cam-controls button:hover {
+.cam-controls button:not(.tidy):hover {
   color: var(--ink);
   border-color: var(--astral);
   background: rgba(10, 13, 24, 0.85);
 }
-.cam-controls button:active {
+.cam-controls button:not(.tidy):active {
   transform: translateY(1px);
 }
 
@@ -1156,14 +1177,15 @@ function onUp(e: PointerEvent) {
    the bottom of the .cam-controls stack, directly below the Fit button. */
 .tidy {
   margin-top: 2px;
+  width: auto;
+  white-space: nowrap;
   padding: 0.45rem 0.95rem;
   border-radius: 999px;
   background: rgba(10, 13, 24, 0.72);
   border: 1px solid var(--panel-edge);
   backdrop-filter: blur(8px);
-  font-family: var(--mono, monospace);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
+  font-family: var(--display);
+  font-size: 0.85rem;
   color: var(--ink-soft);
   cursor: pointer;
   transition:
