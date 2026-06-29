@@ -115,7 +115,7 @@ $effect(() => {
             {#if isAnonymous && GOOGLE_CLIENT_ID}
               <div class="landing-signin">
                 <span class="landing-signin-label">Already have a saved game?</span>
-                <div bind:this={landingButtonEl}></div>
+                <div class="google-host" bind:this={landingButtonEl}></div>
               </div>
             {/if}
           </div>
@@ -462,5 +462,16 @@ $effect(() => {
   font-size: 0.74rem;
   letter-spacing: 0.04em;
   color: var(--ink-faint);
+}
+/* GIS renders its button inside a cross-origin iframe. With color-scheme: dark
+   on the root (app.css), Chromium paints an opaque white backdrop behind such an
+   iframe; opting this subtree back to a normal scheme drops it so the dark pill
+   sits transparently on the title screen. */
+.google-host {
+  color-scheme: normal;
+}
+.google-host :global(iframe) {
+  color-scheme: normal;
+  background: transparent;
 }
 </style>
