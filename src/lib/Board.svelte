@@ -203,6 +203,12 @@ let viewH = $state(0);
 // it (pan/zoom below); it is NOT continuously re-fitted — only seeded once.
 let cam = $state({ x: 0, y: 0, scale: 1 });
 
+// "Fit" reframes by easing the camera transform rather than jumping. The base
+// .content layer has NO transition (panning must track the pointer 1:1), so we
+// scope the ease to the Fit action by toggling `reframing` on for its duration.
+let reframing = $state(false);
+const FIT_DURATION = 400; // ms — keep in sync with the .content.reframing CSS.
+let reframeTimer: ReturnType<typeof setTimeout> | undefined;
 // Frame the whole tableau in the viewport (shrink-to-fit with FIT_MARGIN slack,
 // centred, never enlarged past 1×). Returns the camera that does it, or null if
 // there's nothing to frame yet. Reused for the one-shot initial framing and the
@@ -270,6 +276,9 @@ const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
 let panning = $state(false);
 let panStart = { px: 0, py: 0, camX: 0, camY: 0 };
 function startPan(e: PointerEvent) {
+  // Cancel any in-flight Fit ease so the eased transform doesn't fight a 1:1 pan.
+  reframing = false;
+  clearTimeout(reframeTimer);
   panning = true;
   panStart = { px: e.clientX, py: e.clientY, camX: cam.x, camY: cam.y };
   window.addEventListener("pointermove", onPan);
@@ -299,10 +308,9 @@ function onBoardPointerDown(e: PointerEvent) {
   startPan(e);
 }
 
-// Double-click the bare felt to zoom-to-fit the whole board. Cards have their
-// own ondblclick (zoom to that card), and the fixed controls opt out by class —
-// mirror onBoardPointerDown's bare-felt guard so a double-click on any of those
-// never reframes the board.
+// Double-click the bare felt to zoom-to-fit the whole board. Cards and the fixed
+// controls opt out by class — mirror onBoardPointerDown's bare-felt guard so a
+// double-click on any of those never reframes the board.
 function onBoardDblClick(e: MouseEvent) {
   const t = e.target as HTMLElement;
   if (t.closest(".placed") || t.closest(".cam-controls") || t.closest(".tidy"))
@@ -314,6 +322,9 @@ function onBoardDblClick(e: MouseEvent) {
 // point, rescale, then re-translate so that content point lands back under the
 // cursor. `at` is in board-viewport pixels (cursor minus the board's screen origin).
 function zoomAt(at: { x: number; y: number }, factor: number) {
+  // Cancel any in-flight Fit ease so the eased transform doesn't fight the zoom.
+  reframing = false;
+  clearTimeout(reframeTimer);
   const newScale = clampScale(cam.scale * factor);
   const k = newScale / cam.scale;
   cam = {
@@ -343,7 +354,14 @@ $effect(() => {
 const zoomStep = (factor: number) => zoomAt({ x: viewW / 2, y: viewH / 2 }, factor);
 function fitNow() {
   const f = computeFit();
-  if (f) cam = f;
+  if (!f) return;
+  // Ease the transform to the new framing instead of snapping. The flag drops
+  // the .content transition back off once the animation has run, so subsequent
+  // pans/zooms stay 1:1.
+  reframing = true;
+  cam = f;
+  clearTimeout(reframeTimer);
+  reframeTimer = setTimeout(() => (reframing = false), FIT_DURATION);
 }
 
 // Keyboard camera: arrows pan, +/- zoom (toward centre), f fits. Same controls
@@ -692,6 +710,7 @@ function onUp(e: PointerEvent) {
        board coordinates. -->
   <div
     class="content"
+    class:reframing
     bind:this={contentEl}
     style="transform: translate({cam.x}px, {cam.y}px) scale({cam.scale})"
   >
@@ -875,6 +894,13 @@ function onUp(e: PointerEvent) {
      transform anchor. */
   width: 0;
   height: 0;
+}
+
+/* Scoped to the "Fit" action only (see fitNow): ease the camera to the new
+   framing so it reframes smoothly instead of jumping. Pans/zooms leave this off
+   so the transform tracks the pointer 1:1. Duration matches FIT_DURATION. */
+.content.reframing {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .placed {

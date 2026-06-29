@@ -40,8 +40,6 @@ spacetimedb/src/engine/verb-api.ts
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
 
-# [ ] "Fit" button should reframe smoothly, rather than jumping to the new zoom level
-
 # [ ] When I try to move a machine (e.g. printer) I want to see the whole machine as the drag ghost, not a card
 
 ...because I need to know how large it'll be when I drop it in place.

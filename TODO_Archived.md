@@ -9,6 +9,19 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change unqzwkmqyvnq)*
+
+# [X] "Fit" button should reframe smoothly, rather than jumping to the new zoom level
+
+Done: `fitNow()` now eases the camera instead of snapping. Added a `reframing`
+flag (cleared after `FIT_DURATION` = 400ms) that toggles a scoped
+`.content.reframing { transition: transform ... }` rule — the base `.content`
+keeps NO transition so pointer-panning still tracks 1:1. Panning (`startPan`) and
+wheel/button zoom (`zoomAt`) cancel any in-flight ease so it can't fight a fresh
+1:1 gesture.
+
+---
+
 *Archived: 2026-06-29 (change zqywpuukwnts)*
 
 # [X] double click on background to trigger zoom to fit.
