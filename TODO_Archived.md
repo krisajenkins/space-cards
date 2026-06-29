@@ -9,6 +9,20 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change vvvpkosnzxzs)*
+
+# [X] If I press "new game" twice in a row, I get two "Crash Landing" achievements.
+
+Done: the duplicate was display bleed, not a real double-award — `newGame`
+deliberately creates a fresh board each time (multi-board is intentional v1
+design), and `my_achievements` returns rows for every board the player belongs
+to, so two boards meant two unseen `crash` toasts. Scoped the toaster to the
+current board: `App.svelte` passes `boardId={board.id}` to `<Achievements>`, which
+now filters its `toasts` (and its analytics effect) to `a.boardId === boardId`.
+The per-board achievement rows are untouched in the DB.
+
+---
+
 *Archived: 2026-06-29 (change zsmvuxmmqruu)*
 
 # [X] When I try to move a machine (e.g. printer) I want to see the whole machine as the drag ghost, not a card

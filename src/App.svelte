@@ -203,7 +203,7 @@ $effect(() => {
 
     <main class="stage" class:receding={$finalePlaying}>
       <SoundEffects />
-      <Achievements />
+      <Achievements boardId={board.id} />
       <Board boardId={board.id} />
     </main>
 

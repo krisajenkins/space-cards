@@ -4,6 +4,14 @@ import { tables, reducers } from "../module_bindings";
 import { playFinale } from "./finale";
 import { track } from "./analytics";
 
+// The board currently on screen. A player may have several games (each its own
+// board, each earning its own per-board `crash` etc.), but the UI only ever
+// renders the newest. my_achievements returns rows for EVERY board we belong
+// to, so we scope both the toasters and the analytics to this board — otherwise
+// an old game's milestones bleed into the current one (e.g. two "Crash Landing"
+// toasts after pressing New Game twice).
+let { boardId }: { boardId: bigint } = $props();
+
 // Earned milestones (id + achId + seen + title/description). The catalogue text
 // is folded into the view because achievement_def is private — you can't read
 // the blurb of a milestone you haven't unlocked. Only UNSEEN rows pop as
@@ -24,6 +32,7 @@ const loadedAt = Date.now();
 const reported = new Set<string>();
 $effect(() => {
   for (const a of $earned) {
+    if (a.boardId !== boardId) continue;
     if (reported.has(a.achId)) continue;
     if (Number(a.earnedAt.microsSinceUnixEpoch) / 1000 <= loadedAt) continue;
     reported.add(a.achId);
@@ -34,7 +43,7 @@ $effect(() => {
 // Newest first, so a freshly-earned milestone stacks on top.
 const toasts = $derived(
   $earned
-    .filter((a) => !a.seen)
+    .filter((a) => !a.seen && a.boardId === boardId)
     .sort(
       (x, y) =>
         Number(y.earnedAt.microsSinceUnixEpoch) -
