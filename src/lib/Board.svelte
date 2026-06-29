@@ -1203,7 +1203,7 @@ function onUp(e: PointerEvent) {
   border: 1px solid var(--panel-edge);
   backdrop-filter: blur(8px);
   font-family: var(--display);
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: var(--ink-soft);
   cursor: pointer;
   transition:
