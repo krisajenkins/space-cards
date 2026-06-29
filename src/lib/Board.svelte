@@ -370,21 +370,38 @@ function fitNow() {
   reframeTimer = setTimeout(() => (reframing = false), FIT_DURATION);
 }
 
-// Tidy re-arranges the board server-side; once the new positions stream back we
-// re-fit so the freshly-tidied tableau is framed. `pendingTidyFit` is a plain
-// (non-$state) flag on purpose — arming it must NOT itself trigger the effect;
-// the effect's only reactive dependency is the card set, so the fit fires when
+// Tidy re-arranges the board server-side; once the new positions stream back the
+// effect below re-fits, so the freshly-tidied tableau is framed. `pendingTidyFit`
+// is a plain (non-$state) flag on purpose — arming it must NOT itself trigger the
+// effect; the effect's only reactive dependency is `bbox`, so the fit fires when
 // the relayout update lands, not the instant the button is pressed (which would
-// fit the pre-tidy positions).
+// fit the pre-tidy positions). We depend on `bbox` (not the card set) because tidy
+// only moves cards — it doesn't add or remove them — so the dependency has to be
+// the cards' geometry, which `bbox` reads via txOf/tyOf/footprintOf. (Mirrors the
+// new-game re-fit effect above, which tracks `bbox` for the same reason.)
+//
+// If the board was ALREADY tidy the relayout is a no-op: no rows change, so no
+// bbox update arrives to drive the effect. The fallback timer covers that — it
+// fits-and-disarms after a beat, so Tidy always reframes AND the armed flag can't
+// linger and misfire on some later, unrelated card move.
 let pendingTidyFit = false;
+let tidyFitFallback: ReturnType<typeof setTimeout> | undefined;
+const TIDY_FIT_FALLBACK = 600; // ms — long enough to outlast the relayout round-trip
 function tidy() {
   autoLayout({ boardId });
   pendingTidyFit = true;
+  clearTimeout(tidyFitFallback);
+  tidyFitFallback = setTimeout(() => {
+    if (!pendingTidyFit) return;
+    pendingTidyFit = false;
+    fitNow();
+  }, TIDY_FIT_FALLBACK);
 }
 $effect(() => {
-  void onBoard; // track the live card set; re-runs when the tidy relayout lands
+  void bbox; // track the cards' geometry; re-runs when the tidy relayout lands
   if (pendingTidyFit) {
     pendingTidyFit = false;
+    clearTimeout(tidyFitFallback);
     fitNow();
   }
 });
