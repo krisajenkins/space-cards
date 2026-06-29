@@ -40,12 +40,6 @@ spacetimedb/src/engine/verb-api.ts
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
 
-# [ ] double click to zoom to a component 
-
-Double click again to zoom back out. 
-
-# [ ] double click on background to trigger zoom to fit.
-
 # [ ] "Fit" button should reframe smoothly, rather than jumping to the new zoom level
 
 # [ ] When I try to move a machine (e.g. printer) I want to see the whole machine as the drag ghost, not a card

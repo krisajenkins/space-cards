@@ -9,6 +9,27 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change zqywpuukwnts)*
+
+# [X] double click on background to trigger zoom to fit.
+
+Done: added `onBoardDblClick` to `Board.svelte`, wired onto the `.board` div. It
+mirrors the existing bare-felt guard (ignoring `.placed` cards, `.cam-controls`,
+and the `.tidy` button) and calls the existing `fitNow()` when the empty felt is
+double-clicked.
+
+---
+
+ *Archived: 2026-06-29*
+
+# [X] double click to zoom to a component
+
+Double click again to zoom back out.
+
+This was a bad idea, and has been abandoned.
+
+---
+
 *Archived: 2026-06-29 (change mvopmvrowmql)*
 
 # [X] Add a "tidy" button

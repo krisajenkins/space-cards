@@ -299,6 +299,17 @@ function onBoardPointerDown(e: PointerEvent) {
   startPan(e);
 }
 
+// Double-click the bare felt to zoom-to-fit the whole board. Cards have their
+// own ondblclick (zoom to that card), and the fixed controls opt out by class —
+// mirror onBoardPointerDown's bare-felt guard so a double-click on any of those
+// never reframes the board.
+function onBoardDblClick(e: MouseEvent) {
+  const t = e.target as HTMLElement;
+  if (t.closest(".placed") || t.closest(".cam-controls") || t.closest(".tidy"))
+    return;
+  fitNow();
+}
+
 // Zoom keeping a fixed point under the cursor: convert the cursor to a content
 // point, rescale, then re-translate so that content point lands back under the
 // cursor. `at` is in board-viewport pixels (cursor minus the board's screen origin).
@@ -667,6 +678,7 @@ function onUp(e: PointerEvent) {
   class:panning
   bind:this={boardEl}
   onpointerdown={onBoardPointerDown}
+  ondblclick={onBoardDblClick}
 >
   {#if onBoard.length === 0}
     <div class="empty">
