@@ -141,14 +141,15 @@ $effect(() => {
       </div>
       <div class="topbar-right">
         <button
-          class="mute-trigger"
+          class="pill mute-trigger"
           class:muted={$muted}
           title={$muted ? "Unmute sound" : "Mute sound"}
           aria-label={$muted ? "Unmute sound" : "Mute sound"}
           aria-pressed={$muted}
           onclick={toggleMute}
         >
-          {$muted ? "🔇" : "🔊"}
+          <span class="mute-glyph" aria-hidden="true">{$muted ? "🔇" : "🔊"}</span>
+          {$muted ? "Sound off" : "Sound on"}
         </button>
         <button
           class="pill"
@@ -421,31 +422,23 @@ $effect(() => {
   line-height: 1;
 }
 
-/* The sound toggle, styled as a round pill to match the topbar's other pills. */
+/* The sound toggle is a labelled pill (glyph + word) so its state is legible at
+   a glance, not a squint at a tiny emoji. It layers onto `.pill` for shape,
+   padding and colour; the muted state shifts to a faint "off" treatment so it
+   reads as clearly distinct from the active "on" state. */
 .mute-trigger {
-  appearance: none;
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border-radius: 999px;
-  border: 1px solid var(--panel-edge);
-  background: rgba(var(--chrome-rgb), 0.7);
-  color: var(--ink-soft);
-  font-size: 0.95rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   cursor: pointer;
-  transition:
-    color 0.12s ease,
-    border-color 0.12s ease,
-    opacity 0.12s ease;
 }
-.mute-trigger:hover {
-  border-color: rgba(var(--edge-rgb), 0.25);
+.mute-glyph {
+  font-size: 1.05rem;
+  line-height: 1;
 }
 .mute-trigger.muted {
-  opacity: 0.55;
+  color: var(--ink-faint);
+  border-color: var(--panel-edge);
 }
 
 /* ── Title-screen landing actions ──────────────────────────────────────────

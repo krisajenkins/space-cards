@@ -9,6 +9,17 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change ynlkymlkwrvp)*
+
+# [X] Make the sound on/off much clearer (i'm squinting at a small emoji in the toolbar).
+
+Done: the topbar sound toggle is now a labelled `.pill` (glyph + visible "Sound
+on"/"Sound off" text) instead of an icon-only round button, and the muted state
+reads as a clearly distinct `--ink-faint` treatment rather than a subtle opacity
+drop. Only `src/App.svelte` changed; the audio behaviour is untouched.
+
+---
+
 *Archived: 2026-06-29 (change mlvzowulprkx)*
 
 # [X] Wreck bug

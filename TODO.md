@@ -40,8 +40,6 @@ spacetimedb/src/engine/verb-api.ts
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
 
-# [ ] Make the sound on/off much clearer (i'm squinting at a small emoji in the toolbar).
-
 # [ ] Add a "tidy" button
 
 We used to have this. Let's restore it from the commit history then see if we can make it work better.
