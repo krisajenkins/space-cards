@@ -40,10 +40,6 @@ spacetimedb/src/engine/verb-api.ts
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
 
-# [ ] When I try to move a machine (e.g. printer) I want to see the whole machine as the drag ghost, not a card
-
-...because I need to know how large it'll be when I drop it in place.
-
 # [ ] If I press "new game" twice in a row, I get two "Crash Landing" achievements.
 
 # [ ] New game should automatically call fit afterwards.

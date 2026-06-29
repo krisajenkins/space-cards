@@ -9,6 +9,21 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change zsmvuxmmqruu)*
+
+# [X] When I try to move a machine (e.g. printer) I want to see the whole machine as the drag ghost, not a card
+
+...because I need to know how large it'll be when I drop it in place.
+
+Done: the drag ghost in `Board.svelte` now renders the full `VerbStation` for
+machines (verbs that aren't drones) instead of a shrunk `CardToken`, reusing the
+same props as the on-board station. The ghost transform composes `scale(cam.scale)`
+so it matches its on-board rendered size at any zoom, and `dropCoords` multiplies
+the ghost dimensions by the live scale before centring so the machine lands where
+the ghost sat. Drones and loose resources keep the small token.
+
+---
+
 *Archived: 2026-06-29 (change unqzwkmqyvnq)*
 
 # [X] "Fit" button should reframe smoothly, rather than jumping to the new zoom level

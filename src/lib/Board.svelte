@@ -561,9 +561,11 @@ function firstValidSlot(verbId: bigint, card: Card): number | null {
 // measure against `contentEl.getBoundingClientRect()`, whose left/top already
 // FOLD IN that transform. So a screen point maps back to board space by
 // subtracting the content's screen origin and dividing the screen distance by
-// the fit scale. The ghost is `position: fixed` (outside the transform), so its
-// half-size is a screen distance and is divided out by the same scale. PAD is the
-// board-space inset cards render at (`left = tx + PAD`), subtracted last.
+// the fit scale. The ghost is `position: fixed` (outside the transform) but is
+// itself scaled by the same camera scale (see the inline `.ghost` transform), so
+// its on-screen half-size is `offset*/2 × s` — we apply that scale before halving,
+// then the result is already a screen distance divided out by the same scale. PAD
+// is the board-space inset cards render at (`left = tx + PAD`), subtracted last.
 function dropCoords(d: Drag, ghostW: number, ghostH: number): { x: number; y: number } {
   const r = contentEl.getBoundingClientRect();
   // Read the LIVE rendered scale from the computed matrix, not `fit.scale`: a
@@ -574,8 +576,8 @@ function dropCoords(d: Drag, ghostW: number, ghostH: number): { x: number; y: nu
   const m = new DOMMatrixReadOnly(getComputedStyle(contentEl).transform);
   const s = m.a || 1;
   return {
-    x: Math.max(0, (d.px - ghostW / 2 - r.left) / s - PAD),
-    y: Math.max(0, (d.py - ghostH / 2 - r.top) / s - PAD),
+    x: Math.max(0, (d.px - (ghostW * s) / 2 - r.left) / s - PAD),
+    y: Math.max(0, (d.py - (ghostH * s) / 2 - r.top) / s - PAD),
   };
 }
 
@@ -837,24 +839,50 @@ function onUp(e: PointerEvent) {
     </button>
   </div>
 
-  <!-- Drag ghost -->
+  <!-- Drag ghost. A machine (a verb that isn't a drone) drags as its FULL
+       VerbStation — sockets, tray, bay and all — scaled to the live camera, so
+       the player sees exactly how large it will be where they drop it. Drones
+       stay tiny (bay items), and resources keep the plain token. -->
   {#if drag && drag.def}
     <div
       class="ghost"
       bind:this={ghostEl}
-      style="left: {drag.px}px; top: {drag.py}px"
+      style="left: {drag.px}px; top: {drag.py}px; transform: translate(-50%, -50%) rotate(-3deg) scale({cam.scale})"
     >
-      <CardToken
-        defId={drag.card.defId}
-        name={drag.def.name}
-        category={drag.def.category}
-        size={drag.place === "tabletop" && !drag.def.isVerb
-          ? drag.card.defId === "escape"
-            ? "xl"
-            : "md"
-          : "sm"}
-        grabbing
-      />
+      {#if drag.def.isVerb && drag.def.category !== "drone"}
+        {@const info = runInfo(drag.card.id)}
+        <VerbStation
+          def={drag.def}
+          state={info.state}
+          progress={info.progress}
+          remainingMs={info.remainingMs}
+          slots={slotsByDef.get(drag.card.defId) ?? []}
+          slotted={slottedFor(drag.card.id)}
+          outputs={outputsFor(drag.card.id)}
+          {defsById}
+          dragDefId={null}
+          dragCategory={null}
+          rejectingId={null}
+          flashingIds={new Set()}
+          playerSlotted={new Set()}
+          onSlottedPointerDown={() => {}}
+          onOutputPointerDown={() => {}}
+          onHoleEnter={() => {}}
+          onHoleLeave={() => {}}
+        />
+      {:else}
+        <CardToken
+          defId={drag.card.defId}
+          name={drag.def.name}
+          category={drag.def.category}
+          size={drag.place === "tabletop" && !drag.def.isVerb
+            ? drag.card.defId === "escape"
+              ? "xl"
+              : "md"
+            : "sm"}
+          grabbing
+        />
+      {/if}
     </div>
   {/if}
 </div>
@@ -981,8 +1009,11 @@ function onUp(e: PointerEvent) {
   position: fixed;
   z-index: 1000;
   pointer-events: none;
-  /* centre the (possibly collapsed) token on the cursor */
-  transform: translate(-50%, -50%) rotate(-3deg) scale(1.04);
+  /* The transform (centre-on-cursor + cosmetic rotate + scale-to-camera) is set
+     inline per-render so a machine ghost matches its on-board size at the live
+     zoom; transform-origin stays at the default centre so translate(-50%,-50%)
+     keeps the element centred on the cursor. */
+  transform: translate(-50%, -50%) rotate(-3deg);
   filter: drop-shadow(0 24px 30px rgba(var(--shadow-rgb), 0.6));
 }
 
