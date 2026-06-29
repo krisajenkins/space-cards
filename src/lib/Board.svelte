@@ -425,6 +425,7 @@ $effect(() => {
       case "+": case "=": zoomStep(1.2); break;
       case "-": case "_": zoomStep(1 / 1.2); break;
       case "f": case "F": fitNow(); break;
+      case "t": case "T": tidy(); break;
       default: return;
     }
     e.preventDefault();
@@ -873,7 +874,7 @@ function onUp(e: PointerEvent) {
     <button
       class="tidy"
       type="button"
-      title="Tidy the table into its story order"
+      title="Tidy the table into its story order (t)"
       onclick={tidy}
     >
       Tidy board
