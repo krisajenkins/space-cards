@@ -39,3 +39,28 @@ spacetimedb/src/engine/verb-api.ts
 > new explainer), (b) explanatory comments/JSDoc added to the files themselves, or
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
+
+# [ ] Wreck bug
+
+When the wreck gets exhausted, what happens to the cards in its outbox? Do they
+disappear? They ought to just land on the table.
+
+# [ ] Make the sound on/off much clearer (i'm squinting at a small emoji in the toolbar).
+
+# [ ] Add a "tidy" button
+
+We used to have this. Let's restore it from the commit history then see if we can make it work better.
+
+# [ ] double click to zoom to a component 
+
+Double click again to zoom back out. 
+
+# [ ] double click on background to trigger zoom to fit.
+
+# [ ] "Fit" button should reframe smoothly, rather than jumping to the new zoom level
+
+# [ ] When I try to move a machine (e.g. printer) I want to see the whole machine as the drag ghost, not a card
+
+...because I need to know how large it'll be when I drop it in place.
+
+# [ ] If I press "new game" twice in a row, I get two "Crash Landing" achievements.
