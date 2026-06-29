@@ -9,6 +9,23 @@ stamp rather than their individual closing changes.
 
 ---
 
+*Archived: 2026-06-29 (change mvopmvrowmql)*
+
+# [X] Add a "tidy" button
+
+We used to have this. Let's restore it from the commit history then see if we can make it work better.
+
+Done: restored the player-facing "Tidy board" button by reverse-applying its
+removal commit (`3da1fc2`) and adapting it to today's API — `autoArrange` +
+`progressionRanks` are back in `engine/layout.ts` (now reading the lazy
+`builds()`/`researchTree()`/`wreckContents()` getters), the `requireMember`-gated
+`auto_layout` reducer is back in `platform/reducers.ts`, and the `.tidy` button is
+re-wired in `Board.svelte` alongside the current camera controls. Bindings
+regenerated. This is the faithful restore only; the "make it work better" polish
+is left for a follow-up.
+
+---
+
 *Archived: 2026-06-29 (change ynlkymlkwrvp)*
 
 # [X] Make the sound on/off much clearer (i'm squinting at a small emoji in the toolbar).

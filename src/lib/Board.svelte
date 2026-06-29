@@ -47,6 +47,7 @@ const [situations] = useTable(tables.mySituations);
 const slotCard = useReducer(reducers.slotCard);
 const collectAndSlot = useReducer(reducers.collectAndSlot);
 const moveCard = useReducer(reducers.moveCard);
+const autoLayout = useReducer(reducers.autoLayout);
 const houseCard = useReducer(reducers.houseCard);
 const unhouseCard = useReducer(reducers.unhouseCard);
 
@@ -786,11 +787,23 @@ function onUp(e: PointerEvent) {
   <div class="edge edge-top" class:on={edges.top}></div>
   <div class="edge edge-bottom" class:on={edges.bottom}></div>
 
-  <!-- Camera controls -->
+  <!-- Camera controls, plus the Tidy board action stacked directly below Fit.
+       A fixed viewport cluster (bottom-right), outside the scaled .content layer,
+       so it is never part of the draggable tableau. Tidy calls auto_layout for
+       this board; the server seeds the idealised arrangement and runs the usual
+       VPSC layout from it. -->
   <div class="cam-controls">
     <button type="button" title="Zoom in (+)" onclick={() => zoomStep(1.2)}>+</button>
     <button type="button" title="Zoom out (−)" onclick={() => zoomStep(1 / 1.2)}>−</button>
     <button type="button" title="Fit the whole board (f)" onclick={fitNow}>Fit</button>
+    <button
+      class="tidy"
+      type="button"
+      title="Tidy the table into its story order"
+      onclick={() => autoLayout({ boardId })}
+    >
+      Tidy board
+    </button>
   </div>
 
   <!-- Drag ghost -->
@@ -1033,6 +1046,7 @@ function onUp(e: PointerEvent) {
   bottom: 18px;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 6px;
   z-index: 50;
 }
@@ -1060,5 +1074,33 @@ function onUp(e: PointerEvent) {
 }
 .cam-controls button:active {
   transform: translateY(1px);
+}
+
+/* Tidy board control — a brass-accented pill in the celestial-workbench
+   aesthetic, echoing the .hint pill (dark panel, blurred, soft ink). It sits at
+   the bottom of the .cam-controls stack, directly below the Fit button. */
+.tidy {
+  margin-top: 2px;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(10, 13, 24, 0.72);
+  border: 1px solid var(--panel-edge);
+  backdrop-filter: blur(8px);
+  font-family: var(--mono, monospace);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+.tidy:hover {
+  color: var(--astral, #74c7d6);
+  border-color: var(--astral, #74c7d6);
+}
+.tidy:active {
+  transform: scale(0.96);
 }
 </style>

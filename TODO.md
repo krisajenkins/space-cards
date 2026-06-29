@@ -40,10 +40,6 @@ spacetimedb/src/engine/verb-api.ts
 > (c) it's purely your own reading task — close it yourself once read and an agent
 > should leave it alone.
 
-# [ ] Add a "tidy" button
-
-We used to have this. Let's restore it from the commit history then see if we can make it work better.
-
 # [ ] double click to zoom to a component 
 
 Double click again to zoom back out. 

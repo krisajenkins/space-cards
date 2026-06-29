@@ -24,6 +24,7 @@ import {
 import { Variable, Solver } from "webcola/dist/src/vpsc";
 import { removeOverlaps } from "webcola/dist/src/rectangle";
 import type { Ctx, Card } from "../platform/types";
+import { builds, researchTree, wreckContents } from "../content/recipes";
 
 const MARGIN = 40; // keep the layout this far from the board's (0,0) origin
 const PIN_WEIGHT = 1e9; // a pinned card's VPSC variable barely moves
@@ -283,6 +284,164 @@ export function relayout(
       }
     }
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Auto-arrange — "tidy the board into the story order", a one-shot SEED for VPSC.
+// ──────────────────────────────────────────────────────────────────────────
+// This does NOT override or replace the minimum-displacement layout. It computes
+// an IDEALISED tabletop position for every card — verbs across the top in their
+// progression-through-the-story order, inert tokens in a band beneath — writes
+// those as the new positions, then calls `relayout(ctx, boardId)` (no pin) so the
+// EXACT SAME VPSC overlap-removal + cluster/fan pipeline settles from there.
+//
+// LAYOUT.md's minimum-displacement philosophy is intact: VPSC always moves cards
+// as little as possible *from where they currently are*. All we change is the
+// arrangement we ask it to displace FROM — choosing a deliberate, legible seed
+// instead of the player's scattered board. (`relayoutBoard` displaces from the
+// status quo; `autoArrange` displaces from the idealised story layout.) No change
+// to the VPSC core, its weighting, or the fan.
+//
+// Determinism (required of reducers): the column order derives entirely from the
+// authored recipe DATA (recipes.ts), and ties break on card id — no RNG, no clock.
+const COL_W = 420; // horizontal stride between progression columns
+const ROW_H = 360; // vertical stride between cards stacked in one column
+const BAND_GAP = 120; // gap between the verb band and the inert band beneath it
+
+// Map each verb defId → its progression rank (its position in the progression
+// sequence, which autoArrange flows into a grid), derived
+// from the recipe data so it auto-tracks content changes:
+//   col 0  — the opening stations dealt at newGame (survivor, gatherers, research)
+//   next   — the machines salvaged from the Wreck (printer, workshop)
+//   then   — every research-unlocked machine in researchTree() order, mapping each
+//            entry's `target` through builds()["blueprint_" + target].output to the
+//            machine defId it eventually yields (target "solar" → "solar_array";
+//            target "drone_1" → "drone_1").
+// Any verb defId not covered sorts to the end (the caller falls back to a large
+// rank). Built once per call; tiny, so no caching needed.
+function progressionRanks(): Map<string, number> {
+  const ranks = new Map<string, number>();
+  let col = 0;
+  const assign = (defId: string) => {
+    if (!ranks.has(defId)) ranks.set(defId, col++);
+  };
+
+  // Opening stations (all column 0 — the leftmost crash-site cluster).
+  for (const defId of ["survivor", "regolith_field", "research", "wreck"]) {
+    if (!ranks.has(defId)) ranks.set(defId, 0);
+  }
+  col = 1;
+
+  // Wreck salvage: the machines dug from the Wreck, near their early unlock.
+  for (const defId of wreckContents()) {
+    const def = defId; // wreckContents() holds defIds directly
+    // Only the verb machines (printer, workshop) get a column; scrap/salvage are
+    // inert and laid out in the band below. We can't read isVerb without ctx, so
+    // we lean on builds()/research having no overlap with raw resources — printer &
+    // workshop are the only verbs in the manifest, so list them explicitly.
+    if (def === "printer" || def === "workshop") assign(def);
+  }
+
+  // Research-unlocked machines, in researchTree() order.
+  for (const entry of researchTree()) {
+    const build = builds()["blueprint_" + entry.target];
+    if (build) assign(build.output);
+  }
+  return ranks;
+}
+
+// Re-seed every tabletop card on `boardId` into a legible story layout, then hand
+// off to `relayout` (no pin) for overlap removal + fan. Member-gated by the caller.
+export function autoArrange(ctx: Ctx, boardId: bigint): void {
+  const tabletop = [...ctx.db.card.boardId.filter(boardId)].filter(
+    (c) => c.location.tag === "tabletop",
+  );
+  if (tabletop.length < 2) return;
+
+  const ranks = progressionRanks();
+  const END_RANK = ranks.size + 1; // anything unranked sorts past the known machines
+
+  const isVerb = (c: Card): boolean =>
+    !!ctx.db.cardDef.defId.find(c.defId)?.isVerb;
+
+  // Verbs in progression order (rank first, id to break ties); inert by id.
+  const verbs = tabletop.filter(isVerb).sort((a, b) => {
+    const ra = ranks.get(a.defId) ?? END_RANK;
+    const rb = ranks.get(b.defId) ?? END_RANK;
+    if (ra !== rb) return ra - rb;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+  const inert = tabletop
+    .filter((c) => !isVerb(c))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  // Column count: flow the progression sequence into a GRID rather than a single
+  // wide row (one-rank-per-column ran the board off to the right). ≈√n columns,
+  // rounded UP so the grid leans gently landscape to match a typical screen, and
+  // kept compact so it uses vertical space too. Reused for the inert band so the
+  // two bands line up.
+  const COLS = Math.max(1, Math.ceil(Math.sqrt(verbs.length)));
+
+  // ── Verb band: a progression grid. Cards flow left-to-right in progression
+  // order and wrap to the next row, so a fleet of drones / several Solar Arrays
+  // simply take the next cells. (col, row) = (i % COLS, ⌊i / COLS⌋).
+  let verbRows = 0;
+  verbs.forEach((c, i) => {
+    const row = Math.floor(i / COLS);
+    if (row + 1 > verbRows) verbRows = row + 1;
+    const x = MARGIN + (i % COLS) * COL_W;
+    const y = MARGIN + row * ROW_H;
+    const cur = tabletopXY(c)!;
+    if (Math.abs(x - cur.x) >= 1 || Math.abs(y - cur.y) >= 1)
+      ctx.db.card.id.update({
+        ...c,
+        location: { tag: "tabletop", value: { x, y } },
+      });
+  });
+
+  // ── Inert band: one seed position per defId, flowed into the same-width grid
+  // beneath the verb band. EVERY copy of a defId is seeded to the SAME (x,y) —
+  // deliberately within STACK_RADIUS (0 apart) so relayout's cluster+fan piles and
+  // fans them automatically. Order: blueprints first (they front the production
+  // chain), then a stable defId sort.
+  const inertY = MARGIN + verbRows * ROW_H + BAND_GAP;
+  const seenDefs: string[] = [];
+  const defIndex = new Map<string, number>();
+  for (const c of inert) {
+    if (!defIndex.has(c.defId)) {
+      defIndex.set(c.defId, seenDefs.length);
+      seenDefs.push(c.defId);
+    }
+  }
+  // Choose a deterministic column order for the distinct inert defIds: blueprints
+  // first, then stable defId sort. Flow into the grid via `cellOf` (dense cells).
+  const orderedDefs = [...seenDefs].sort((a, b) => {
+    const ab = a.startsWith("blueprint_") ? 0 : 1;
+    const bb = b.startsWith("blueprint_") ? 0 : 1;
+    if (ab !== bb) return ab - bb;
+    return a < b ? -1 : a > b ? 1 : 0;
+  });
+  const cellOf = new Map<string, { col: number; row: number }>();
+  orderedDefs.forEach((defId, i) =>
+    cellOf.set(defId, { col: i % COLS, row: Math.floor(i / COLS) }),
+  );
+
+  for (const c of inert) {
+    const cell = cellOf.get(c.defId) ?? { col: 0, row: 0 };
+    const x = MARGIN + cell.col * COL_W;
+    const y = inertY + cell.row * ROW_H;
+    const cur = tabletopXY(c)!;
+    if (Math.abs(x - cur.x) >= 1 || Math.abs(y - cur.y) >= 1)
+      ctx.db.card.id.update({
+        ...c,
+        location: { tag: "tabletop", value: { x, y } },
+      });
+  }
+
+  // Hand off to the real layout: minimum-displacement overlap removal + the
+  // cluster/fan, starting from the idealised seed we just wrote. No pin — the
+  // whole board settles together.
+  relayout(ctx, boardId);
 }
 
 // VPSC overlap removal, separating one axis at a time. When a card is pinned we
