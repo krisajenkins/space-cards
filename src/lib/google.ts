@@ -178,28 +178,19 @@ async function ensureInitialised(): Promise<boolean> {
   return true;
 }
 
-// Render the official Google button into `el`, and (if not signed in) show the
-// One-Tap prompt. Safe to call when Google is dormant — it no-ops.
+// Render the official Google button into `el`. We deliberately do NOT show the
+// One-Tap prompt: it is suppressed in many browsers (third-party cookies / FedCM
+// / cooldown — a `gsi/status 403`) and Google is sunsetting the momentless
+// prompt, so a button that silently fails to appear is worse than none. The
+// rendered button is a reliable OAuth popup that doesn't depend on One Tap. Safe
+// to call when Google is dormant — it no-ops.
 export async function renderGoogleButton(el: HTMLElement): Promise<void> {
   if (!(await ensureInitialised())) return;
   gisId().renderButton(el, {
-    theme: "outline",
+    theme: "filled_blue",
     size: "large",
     type: "standard",
   });
-  promptGoogle();
-}
-
-async function promptGoogle(): Promise<void> {
-  if (!(await ensureInitialised())) return;
-  gisId().prompt();
-}
-
-// Trigger the Google One-Tap / sign-in prompt directly (no rendered button) —
-// used by the anonymous "Save game" flow once a link-claim code is in hand.
-export async function promptGoogleSignIn(): Promise<void> {
-  if (!(await ensureInitialised())) return;
-  gisId().prompt();
 }
 
 // ── Pending link-claim code (survives the Google sign-in reload) ────────────

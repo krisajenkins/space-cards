@@ -6,7 +6,6 @@ import {
   renderGoogleButton,
   signOutGoogle,
   rememberLinkClaim,
-  promptGoogleSignIn,
 } from './google';
 import Modal from './Modal.svelte';
 
@@ -19,23 +18,30 @@ const [linkClaim] = useTable(tables.myLinkClaim);
 const deleteMyAccount = useReducer(reducers.deleteMyAccount);
 const beginLink = useReducer(reducers.beginLink);
 
-// "Save game": ask the server to mint a claim code, then (once it arrives) stash
-// it and trigger Google sign-in — which reloads the page, after which LinkClaim
-// redeems the code as the now-Google connection. `prompted` keeps the reactive
-// $effect from re-firing the prompt while we wait on the reload.
-let saving = $state(false);
-let prompted = $state(false);
-function startSave() {
-  if (saving) return;
-  saving = true;
-  prompted = false;
-  beginLink();
-}
+const profile = $derived($me[0]);
+
+// "Save game" via Google's official button: the button's callback reloads the
+// page the instant sign-in completes, so there's no "on click" window to mint a
+// claim code first. Instead we mint it EAGERLY while still anonymous and stash it
+// in localStorage, so it's already there when the reload fires. After the reload
+// LinkClaim redeems it as the now-Google connection. (The code is single-use and
+// TTL'd; if the player never signs in it just expires.)
+let minted = $state(false);
 $effect(() => {
-  if (saving && !prompted && $linkClaim.length > 0) {
-    prompted = true;
-    rememberLinkClaim($linkClaim[0].code);
-    void promptGoogleSignIn();
+  if ($meReady && profile?.isAnonymous && !minted) {
+    minted = true;
+    beginLink();
+  }
+});
+$effect(() => {
+  if ($linkClaim.length > 0) rememberLinkClaim($linkClaim[0].code);
+});
+
+// Render Google's official button into the anon "save your game" slot.
+let saveButtonEl = $state<HTMLDivElement>();
+$effect(() => {
+  if (saveButtonEl && $meReady && profile?.isAnonymous && GOOGLE_CLIENT_ID) {
+    renderGoogleButton(saveButtonEl);
   }
 });
 
@@ -72,7 +78,6 @@ function requestDelete() {
   deleteMyAccount();
 }
 
-const profile = $derived($me[0]);
 const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase());
 </script>
 
@@ -80,22 +85,19 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
   {#if !$meReady}
     <span class="muted">Connecting…</span>
   {:else if profile && profile.isAnonymous}
-    <!-- Anonymous play: a highlighted CTA to link a Google account so the game
-         is saved and portable across devices. -->
-    <button
-      class="pill pill--go save-btn"
-      onclick={startSave}
-      disabled={saving}
-      title="Saving links your game to Google so you can play on any device"
-    >
-      <svg class="g-glyph" viewBox="0 0 18 18" aria-hidden="true">
-        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
-        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.34A9 9 0 0 0 9 18z"/>
-        <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.94H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.06l3.01-2.34z"/>
-        <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58A9 9 0 0 0 9 0 9 9 0 0 0 .96 4.94l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
-      </svg>
-      {saving ? 'Saving…' : 'Save game'}
-    </button>
+    <!-- Anonymous play: a highlighted CTA wrapping Google's official sign-in
+         button, so the game is saved and portable across devices. The claim code
+         is minted eagerly (see <script>) so it's stashed before Google's callback
+         reloads the page. -->
+    {#if GOOGLE_CLIENT_ID}
+      <div
+        class="save-cta"
+        title="Save your game to Google so you can play on any device"
+      >
+        <span class="save-label">Save your game →</span>
+        <div bind:this={saveButtonEl}></div>
+      </div>
+    {/if}
   {:else if profile}
     {#if profile.isAdmin}<span class="badge">admin</span>{/if}
     <button
@@ -195,25 +197,24 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
   align-items: center;
   gap: 0.5rem;
 }
-.save-btn {
+/* Wrap Google's own button in a brass-tinted, glowing chip so the "save" CTA
+   stands out from the other topbar controls (the highlight the design called
+   for, around Google's official button rather than a custom one). */
+.save-cta {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  cursor: pointer;
+  gap: 0.6rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(var(--brass-rgb, 196, 154, 74), 0.12);
+  box-shadow: 0 0 0 1px rgba(var(--brass-rgb, 196, 154, 74), 0.45);
 }
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.g-glyph {
-  width: 1rem;
-  height: 1rem;
-  /* Sit the multicolour Google mark on a white chip so it reads on the brass
-     pill without the coloured strokes muddying into the background. */
-  background: #fff;
-  border-radius: 2px;
-  padding: 1px;
-  box-sizing: content-box;
+.save-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--brass);
+  white-space: nowrap;
 }
 .avatar-btn {
   appearance: none;
