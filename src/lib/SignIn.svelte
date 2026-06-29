@@ -5,37 +5,20 @@ import {
   GOOGLE_CLIENT_ID,
   renderGoogleButton,
   signOutGoogle,
-  rememberLinkClaim,
 } from './google';
 import Modal from './Modal.svelte';
 
 // `me_view` returns one row once this principal is linked to a user, else [].
 const [me, meReady] = useTable(tables.meView);
-// The pending link-claim code for the anonymous "Save game" flow (empty until
-// beginLink mints one, then this principal — and only it — can read it back).
-const [linkClaim] = useTable(tables.myLinkClaim);
 
 const deleteMyAccount = useReducer(reducers.deleteMyAccount);
-const beginLink = useReducer(reducers.beginLink);
 
 const profile = $derived($me[0]);
 
-// "Save game" via Google's official button: the button's callback reloads the
-// page the instant sign-in completes, so there's no "on click" window to mint a
-// claim code first. Instead we mint it EAGERLY while still anonymous and stash it
-// in localStorage, so it's already there when the reload fires. After the reload
-// LinkClaim redeems it as the now-Google connection. (The code is single-use and
-// TTL'd; if the player never signs in it just expires.)
-let minted = $state(false);
-$effect(() => {
-  if ($meReady && profile?.isAnonymous && !minted) {
-    minted = true;
-    beginLink();
-  }
-});
-$effect(() => {
-  if ($linkClaim.length > 0) rememberLinkClaim($linkClaim[0].code);
-});
+// The anonymous "Save game" merge is armed centrally in App.svelte (it mints +
+// stashes a link-claim for any anonymous player who has a game, so the claim is
+// ready before Google's callback reloads the page). Here we only render the
+// button; LinkClaim redeems the stashed code after the reload.
 
 // The "Save game" pill opens an explainer modal (auto-saved here vs. link to
 // Google for cross-device play); Google's official button is rendered inside it.

@@ -15,7 +15,13 @@ import SharePopover from "./lib/SharePopover.svelte";
 import { muted, toggleMute } from "./lib/audio";
 import { finalePlaying, playFinale, endFinale } from "./lib/finale";
 import { track } from "./lib/analytics";
-import { GOOGLE_CLIENT_ID, renderGoogleButton } from "./lib/google";
+import {
+  GOOGLE_CLIENT_ID,
+  renderGoogleButton,
+  rememberLinkClaim,
+  clearLinkClaim,
+  signOutGoogle,
+} from "./lib/google";
 
 const conn = useSpacetimeDB();
 
@@ -25,15 +31,22 @@ const [me, meReady] = useTable(tables.meView);
 const [boards, boardsReady] = useTable(tables.myBoards);
 
 const newGame = useReducer(reducers.newGame);
+// The anonymous → Google "save" merge: minting a claim while still anonymous is
+// what turns a later Google sign-in into a MERGE (carry this game into the
+// account) rather than a plain identity switch. See the claim-arming effects below.
+const beginLink = useReducer(reducers.beginLink);
+const [linkClaim] = useTable(tables.myLinkClaim);
 
 // A first-time visitor is auto-linked as an anonymous account on connect (server
 // onConnect) but is NOT dealt a board — so "ready" means the socket is up and our
-// me_view row has arrived, after which a player with no board sees the title
-// screen (New Game / sign in) and a player with a board drops into it.
+// me_view row has arrived, after which we always show the title screen first:
+// "Continue" for a player who already has a game, "New Game" for one who doesn't.
 const ready = $derived($conn.isActive && $meReady && $me.length > 0);
-// Anonymous = signed out: the title screen offers a "sign in with Google" path to
-// restore an existing account. A Google user with no board just needs "New Game".
-const isAnonymous = $derived($me[0]?.isAnonymous ?? false);
+// Our user row (once linked). Anonymous = a guest: the title screen offers a
+// Google path — "save this game" when they have one, or "restore an account" when
+// they don't. A signed-in user gets a "signed in as … · sign out" affordance instead.
+const profile = $derived($me[0]);
+const isAnonymous = $derived(profile?.isAnonymous ?? false);
 // Admin-only: the progression-tree visualiser. The `me_view` carries the
 // caller's isAdmin flag (same signal SignIn uses for its badge); we mirror it
 // here to gate the topbar toggle. The progression_* views are public, but only
@@ -41,11 +54,15 @@ const isAnonymous = $derived($me[0]?.isAnonymous ?? false);
 const isAdmin = $derived($me[0]?.isAdmin ?? false);
 let treeOpen = $state(false);
 let confirmNew = $state(false);
+// The title screen is always the entry point; `entered` is the player's explicit
+// intent to be at the table. "Continue"/"New Game" set it true to swap the landing
+// page for the board shell. It stays a session flag — reloading the page returns
+// to the title screen — so a player always re-confirms which game they're opening.
+let entered = $state(false);
 // v1: a player may have several games — we keep old ones around but never list
-// them. We drop straight into the *latest* board (max createdAt, tiebreak on id)
-// so "Start New Game" silently retargets the UI onto the freshly-dealt game. The
-// schema permits many; the UI shows only the newest. A brand-new player has none
-// yet, so we offer a single "Begin" instead.
+// them. The *latest* board (max createdAt, tiebreak on id) is the one "Continue"
+// resumes and the one "Start New Game" silently retargets the UI onto. The schema
+// permits many; the UI only ever surfaces the newest.
 const board = $derived(
   [...$boards].sort((a, b) => {
     const t = Number(b.createdAt.microsSinceUnixEpoch - a.createdAt.microsSinceUnixEpoch);
@@ -53,23 +70,64 @@ const board = $derived(
   })[0],
 );
 
+// Show the board shell only once the player has chosen to enter AND a board is
+// actually present. The gap between "New Game" and the freshly-dealt row landing
+// keeps `entered` true but `board` undefined — the title screen covers it with a
+// "dealing…" note until the row arrives, then the shell takes over.
+const inGame = $derived(entered && !!board);
+
+// Resume the existing game — just step past the title screen onto the latest board.
+function continueGame() {
+  entered = true;
+}
+
 // Start a fresh game. Because `board` derives onto the *latest* board, the new
 // game (with a newer createdAt) becomes the one we render the moment its row
-// lands — the old game stays in the DB, just no longer reachable. Shared by the
-// first-game "Begin" button and the "Start New Game" confirm modal so both count.
+// lands — the old game stays in the DB, just no longer reachable. `entered` is set
+// so the UI advances to the table as soon as the deal arrives. Shared by the
+// landing "New Game" button and the in-game "Start New Game" confirm modal.
 function beginNewGame() {
   track("new_game");
   newGame();
+  entered = true;
 }
 function startNewGame() {
   beginNewGame();
   confirmNew = false;
 }
 
-// Render Google's official sign-in button into the title screen's "already have a
-// saved game?" slot. This is a PLAIN sign-in (no claim code armed) — it just
-// authenticates and restores the existing account, so logging out and back in
-// never trips the in-game save/merge machinery. Only meaningful while anonymous.
+// ── Anonymous → Google save/merge arming ───────────────────────────────────
+// Google's button callback reloads the page the instant sign-in completes, so
+// there's no on-click window to mint a link-claim first. We arm it EAGERLY here,
+// from the always-mounted shell, keyed on a single rule: an anonymous player who
+// HAS a game. That one condition covers BOTH "Save" surfaces — the landing button
+// and the in-game "Save game" modal — so they can't drift out of sync. A guest
+// with NO game arms nothing, so their Google button stays a plain sign-in that
+// restores an existing account and can't strand a (non-existent) local game.
+let claimMinted = false;
+$effect(() => {
+  if (isAnonymous && board && ready && !claimMinted) {
+    claimMinted = true;
+    beginLink();
+  }
+});
+$effect(() => {
+  if (isAnonymous && board && $linkClaim.length > 0) {
+    rememberLinkClaim($linkClaim[0].code);
+  }
+});
+// A guest with no game must NOT carry a stale claim into a plain restore sign-in
+// (that would silently merge the throwaway identity). Safe to clear while still
+// anonymous: LinkClaim only redeems once we're signed in, so no pending redeem
+// can be wiped — and after a save reload we're non-anonymous, so this never fires.
+$effect(() => {
+  if (isAnonymous && !board) clearLinkClaim();
+});
+
+// Render Google's official sign-in button into the title screen's auth slot. The
+// SAME button serves both the "save this game" (claim armed above) and "restore
+// an account" (no claim) cases — whether it merges or just switches identity is
+// decided entirely by the stashed claim, not by the button. Anonymous only.
 let landingButtonEl = $state<HTMLDivElement>();
 $effect(() => {
   if (landingButtonEl && ready && isAnonymous && GOOGLE_CLIENT_ID) {
@@ -89,13 +147,13 @@ $effect(() => {
   <LinkClaim />
 {/if}
 
-{#if !board}
-  <!-- ── Title screen: shown while connecting AND as the landing page for any
-       player without a board — a fresh visitor or anyone who's just logged out.
-       Once the socket's up and we know there's no game, it offers the explicit
-       choice: start a New Game (as a guest) or sign in with Google to restore an
-       existing account. A returning player who already has a board never sees
-       this — they drop straight into the shell below. ──────────────────────── -->
+{#if !inGame}
+  <!-- ── Title screen: always the entry point. Once the socket's up we know
+       whether this account already has a game: if so it offers "Continue" to
+       resume the latest board, otherwise "New Game" to deal a fresh one. An
+       anonymous visitor also gets a "sign in with Google" path to restore an
+       existing account. Choosing either action sets `entered`, swapping this
+       page for the board shell below. ──────────────────────────────────────── -->
   <main class="hero">
     <div class="hero-glow"></div>
     <div class="hero-inner">
@@ -105,17 +163,40 @@ $effect(() => {
       <div class="hero-cta">
         {#if ready && $boardsReady}
           <div class="landing">
-            <button
-              class="cw-btn"
-              onclick={beginNewGame}
-              disabled={!$conn.isActive}
-            >
-              New Game
-            </button>
+            {#if entered && !board}
+              <span class="connecting">Dealing a fresh table…</span>
+            {:else if board}
+              <button
+                class="cw-btn"
+                onclick={continueGame}
+                disabled={!$conn.isActive}
+              >
+                Continue
+              </button>
+            {:else}
+              <button
+                class="cw-btn"
+                onclick={beginNewGame}
+                disabled={!$conn.isActive}
+              >
+                New Game
+              </button>
+            {/if}
             {#if isAnonymous && GOOGLE_CLIENT_ID}
               <div class="landing-signin">
-                <span class="landing-signin-label">Already have a saved game?</span>
+                <span class="landing-signin-label">
+                  {board
+                    ? "Save this game to your Google account"
+                    : "Already have a saved game?"}
+                </span>
                 <div class="google-host" bind:this={landingButtonEl}></div>
+              </div>
+            {:else if !isAnonymous && profile}
+              <div class="landing-account">
+                <span class="landing-account-label">
+                  Signed in as <strong>{profile.displayName}</strong>
+                </span>
+                <button class="pill" onclick={signOutGoogle}>Sign out</button>
               </div>
             {/if}
           </div>
@@ -462,6 +543,24 @@ $effect(() => {
   font-size: 0.74rem;
   letter-spacing: 0.04em;
   color: var(--ink-faint);
+}
+/* Signed-in players get an identity + a way out, mirroring the in-game topbar so
+   sign-out is reachable from the title screen too. */
+.landing-account {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+.landing-account-label {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+.landing-account-label strong {
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 /* GIS renders its button inside a cross-origin iframe. With color-scheme: dark
    on the root (app.css), Chromium paints an opaque white backdrop behind such an
