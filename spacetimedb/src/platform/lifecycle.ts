@@ -9,7 +9,6 @@ import {
 } from "./constants";
 import { normaliseEmail, requireCaller } from "./auth";
 import spacetimedb from "./schema";
-import { dealOpening } from "./deal";
 import { seedCatalogue } from "../content/catalogue";
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -79,10 +78,15 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   }
 
   // New principal, but NOT a trusted Google login → auto-create an anonymous
-  // account so the visitor can play immediately, and deal them their first
-  // board. The synthetic `anon:<principal>` email keeps the unique constraint
+  // account so the visitor HAS an identity, but DON'T deal a board. A fresh
+  // visitor (and anyone who just logged out) lands on the title screen and
+  // explicitly chooses "New Game" (→ `newGame`) or signs in with Google to
+  // restore an existing account. Auto-dealing here was the bug: logging out
+  // silently dealt a pristine board, which the next Google sign-in then tried to
+  // merge — forcing a spurious "which game do you want?" prompt against an empty
+  // deal. The synthetic `anon:<principal>` email keeps the unique constraint
   // happy and is blanked out of me_view; they upgrade to Google later via the
-  // claim-code "Save" flow. We DON'T deal a board on the Google path below — a
+  // claim-code "Save" flow. The Google path below likewise deals no board — a
   // Google user reaches `newGame` (or claims an anon game) explicitly; auto-
   // dealing there would race the claimed board on createdAt.
   if (!isGoogle || email === null) {
@@ -107,7 +111,6 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
       provider: { tag: "Anonymous" },
       linkedAt: ctx.timestamp,
     });
-    dealOpening(ctx, anon.id);
     return;
   }
 

@@ -15,6 +15,7 @@ import SharePopover from "./lib/SharePopover.svelte";
 import { muted, toggleMute } from "./lib/audio";
 import { finalePlaying, playFinale, endFinale } from "./lib/finale";
 import { track } from "./lib/analytics";
+import { GOOGLE_CLIENT_ID, renderGoogleButton } from "./lib/google";
 
 const conn = useSpacetimeDB();
 
@@ -25,11 +26,14 @@ const [boards, boardsReady] = useTable(tables.myBoards);
 
 const newGame = useReducer(reducers.newGame);
 
-// Everyone gets an identity now: a first-time visitor is auto-linked as an
-// anonymous account on connect (server onConnect) and dealt a board. So "ready"
-// just means the socket is up and our me_view row has arrived — there is no
-// signed-out title screen anymore, only a brief connecting state.
+// A first-time visitor is auto-linked as an anonymous account on connect (server
+// onConnect) but is NOT dealt a board — so "ready" means the socket is up and our
+// me_view row has arrived, after which a player with no board sees the title
+// screen (New Game / sign in) and a player with a board drops into it.
 const ready = $derived($conn.isActive && $meReady && $me.length > 0);
+// Anonymous = signed out: the title screen offers a "sign in with Google" path to
+// restore an existing account. A Google user with no board just needs "New Game".
+const isAnonymous = $derived($me[0]?.isAnonymous ?? false);
 // Admin-only: the progression-tree visualiser. The `me_view` carries the
 // caller's isAdmin flag (same signal SignIn uses for its badge); we mirror it
 // here to gate the topbar toggle. The progression_* views are public, but only
@@ -61,12 +65,37 @@ function startNewGame() {
   beginNewGame();
   confirmNew = false;
 }
+
+// Render Google's official sign-in button into the title screen's "already have a
+// saved game?" slot. This is a PLAIN sign-in (no claim code armed) — it just
+// authenticates and restores the existing account, so logging out and back in
+// never trips the in-game save/merge machinery. Only meaningful while anonymous.
+let landingButtonEl = $state<HTMLDivElement>();
+$effect(() => {
+  if (landingButtonEl && ready && isAnonymous && GOOGLE_CLIENT_ID) {
+    renderGoogleButton(landingButtonEl);
+  }
+});
 </script>
 
-{#if !ready}
-  <!-- ── Connecting: the title screen while we open the socket and the server
-       auto-creates / restores this player's account. No sign-in CTA — play is
-       anonymous by default; saving to Google is offered later, in-game. ──── -->
+<!-- The account-link redeemer. Mounted as soon as we're connected — OUTSIDE the
+     board gate below — because the Google sign-in merge has a window where the
+     account has no board yet: redeeming the claim (claimLink) is what PRODUCES
+     the board. If it lived inside the board-gated shell it could never run, and a
+     just-signed-in player would be stranded on the title screen. It renders its
+     own full-screen "Restoring…" overlay (which covers the title screen) and the
+     keep-newer conflict modal, or nothing. No-ops for an anonymous session. -->
+{#if ready}
+  <LinkClaim />
+{/if}
+
+{#if !board}
+  <!-- ── Title screen: shown while connecting AND as the landing page for any
+       player without a board — a fresh visitor or anyone who's just logged out.
+       Once the socket's up and we know there's no game, it offers the explicit
+       choice: start a New Game (as a guest) or sign in with Google to restore an
+       existing account. A returning player who already has a board never sees
+       this — they drop straight into the shell below. ──────────────────────── -->
   <main class="hero">
     <div class="hero-glow"></div>
     <div class="hero-inner">
@@ -74,7 +103,25 @@ function startNewGame() {
       <h1>Escape the Moon</h1>
       <p class="tagline">You've crash-landed. Your only hopes lie through knowledge, effort, and whatever you can scrounge up from the moon's surface.</p>
       <div class="hero-cta">
-        <span class="connecting">Opening a channel to the table…</span>
+        {#if ready && $boardsReady}
+          <div class="landing">
+            <button
+              class="cw-btn"
+              onclick={beginNewGame}
+              disabled={!$conn.isActive}
+            >
+              New Game
+            </button>
+            {#if isAnonymous && GOOGLE_CLIENT_ID}
+              <div class="landing-signin">
+                <span class="landing-signin-label">Already have a saved game?</span>
+                <div bind:this={landingButtonEl}></div>
+              </div>
+            {/if}
+          </div>
+        {:else}
+          <span class="connecting">Opening a channel to the table…</span>
+        {/if}
       </div>
     </div>
     <footer class="hero-foot">
@@ -103,15 +150,13 @@ function startNewGame() {
         >
           {$muted ? "🔇" : "🔊"}
         </button>
-        {#if board}
-          <button
-            class="pill"
-            title="Start a new game"
-            onclick={() => (confirmNew = true)}
-          >
-            New Game
-          </button>
-        {/if}
+        <button
+          class="pill"
+          title="Start a new game"
+          onclick={() => (confirmNew = true)}
+        >
+          New Game
+        </button>
         <div class="share-anchor">
           <button
             class="pill share-trigger"
@@ -151,12 +196,6 @@ function startNewGame() {
       </div>
     </header>
 
-    <!-- The account-link redeemer: after a Google sign-in reload, if a pending
-         claim code is stashed it redeems it (claimLink) and, if that surfaces
-         two saved games, runs the keep-newer conflict prompt. Renders its own
-         full-screen overlay / modal; otherwise nothing. -->
-    <LinkClaim />
-
     {#if isAdmin && treeOpen}
       <ProgressionTree onClose={() => (treeOpen = false)} />
     {/if}
@@ -164,27 +203,7 @@ function startNewGame() {
     <main class="stage" class:receding={$finalePlaying}>
       <SoundEffects />
       <Achievements />
-      {#if board}
-        <Board boardId={board.id} />
-      {:else if $boardsReady}
-        <div class="begin">
-          <div class="begin-orb"></div>
-          <h2>Your table is empty</h2>
-          <p>Lay out a fresh set — You, a Forest, a Market, and a little Health.</p>
-          <button
-            class="cw-btn"
-            onclick={beginNewGame}
-            disabled={!$conn.isActive}
-          >
-            Begin a New Game
-          </button>
-        </div>
-      {:else}
-        <div class="begin">
-          <div class="begin-orb"></div>
-          <p>Finding your table…</p>
-        </div>
-      {/if}
+      <Board boardId={board.id} />
     </main>
 
     {#if $finalePlaying}
@@ -429,48 +448,26 @@ function startNewGame() {
   opacity: 0.55;
 }
 
-.begin {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 0.8rem;
-  text-align: center;
-  padding: 2rem;
+/* ── Title-screen landing actions ──────────────────────────────────────────
+   The New Game button (primary brass) sits above a quieter "already have a saved
+   game?" sign-in row, so the default action is obvious and restoring an account
+   is the secondary path. */
+.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
 }
-.begin h2 {
-  font-size: 1.9rem;
-  color: var(--brass-bright);
+.landing-signin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
 }
-.begin p {
-  color: var(--ink-soft);
-  max-width: 36ch;
-  margin: 0 0 0.6rem;
-}
-.begin-orb {
-  width: 84px;
-  height: 84px;
-  border-radius: 50%;
-  margin-bottom: 0.6rem;
-  background: radial-gradient(
-    circle at 40% 35%,
-    var(--brass-bright),
-    var(--brass-deep) 60%,
-    transparent 72%
-  );
-  box-shadow: 0 0 50px -6px rgba(var(--brass-rgb), 0.5);
-  animation: pulse 2.6s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(0.9);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 1;
-  }
+.landing-signin-label {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
 }
 </style>

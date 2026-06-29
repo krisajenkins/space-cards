@@ -292,6 +292,11 @@ button {
   line-height: 1.55;
   margin: 0;
 }
+/* Stacked paragraph-level .modal-body blocks (each its own <p>) need their own
+   gap — the `.modal-body p` rule only spaces <p>s nested *inside* one block. */
+.modal-body + .modal-body {
+  margin-top: 0.8rem;
+}
 .modal-body p {
   margin: 0 0 0.8rem;
 }

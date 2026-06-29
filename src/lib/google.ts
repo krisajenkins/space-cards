@@ -106,6 +106,8 @@ interface GoogleButtonOptions {
   theme?: "outline" | "filled_blue" | "filled_black";
   size?: "large" | "medium" | "small";
   type?: "standard" | "icon";
+  shape?: "rectangular" | "pill" | "circle" | "square";
+  text?: "signin_with" | "signup_with" | "continue_with" | "signin";
 }
 interface GoogleIdApi {
   initialize(config: GoogleIdConfig): void;
@@ -186,10 +188,16 @@ async function ensureInitialised(): Promise<boolean> {
 // to call when Google is dormant — it no-ops.
 export async function renderGoogleButton(el: HTMLElement): Promise<void> {
   if (!(await ensureInitialised())) return;
+  // filled_black + pill shape so Google's (un-restylable, cross-origin) button
+  // reads as one of the dark toolbar pills rather than a bright blue intruder —
+  // the multicolour G mark is then the lone accent. medium height sits closer to
+  // the surrounding pills than large.
   gisId().renderButton(el, {
-    theme: "filled_blue",
-    size: "large",
+    theme: "filled_black",
+    size: "medium",
     type: "standard",
+    shape: "pill",
+    text: "continue_with",
   });
 }
 

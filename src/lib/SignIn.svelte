@@ -37,10 +37,18 @@ $effect(() => {
   if ($linkClaim.length > 0) rememberLinkClaim($linkClaim[0].code);
 });
 
-// Render Google's official button into the anon "save your game" slot.
+// The "Save game" pill opens an explainer modal (auto-saved here vs. link to
+// Google for cross-device play); Google's official button is rendered inside it.
+let saveOpen = $state(false);
 let saveButtonEl = $state<HTMLDivElement>();
 $effect(() => {
-  if (saveButtonEl && $meReady && profile?.isAnonymous && GOOGLE_CLIENT_ID) {
+  if (
+    saveOpen &&
+    saveButtonEl &&
+    $meReady &&
+    profile?.isAnonymous &&
+    GOOGLE_CLIENT_ID
+  ) {
     renderGoogleButton(saveButtonEl);
   }
 });
@@ -85,18 +93,18 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
   {#if !$meReady}
     <span class="muted">Connecting…</span>
   {:else if profile && profile.isAnonymous}
-    <!-- Anonymous play: a highlighted CTA wrapping Google's official sign-in
-         button, so the game is saved and portable across devices. The claim code
-         is minted eagerly (see <script>) so it's stashed before Google's callback
-         reloads the page. -->
+    <!-- Anonymous play: a quiet brass "Save game" pill that opens an explainer
+         modal. The game is already auto-saved to this browser; the modal offers
+         linking to Google for cross-device play. The claim code is minted eagerly
+         (see <script>) so it's stashed before Google's callback reloads. -->
     {#if GOOGLE_CLIENT_ID}
-      <div
-        class="save-cta"
-        title="Save your game to Google so you can play on any device"
+      <button
+        class="pill pill--go"
+        title="Save your game so you can play on any device"
+        onclick={() => (saveOpen = true)}
       >
-        <span class="save-label">Save your game →</span>
-        <div bind:this={saveButtonEl}></div>
-      </div>
+        Save game
+      </button>
     {/if}
   {:else if profile}
     {#if profile.isAdmin}<span class="badge">admin</span>{/if}
@@ -121,6 +129,30 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
     {/if}
   {/if}
 </div>
+
+<!-- ── Save-game modal: reassure that play is already saved locally, and offer the
+     Google link for cross-device play. Google's (un-restylable) button lives
+     inside, so the bright G mark is contained to this deliberate moment. ─────── -->
+{#if saveOpen && profile?.isAnonymous}
+  <Modal
+    label="Save your game"
+    zIndex={110}
+    eyebrow="Your game"
+    onClose={() => (saveOpen = false)}
+  >
+    <p class="modal-body">
+      Your game is <strong>already saved to this browser</strong> — close the tab
+      and come straight back to it whenever you like.
+    </p>
+    <p class="modal-body">
+      To play across devices and browsers — or to keep it safe if your browser
+      data ever gets cleared — link this game to your Google account.
+    </p>
+    <div class="save-modal-cta">
+      <div bind:this={saveButtonEl}></div>
+    </div>
+  </Modal>
+{/if}
 
 <!-- ── Profile modal: the data we hold + a way out (close) and a way to erase ── -->
 {#if profileOpen && profile}
@@ -197,24 +229,12 @@ const initial = $derived((profile?.displayName?.trim()?.[0] ?? '?').toUpperCase(
   align-items: center;
   gap: 0.5rem;
 }
-/* Wrap Google's own button in a brass-tinted, glowing chip so the "save" CTA
-   stands out from the other topbar controls (the highlight the design called
-   for, around Google's official button rather than a custom one). */
-.save-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.25rem 0.25rem 0.25rem 0.7rem;
-  border-radius: 999px;
-  background: rgba(var(--brass-rgb, 196, 154, 74), 0.12);
-  box-shadow: 0 0 0 1px rgba(var(--brass-rgb, 196, 154, 74), 0.45);
-}
-.save-label {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 0.82rem;
-  color: var(--brass);
-  white-space: nowrap;
+/* Centres Google's (un-restylable, cross-origin) button within the save modal,
+   set off from the explanatory copy above it. */
+.save-modal-cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.6rem;
 }
 .avatar-btn {
   appearance: none;
